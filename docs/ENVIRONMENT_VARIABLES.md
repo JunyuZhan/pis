@@ -6,7 +6,7 @@
 
 1. [快速配置（自动生成）](#快速配置自动生成) - 新功能
 2. [配置位置说明](#配置位置说明)
-3. [Vercel 环境变量](#vercel-环境变量)
+3. [必需配置（Production）](#必需配置production)
 4. [Worker 服务器环境变量](#worker-服务器环境变量)
 5. [本地开发环境变量](#本地开发环境变量)
 6. [环境变量说明](#环境变量说明)
@@ -54,13 +54,13 @@ bash docker/deploy.sh
 
 ## 配置位置说明
 
-### 前端 (Vercel)
-- **位置**: Vercel Dashboard → Settings → Environment Variables
+### 前端 (Docker)
+- **位置**: 项目根目录 `.env` 或 `docker/.env`
 - **作用**: Next.js 应用运行时使用
 - **注意**: `NEXT_PUBLIC_*` 变量会暴露到浏览器
 
-### Worker 服务器 (192.168.50.10)
-- **位置**: `/opt/PIS/docker/.env`
+### Worker 服务器
+- **位置**: 项目根目录 `.env` 或 `docker/.env`
 - **作用**: Docker Compose 读取，传递给 Worker 容器
 - **注意**: 使用 Docker 内部网络地址（服务名）
 
@@ -71,64 +71,49 @@ bash docker/deploy.sh
 
 ---
 
-## Vercel 环境变量
-
-### 配置位置
-
-**Vercel Dashboard** → 项目 → **Settings** → **Environment Variables**
-
-### 配置步骤
-
-1. 登录 [Vercel Dashboard](https://vercel.com/dashboard)
-2. 选择项目 `PIS` (或你的项目名称)
-3. 进入 **Settings** → **Environment Variables**
-4. 点击 **Add New** 添加每个环境变量
-5. 选择环境范围（Production、Preview、Development）
-6. 保存后需要重新部署才能生效
-
-### 必需配置（Production）
+## 必需配置（Production）
 
 以下环境变量是应用运行所必需的，必须全部配置：
 
 ```bash
 # ==================== 数据库配置 ====================
-# 数据库类型：postgresql（自托管）或 supabase（云服务，向后兼容）
+# 数据库类型：postgresql（自托管，推荐）或 supabase（云服务，向后兼容）
 DATABASE_TYPE=postgresql
 
 # PostgreSQL 连接配置（方式1：使用连接字符串）
 # DATABASE_URL=postgresql://user:password@host:5432/database?sslmode=require
 
 # PostgreSQL 连接配置（方式2：分别配置，推荐）
-DATABASE_HOST=postgres.example.com
+DATABASE_HOST=postgres
 DATABASE_PORT=5432
 DATABASE_NAME=pis
 DATABASE_USER=pis
 DATABASE_PASSWORD=your-secure-password
-DATABASE_SSL=true
+DATABASE_SSL=false
 
 # 认证 JWT 密钥（用于会话管理，必须与 Worker 服务器一致）
 AUTH_JWT_SECRET=your-jwt-secret-key-at-least-32-characters-long
 
 # ==================== 媒体服务器配置 ====================
-# 前端访问媒体服务器的公网 URL（通过 frpc 反向代理）
+# 前端访问媒体服务器的公网 URL
 # ⚠️ 必须使用 HTTPS，格式: https://域名/路径
-NEXT_PUBLIC_MEDIA_URL=https://media.example.com/pis-photos
+NEXT_PUBLIC_MEDIA_URL=https://yourdomain.com/media
 
 # ==================== Worker 服务配置 ====================
-# Worker API 的公网 URL（通过 frpc 反向代理）
+# Worker API 的公网 URL
 # ⚠️ 必须使用 HTTPS
-NEXT_PUBLIC_WORKER_URL=https://worker.example.com
+NEXT_PUBLIC_WORKER_URL=https://yourdomain.com/worker-api
 
 # Worker API URL（服务端使用，支持多个变量名）
-WORKER_API_URL=https://worker.example.com
+WORKER_API_URL=http://worker:3001
 
 # Worker API 认证密钥（必须与 Worker 服务器配置一致）
 # ⚠️ 这是敏感信息，不要暴露到客户端
-WORKER_API_KEY=14566ade4b1a168eccf84ffb0d91e17e23662c5f966506de4c3aa82d16554cb8
+WORKER_API_KEY=your-generated-api-key
 
 # ==================== 应用配置 ====================
 # 应用公网访问地址（用于生成链接、邮件等）
-NEXT_PUBLIC_APP_URL=https://pic.example.com
+NEXT_PUBLIC_APP_URL=https://yourdomain.com
 
 # 品牌信息（显示在页面标题、元数据等）
 NEXT_PUBLIC_PHOTOGRAPHER_NAME=PIS Photography

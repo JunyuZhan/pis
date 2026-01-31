@@ -60,10 +60,10 @@ get_input() {
     local result
 
     if [ -n "$default" ]; then
-        read -p "$(echo -e ${GREEN}${prompt}${NC} [$default]): " result
+        read -p "$(echo -e "${GREEN}${prompt}${NC}" [$default]): " result
         echo "${result:-$default}"
     else
-        read -p "$(echo -e ${GREEN}${prompt}${NC}): " result
+        read -p "$(echo -e "${GREEN}${prompt}${NC}"): " result
         echo "$result"
     fi
 }
@@ -75,7 +75,8 @@ get_confirm() {
 
     while true; do
         local result
-        read -p "$(echo -e ${GREEN}${prompt}${NC} [y/n]: ") result
+        echo -ne "${GREEN}${prompt}${NC} [y/n]: "
+        read result
         result=$(echo "$result" | tr '[:upper:]' '[:lower:]')
 
         if [ -z "$result" ]; then
@@ -143,7 +144,8 @@ configure_deployment_mode() {
     echo "     - 存储/Worker: 你的服务器"
     echo ""
     
-    read -p "$(echo -e ${GREEN}请选择 [1/2，默认: 1]${NC}): " mode_choice
+    echo -ne "${GREEN}请选择 [1/2，默认: 1]${NC}: "
+    read mode_choice
     mode_choice=${mode_choice:-1}
     
     case "$mode_choice" in
@@ -195,39 +197,6 @@ configure_domain() {
     fi
 }
 
-# 配置 Supabase（混合部署）
-configure_supabase() {
-    print_step "4a/9" "配置 Supabase"
-
-    echo ""
-    echo -e "${CYAN}请按照以下步骤配置 Supabase:${NC}"
-    echo ""
-    echo "  1. 访问 https://supabase.com 并登录"
-    echo "  2. 点击 New Project 创建项目"
-    echo "  3. 创建完成后，进入 Settings → API"
-    echo ""
-
-    SUPABASE_URL=$(get_input "Project URL" "")
-    SUPABASE_ANON_KEY=$(get_input "anon public key" "")
-    SUPABASE_SERVICE_KEY=$(get_input "service_role key" "")
-
-    if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ] || [ -z "$SUPABASE_SERVICE_KEY" ]; then
-        print_error "Supabase 配置不完整"
-        exit 1
-    fi
-
-    print_success "Supabase 已配置"
-
-    echo ""
-    echo -e "${YELLOW}接下来请在 Supabase 中创建管理员账号:${NC}"
-    echo "  1. 进入 Authentication → Users"
-    echo "  2. 点击 Add user → Create new user"
-    echo "  3. 输入管理员邮箱和密码"
-    echo "  4. ✅ 勾选 Auto Confirm User"
-    echo "  5. 点击 Create user"
-    echo ""
-    get_confirm "已创建管理员账号，继续" "y"
-}
 
 # 配置 PostgreSQL（完全自托管模式）
 configure_postgresql() {
@@ -266,6 +235,40 @@ configure_postgresql() {
     else
         get_confirm "数据库已初始化，继续" "y"
     fi
+}
+
+# 配置 Supabase（混合部署）
+configure_supabase() {
+    print_step "4a/9" "配置 Supabase"
+
+    echo ""
+    echo -e "${CYAN}请按照以下步骤配置 Supabase:${NC}"
+    echo ""
+    echo "  1. 访问 https://supabase.com 并登录"
+    echo "  2. 点击 New Project 创建项目"
+    echo "  3. 创建完成后，进入 Settings → API"
+    echo ""
+
+    SUPABASE_URL=$(get_input "Project URL" "")
+    SUPABASE_ANON_KEY=$(get_input "anon public key" "")
+    SUPABASE_SERVICE_KEY=$(get_input "service_role key" "")
+
+    if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ] || [ -z "$SUPABASE_SERVICE_KEY" ]; then
+        print_error "Supabase 配置不完整"
+        exit 1
+    fi
+
+    print_success "Supabase 已配置"
+
+    echo ""
+    echo -e "${YELLOW}接下来请在 Supabase 中创建管理员账号:${NC}"
+    echo "  1. 进入 Authentication → Users"
+    echo "  2. 点击 Add user → Create new user"
+    echo "  3. 输入管理员邮箱和密码"
+    echo "  4. ✅ 勾选 Auto Confirm User"
+    echo "  5. 点击 Create user"
+    echo ""
+    get_confirm "已创建管理员账号，继续" "y"
 }
 
 # 配置 MinIO
@@ -552,7 +555,8 @@ EOF
         echo -e "${CYAN}========================================${NC}"
 
     # 保存重要信息
-    cat > .deployment-info << EOF
+    {
+        cat << EOF
 # PIS 部署信息
 # 生成时间: $(date)
 # ⚠️  警告: 此文件包含敏感信息，请妥善保管，不要泄露或提交到 Git
@@ -567,7 +571,9 @@ MinIO 访问密钥: $MINIO_ACCESS_KEY
 MinIO 密钥: $MINIO_SECRET_KEY
 
 # 数据库配置
-$([ "$DEPLOYMENT_MODE" = "standalone" ] && cat << EOF
+EOF
+        if [ "$DEPLOYMENT_MODE" = "standalone" ]; then
+            cat << EOF
 数据库类型: PostgreSQL
 数据库主机: $DATABASE_HOST
 数据库端口: $DATABASE_PORT
@@ -575,14 +581,15 @@ $([ "$DEPLOYMENT_MODE" = "standalone" ] && cat << EOF
 数据库用户: $DATABASE_USER
 JWT Secret: $AUTH_JWT_SECRET
 EOF
-|| cat << EOF
+        else
+            cat << EOF
 数据库类型: Supabase
 Supabase URL: $SUPABASE_URL
 Supabase Anon Key: $SUPABASE_ANON_KEY
 Supabase Service Key: $SUPABASE_SERVICE_KEY
 EOF
-)
-EOF
+        fi
+    } > .deployment-info
 
     print_success "部署信息已保存到 .deployment-info"
     print_warning "⚠️  请妥善保管 .deployment-info 文件，不要将其提交到 Git 或分享给他人"

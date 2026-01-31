@@ -129,7 +129,7 @@ docker-compose -f docker-compose.standalone.yml up -d
 
 这将启动所有服务：PostgreSQL、MinIO、Redis、Worker、Web、Nginx。
 
-#### 混合部署模式（仅 Worker 和存储）
+#### 混合部署模式（仅 Worker 和存储，向后兼容）
 
 ```bash
 cd docker
@@ -199,26 +199,6 @@ docker compose ps -a
 # 检查 MinIO 健康状态
 curl http://localhost:9000/minio/health/live
 ```
-
-## Worker 服务配置
-
-Worker 服务需要配置 Nginx 反向代理才能从 Vercel 访问：
-
-```nginx
-# /etc/nginx/sites-available/worker
-server {
-    listen 80;
-    server_name worker.yourdomain.com;
-    
-    location / {
-        proxy_pass http://127.0.0.1:3001;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-然后配置 SSL 证书（使用 Let's Encrypt 或 Cloudflare）。
 
 ## 备份与恢复
 

@@ -19,20 +19,20 @@ const nextConfig: NextConfig = {
   },
   // 生成唯一的构建 ID，用于缓存破坏
   generateBuildId: async () => {
-    // 使用 Git commit SHA 或时间戳
+    // 优先使用 Git commit SHA（Vercel 自动提供），否则使用时间戳
     return process.env.VERCEL_GIT_COMMIT_SHA || 
            `build-${Date.now()}`
   },
   // 压缩配置（Next.js 15 默认启用）
   compress: true,
-  // 输出模式：Vercel 使用默认的 'standalone'
-  output: 'standalone', // Docker 部署必需
+  // 输出模式：standalone（Docker 部署必需，也兼容 Vercel）
+  output: 'standalone',
   // 优化生产构建
   productionBrowserSourceMaps: process.env.NODE_ENV === 'development', // 仅开发环境生成 source maps
   // 优化图片加载
   // 图片优化配置
   images: {
-    // Vercel 支持图片优化，无需禁用
+    // 图片优化已启用（支持 Docker 和 Vercel 部署）
     // Next.js 16+ 要求：配置本地图片模式以支持查询字符串
     localPatterns: [
       {

@@ -146,25 +146,6 @@ bash scripts/start-internal-services.sh
 
 ---
 
-### 2. `docker/docker-compose.postgresql.yml` - PostgreSQL 版本
-
-**包含服务：**
-- PostgreSQL（数据库）
-- MinIO（对象存储）
-- Redis（任务队列）
-- Worker（图片处理）
-
-**端口：**
-- PostgreSQL: 15432（仅本地）
-- MinIO API: 19000
-- MinIO Console: 19001
-- Redis: 16379（仅本地）
-- Worker: 3001
-
-**使用场景：** 使用本地 PostgreSQL 数据库的部署
-
----
-
 ### 3. `docker/docker-compose.mysql.yml` - MySQL 版本
 
 **包含服务：**
@@ -228,14 +209,7 @@ docker-compose up -d
 
 **注意**: 此模式需要单独部署前端到 Vercel，并配置 Supabase 数据库。
 
-### 启动完整服务（PostgreSQL 版本）
-
-```bash
-cd docker
-docker-compose -f docker-compose.postgresql.yml up -d
-```
-
-### 启动完整服务（Standalone 版本）
+### 启动完整服务（Standalone 版本，推荐）
 
 ```bash
 cd docker
@@ -246,9 +220,9 @@ docker-compose -f docker-compose.standalone.yml up -d
 
 ```bash
 cd docker
+docker-compose -f docker-compose.standalone.yml down
+# 或使用默认文件（docker-compose.yml）
 docker-compose down
-# 或指定文件
-docker-compose -f docker-compose.postgresql.yml down
 ```
 
 ### 查看服务状态
@@ -286,8 +260,7 @@ docker-compose logs -f [服务名]
 | 数据库类型 | docker-compose 文件 | 说明 |
 |-----------|-------------------|------|
 | PostgreSQL（推荐） | `docker-compose.standalone.yml` | 完全自托管，包含所有服务 |
-| PostgreSQL（仅 Worker） | `docker-compose.postgresql.yml` | 前端单独部署，数据库本地 |
-| Supabase（向后兼容） | `docker-compose.yml` | 前端部署到 Vercel，数据库使用 Supabase |
+| Supabase（向后兼容） | `docker-compose.yml` | 混合部署：前端部署到 Vercel，数据库使用 Supabase |
 
 ---
 

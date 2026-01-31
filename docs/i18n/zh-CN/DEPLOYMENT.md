@@ -497,50 +497,11 @@ sudo certbot --nginx -d media.yourdomain.com
 sudo nginx -t && sudo nginx -s reload
 ```
 
-### Vercel 部署
-
-#### 1. 连接仓库
-
-1. 访问 [https://vercel.com](https://vercel.com) 并登录
-2. 点击 **Add New Project**
-3. 选择你的 GitHub 仓库
-
-#### 2. 配置构建
-
-| 配置项 | 值 |
-|--------|-----|
-| Framework Preset | Next.js |
-| Root Directory | `apps/web` |
-| Build Command | `pnpm build` |
-| Install Command | `pnpm install` |
-
-#### 3. 配置环境变量
-
-在 **Settings** → **Environment Variables** 添加:
-
-```
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-NEXT_PUBLIC_APP_URL=https://yourdomain.com
-NEXT_PUBLIC_MEDIA_URL=https://media.yourdomain.com/pis-photos
-```
-
-#### 4. 部署
-
-点击 **Deploy**，等待构建完成。
-
-#### 5. 绑定域名
-
-1. **Settings** → **Domains**
-2. 添加 `yourdomain.com`
-3. 按提示配置 DNS (CNAME 或 A 记录)
-
 ---
 
 ## 环境变量配置
 
-### 前端 (Vercel / apps/web/.env)
+### 前端 (Docker / apps/web/.env)
 
 | 变量 | 说明 | 示例 |
 |------|------|------|
