@@ -311,12 +311,34 @@ export function PhotoUploader({ albumId, onComplete }: PhotoUploaderProps) {
       return
     }
 
-    const uploadFiles: UploadFile[] = nonDuplicateFiles.map((file) => ({
-      id: Math.random().toString(36).substr(2, 9),
-      file,
-      status: 'pending',
-      progress: 0,
+    // 检查是否已有相同文件在上传队列中（避免重复上传）
+    const existingFileIds = new Set(files.map(f => {
+      // 使用文件名+大小作为唯一标识，避免重复上传相同文件
+      return `${f.file.name}-${f.file.size}`
     }))
+    
+    const uploadFiles: UploadFile[] = nonDuplicateFiles
+      .filter((file) => {
+        // 如果文件已在队列中，跳过
+        const fileKey = `${file.name}-${file.size}`
+        if (existingFileIds.has(fileKey)) {
+          console.warn('[Upload] File already in queue, skipping:', file.name)
+          return false
+        }
+        existingFileIds.add(fileKey)
+        return true
+      })
+      .map((file) => ({
+        id: Math.random().toString(36).substr(2, 9),
+        file,
+        status: 'pending' as const,
+        progress: 0,
+      }))
+
+    // 如果没有新文件，直接返回
+    if (uploadFiles.length === 0) {
+      return
+    }
 
     // 将新文件加入队列
     uploadQueueRef.current.push(...uploadFiles.map(f => f.id))
