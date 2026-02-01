@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/database'
 import { getCurrentUser } from '@/lib/auth/api-helpers'
 import { purgePhotoCache } from '@/lib/cloudflare-purge'
+import { getInternalApiUrl } from '@/lib/utils'
 import { revalidatePath } from 'next/cache'
 import { permanentDeleteSchema } from '@/lib/validation/schemas'
 import { safeValidate, handleError, createSuccessResponse, ApiError } from '@/lib/validation/error-handler'
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
     )
 
     // 1. 删除 MinIO 文件（通过 Worker API）
-    const proxyUrl = `http://localhost:3000/api/worker/cleanup-file`
+    const proxyUrl = getInternalApiUrl('/api/worker/cleanup-file')
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',

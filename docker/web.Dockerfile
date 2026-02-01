@@ -72,8 +72,8 @@ RUN pnpm build
 # ============================================
 FROM node:20-alpine AS runner
 
-# 安装 curl（用于健康检查）
-RUN apk add --no-cache curl
+# 安装 curl（用于健康检查）和 git（用于升级功能）
+RUN apk add --no-cache curl git
 
 WORKDIR /app
 

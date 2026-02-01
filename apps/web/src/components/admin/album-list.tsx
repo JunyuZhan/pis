@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Plus, FolderOpen, Trash2, Check, Loader2, Copy, Settings, ImageIcon, Share2, Filter, Link2 } from 'lucide-react'
 import { useSwipeable } from 'react-swipeable'
-import { formatRelativeTime, formatDate, getAlbumShareUrl } from '@/lib/utils'
+import { formatRelativeTime, formatDate, getAlbumShareUrl, getSafeMediaUrl, getAppBaseUrl } from '@/lib/utils'
 import { CreateAlbumDialog } from './create-album-dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { PullToRefresh } from '@/components/ui/pull-to-refresh'
@@ -351,7 +351,7 @@ function AlbumCard({
       shareUrl = getAlbumShareUrl(album.slug)
     } catch (error) {
       console.error('Failed to generate share URL:', error)
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      const appUrl = getAppBaseUrl()
       shareUrl = `${appUrl}/album/${encodeURIComponent(album.slug || '')}`
     }
   }
@@ -377,9 +377,8 @@ function AlbumCard({
     setIsMounted(true)
   }, [])
   
-  const mediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL || ''
-  // 使用配置的 URL，不强制转换协议（开发环境可能使用 HTTP）
-  const safeMediaUrl = mediaUrl
+  // 使用安全的媒体 URL（自动修复 localhost HTTPS 问题）
+  const safeMediaUrl = getSafeMediaUrl()
   
   // 构建封面图URL（优先级：海报图片 > 封面照片）
   const coverUrl = album.poster_image_url && album.poster_image_url.trim()

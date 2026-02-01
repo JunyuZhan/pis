@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
+import { getInternalApiUrl } from '@/lib/utils'
 import { createClient } from '@/lib/database'
 import { getCurrentUser } from '@/lib/auth/api-helpers'
 import { purgePhotoCache } from '@/lib/cloudflare-purge'
@@ -363,7 +364,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const workerUrl = process.env.WORKER_URL || process.env.WORKER_API_URL
     if (workerUrl) {
       try {
-        const proxyUrl = `http://localhost:3000/api/worker/clear-album-cache`
+        const proxyUrl = getInternalApiUrl('/api/worker/clear-album-cache')
         
         const headers: HeadersInit = {
           'Content-Type': 'application/json',

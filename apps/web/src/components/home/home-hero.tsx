@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { ChevronDown, Aperture } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { getSafeMediaUrl } from '@/lib/utils'
 import type { Album, Photo } from '@/types/database'
 
 interface HomeHeroProps {
@@ -16,7 +17,8 @@ export function HomeHero({ featuredAlbum, coverPhoto }: HomeHeroProps) {
   const t = useTranslations('home.hero')
   const [isLoaded, setIsLoaded] = useState(false)
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
-  const mediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL
+  // 使用安全的媒体 URL（自动修复 localhost HTTPS 问题）
+  const mediaUrl = getSafeMediaUrl()
   const { scrollY } = useScroll()
 
   // 检测用户是否偏好减少动画

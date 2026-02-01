@@ -3,6 +3,7 @@ import { createClient } from '@/lib/database'
 import { getCurrentUser } from '@/lib/auth/api-helpers'
 import { reprocessPhotoSchema } from '@/lib/validation/schemas'
 import { safeValidate, handleError, createSuccessResponse, ApiError } from '@/lib/validation/error-handler'
+import { getInternalApiUrl } from '@/lib/utils'
 
 /**
  * 批量重新生成预览图 API
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
 
     // 使用代理路由调用 Worker API 触发重新处理
     // 代理路由会自动处理 Worker URL 配置和认证
-    const proxyUrl = `http://localhost:3000/api/worker/process`
+    const proxyUrl = getInternalApiUrl('/api/worker/process')
 
     // 批量添加到处理队列
     let queuedCount = 0

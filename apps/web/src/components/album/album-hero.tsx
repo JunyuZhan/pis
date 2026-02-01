@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Eye, Heart, Calendar, MapPin, Clock, ChevronDown, ArrowLeft } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { getSafeMediaUrl } from '@/lib/utils'
 import type { Album, Photo } from '@/types/database'
 
 interface AlbumHeroProps {
@@ -19,7 +20,8 @@ export function AlbumHero({ album, coverPhoto, from }: AlbumHeroProps) {
   // 确保正确读取初始浏览次数
   const initialViewCount = album.view_count ?? 0
   const [viewCount, setViewCount] = useState(initialViewCount)
-  const mediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL
+  // 使用安全的媒体 URL（自动修复 localhost HTTPS 问题）
+  const mediaUrl = getSafeMediaUrl()
 
   // 确保只在客户端挂载后显示返回按钮，避免 hydration 错误
   useEffect(() => {

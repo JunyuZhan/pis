@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/database'
 import { getCurrentUser } from '@/lib/auth/api-helpers'
-import { getAlbumShareUrl, generateAlbumSlug } from '@/lib/utils'
+import { getAlbumShareUrl, generateAlbumSlug, getAppBaseUrl } from '@/lib/utils'
 import type { AlbumInsert, Json } from '@/types/database'
 import { createAlbumSchema } from '@/lib/validation/schemas'
 import { safeValidate, handleError, createSuccessResponse, ApiError } from '@/lib/validation/error-handler'
@@ -258,7 +258,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       console.error('Failed to generate share URL:', error)
       // 如果slug无效，使用降级方案
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      const appUrl = getAppBaseUrl()
       shareUrl = `${appUrl}/album/${encodeURIComponent(data.slug || '')}`
     }
 

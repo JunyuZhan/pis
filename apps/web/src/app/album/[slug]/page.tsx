@@ -10,7 +10,7 @@ import { PhotoGroupFilter } from '@/components/album/photo-group-filter'
 import { FloatingActions } from '@/components/album/floating-actions'
 import { SortToggle, type SortRule } from '@/components/album/sort-toggle'
 import { LayoutToggle, type LayoutMode } from '@/components/album/layout-toggle'
-import { getAlbumShareUrl } from '@/lib/utils'
+import { getAlbumShareUrl, getAppBaseUrl } from '@/lib/utils'
 import type { Database } from '@/types/database'
 
 type Album = Database['public']['Tables']['albums']['Row']
@@ -42,8 +42,17 @@ export async function generateMetadata({ params }: AlbumPageProps): Promise<Meta
     }
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-  const mediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:9000/pis-photos'
+  const appUrl = getAppBaseUrl()
+  // 服务端：使用环境变量，如果是 https://localhost 则使用相对路径
+  let mediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL || '/media'
+  try {
+    const url = new URL(mediaUrl)
+    if ((url.hostname === 'localhost' || url.hostname === '127.0.0.1') && url.protocol === 'https:') {
+      mediaUrl = url.pathname || '/media'
+    }
+  } catch {
+    // URL 解析失败，可能是相对路径，保持不变
+  }
   
   const album = albumResult.data as {
     title: string
@@ -279,7 +288,16 @@ export default async function AlbumPage({ params, searchParams }: AlbumPageProps
   }
 
   // 获取背景图片URL（优先使用海报图片，否则使用封面照片）
-  const mediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:9000/pis-photos'
+  // 使用安全的媒体 URL（自动修复 localhost HTTPS 问题）
+  let mediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL || '/media'
+  try {
+    const url = new URL(mediaUrl)
+    if ((url.hostname === 'localhost' || url.hostname === '127.0.0.1') && url.protocol === 'https:') {
+      mediaUrl = url.pathname || '/media'
+    }
+  } catch {
+    // URL 解析失败，可能是相对路径，保持不变
+  }
   let backgroundImageUrl: string | null = null
   if (album.poster_image_url && album.poster_image_url.trim()) {
     backgroundImageUrl = album.poster_image_url.trim()

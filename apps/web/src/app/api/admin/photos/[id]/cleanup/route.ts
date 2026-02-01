@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/database'
 import { getCurrentUser } from '@/lib/auth/api-helpers'
 import { photoIdSchema } from '@/lib/validation/schemas'
 import { safeValidate, handleError, createSuccessResponse, ApiError } from '@/lib/validation/error-handler'
+import { getInternalApiUrl } from '@/lib/utils'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -66,7 +67,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       try {
         // 使用代理路由调用 Worker API
         // 代理路由会自动处理 Worker URL 配置和认证
-        const proxyUrl = `http://localhost:3000/api/worker/cleanup-file`
+        const proxyUrl = getInternalApiUrl('/api/worker/cleanup-file')
         
         const headers: HeadersInit = {
           'Content-Type': 'application/json',

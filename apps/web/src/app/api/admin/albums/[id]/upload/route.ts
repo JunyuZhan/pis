@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { checkRateLimit } from '@/middleware-rate-limit'
 import { uploadPhotoSchema, albumIdSchema } from '@/lib/validation/schemas'
 import { safeValidate, handleError, ApiError } from '@/lib/validation/error-handler'
+import { getInternalApiUrl } from '@/lib/utils'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -262,8 +263,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     try {
       // 优先使用 Next.js 代理路由，避免直接连接 Worker 的问题
       // 代理路由会自动处理 Worker URL 配置和认证
-      // 注意：内部调用使用 http://localhost:3000，避免 HTTPS 证书问题
-      const presignUrl = `http://localhost:3000/api/worker/presign`
+      // 使用相对路径，Next.js 会自动处理
+      const presignUrl = getInternalApiUrl('/api/worker/presign')
       
       let presignResponse: Response
       try {

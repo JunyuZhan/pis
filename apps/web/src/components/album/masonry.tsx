@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import { Heart, Download, Share2, Expand, Loader2, ImageIcon } from 'lucide-react'
 import type { Photo, Album } from '@/types/database'
-import { cn } from '@/lib/utils'
+import { cn, getSafeMediaUrl } from '@/lib/utils'
 import { getBlurDataURL } from '@/lib/blurhash'
 import { handleApiError } from '@/lib/toast'
 import { OptimizedImage } from '@/components/ui/optimized-image'
@@ -57,7 +57,7 @@ export function MasonryGrid({
   // 图片预加载：预加载即将可见的图片（优化性能）
   // 只在图片即将进入视口时预加载，减少预加载警告
   const preloadImages = useCallback((startIndex: number, count: number = 2) => {
-    const mediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL || ''
+    const mediaUrl = getSafeMediaUrl()
     if (!mediaUrl || typeof window === 'undefined') return
     
     // 延迟预加载，确保图片确实会被使用
@@ -151,7 +151,7 @@ export function MasonryGrid({
     setLightboxIndex(index)
     
     // 预加载 Lightbox 中相邻的图片（优化 Lightbox 切换速度）
-    const mediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL || ''
+    const mediaUrl = getSafeMediaUrl()
     if (mediaUrl && photos.length > 0) {
       // 预加载前一张和后一张的预览图
       const indices: number[] = []
@@ -342,10 +342,8 @@ function PhotoCard({
   const aspectRatio =
     photo.width && photo.height ? photo.height / photo.width : 1
 
-  const mediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL || ''
-  
-  // 使用配置的 URL，不强制转换协议（开发环境可能使用 HTTP）
-  const safeMediaUrl = mediaUrl
+  // 使用安全的媒体 URL（自动修复 localhost HTTPS 问题）
+  const safeMediaUrl = getSafeMediaUrl()
   
   // 图片 key 优先级：preview_key -> thumb_key -> original_key
   // 预览图大小修改后，如果 preview_key 文件不存在，会自动降级到 thumb_key 或 original_key

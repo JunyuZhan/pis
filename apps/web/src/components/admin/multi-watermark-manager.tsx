@@ -94,8 +94,12 @@ export function MultiWatermarkManager({ watermarks, onChange }: MultiWatermarkMa
           <label className="block text-xs font-medium text-text-secondary mb-3">
             预览效果
           </label>
-          <WatermarkPreview watermarks={watermarks} width={600} height={400} />
-          <p className="text-xs text-text-muted mt-2">
+          <div className="flex justify-center">
+            <div className="w-full max-w-[280px]">
+              <WatermarkPreview watermarks={watermarks} width={280} height={210} />
+            </div>
+          </div>
+          <p className="text-xs text-text-muted mt-2 text-center">
             蓝色圆点标记水印位置，调整设置可实时查看效果
           </p>
         </div>

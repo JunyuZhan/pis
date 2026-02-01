@@ -82,66 +82,119 @@ export async function GET(request: NextRequest) {
     }
     
     try {
-      // 检查 Git 状态
-      const { stdout: currentBranch } = await execAsync(
-        'git rev-parse --abbrev-ref HEAD',
-        { cwd: projectRoot }
-      )
-
-      const { stdout: currentCommit } = await execAsync(
-        'git rev-parse HEAD',
-        { cwd: projectRoot }
-      )
-
-      // 检查是否有未提交的更改
-      let uncommittedChanges = false
+      // 首先检查 Git 是否可用
       try {
-        await execAsync('git diff-index --quiet HEAD --', { cwd: projectRoot })
+        await execAsync('git --version', { cwd: projectRoot, timeout: 5000 })
       } catch {
-        uncommittedChanges = true
+        // Git 不可用，返回友好的错误信息
+        return NextResponse.json(
+          {
+            error: {
+              code: 'GIT_NOT_AVAILABLE',
+              message: 'Git 不可用',
+              details: 'Docker 容器内可能未安装 Git，或 Git 命令执行失败。升级功能需要 Git 支持。',
+            },
+          },
+          { status: 503 }
+        )
       }
 
-      // 获取远程最新提交
+      // 检查是否是 Git 仓库
+      try {
+        await execAsync('git rev-parse --git-dir', { cwd: projectRoot, timeout: 5000 })
+      } catch {
+        return NextResponse.json(
+          {
+            error: {
+              code: 'NOT_A_GIT_REPO',
+              message: '当前目录不是 Git 仓库',
+              details: `项目根目录 ${projectRoot} 不是有效的 Git 仓库。`,
+            },
+          },
+          { status: 400 }
+        )
+      }
+
+      // 检查 Git 状态
+      let currentBranch = ''
+      let currentCommit = ''
+      let uncommittedChanges = false
       let remoteCommit = ''
       let hasUpdate = false
-      try {
-        // 先 fetch
-        await execAsync('git fetch origin', { cwd: projectRoot })
-        
-        // 获取远程分支的最新提交
-        const branch = currentBranch.trim()
-        const { stdout: remoteCommitOutput } = await execAsync(
-          `git rev-parse origin/${branch}`,
-          { cwd: projectRoot }
-        )
-        remoteCommit = remoteCommitOutput.trim()
-        
-        // 比较本地和远程提交
-        if (remoteCommit && remoteCommit !== currentCommit.trim()) {
-          hasUpdate = true
-        }
-      } catch (error) {
-        // 如果无法获取远程信息，记录但不报错
-        console.warn('无法获取远程 Git 信息:', error)
-      }
 
-      return NextResponse.json({
-        currentCommit: currentCommit.trim(),
-        currentBranch: currentBranch.trim(),
-        remoteCommit: remoteCommit || null,
-        hasUpdate,
-        uncommittedChanges,
-        lastChecked: new Date().toISOString(),
-      })
+      try {
+        const { stdout: branchOutput } = await execAsync(
+          'git rev-parse --abbrev-ref HEAD',
+          { cwd: projectRoot, timeout: 5000 }
+        )
+        currentBranch = branchOutput.trim()
+
+        const { stdout: commitOutput } = await execAsync(
+          'git rev-parse HEAD',
+          { cwd: projectRoot, timeout: 5000 }
+        )
+        currentCommit = commitOutput.trim()
+
+        // 检查是否有未提交的更改
+        try {
+          await execAsync('git diff-index --quiet HEAD --', { cwd: projectRoot, timeout: 5000 })
+        } catch {
+          uncommittedChanges = true
+        }
+
+        // 获取远程最新提交
+        try {
+          // 先 fetch（设置超时，避免长时间等待）
+          await execAsync('git fetch origin', { cwd: projectRoot, timeout: 10000 })
+          
+          // 获取远程分支的最新提交
+          const { stdout: remoteCommitOutput } = await execAsync(
+            `git rev-parse origin/${currentBranch}`,
+            { cwd: projectRoot, timeout: 5000 }
+          )
+          remoteCommit = remoteCommitOutput.trim()
+          
+          // 比较本地和远程提交
+          if (remoteCommit && remoteCommit !== currentCommit) {
+            hasUpdate = true
+          }
+        } catch (error) {
+          // 如果无法获取远程信息，记录但不报错
+          console.warn('无法获取远程 Git 信息:', error instanceof Error ? error.message : error)
+        }
+
+        return NextResponse.json({
+          currentCommit,
+          currentBranch,
+          remoteCommit: remoteCommit || null,
+          hasUpdate,
+          uncommittedChanges,
+          lastChecked: new Date().toISOString(),
+        })
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : '未知错误'
+        console.error('检查 Git 状态失败:', errorMessage)
+        
+        return NextResponse.json(
+          {
+            error: {
+              code: 'GIT_CHECK_FAILED',
+              message: '无法检查 Git 状态',
+              details: errorMessage,
+            },
+          },
+          { status: 500 }
+        )
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '未知错误'
-      console.error('检查 Git 状态失败:', errorMessage)
+      console.error('Git 检查初始化失败:', errorMessage)
       
       return NextResponse.json(
         {
           error: {
-            code: 'GIT_CHECK_FAILED',
-            message: '无法检查 Git 状态',
+            code: 'GIT_INIT_FAILED',
+            message: 'Git 检查初始化失败',
             details: errorMessage,
           },
         },

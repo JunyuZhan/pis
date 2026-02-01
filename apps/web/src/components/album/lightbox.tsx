@@ -9,7 +9,7 @@ import 'yet-another-react-lightbox/styles.css'
 import 'yet-another-react-lightbox/plugins/captions.css'
 import { Download, Heart, RotateCw, RotateCcw } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { cn } from '@/lib/utils'
+import { cn, getSafeMediaUrl } from '@/lib/utils'
 import { handleApiError } from '@/lib/toast'
 import type { Photo } from '@/types/database'
 
@@ -33,10 +33,9 @@ export function PhotoLightbox({
   onIndexChange,
 }: PhotoLightboxProps) {
   const t = useTranslations('album.lightbox')
-  const mediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL || ''
   
-  // 使用配置的 URL，不强制转换协议（开发环境可能使用 HTTP）
-  const safeMediaUrl = mediaUrl
+  // 使用安全的媒体 URL（自动修复 localhost HTTPS 问题）
+  const safeMediaUrl = getSafeMediaUrl()
   
   // 开发环境警告
   if (typeof window !== 'undefined' && !safeMediaUrl) {

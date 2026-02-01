@@ -103,6 +103,83 @@ export function getAppBaseUrl(): string {
 }
 
 /**
+ * 获取内部 API URL（用于服务端内部调用）
+ *
+ * @description 
+ * - 服务端内部调用应使用相对路径，Next.js 会自动处理
+ * - 如果需要绝对 URL（如某些特殊场景），使用环境变量或默认值
+ * @param {string} path - API 路径（如 '/api/worker/process'）
+ * @returns {string} 完整的 API URL
+ */
+export function getInternalApiUrl(path: string): string {
+  // 确保路径以 / 开头
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  
+  // 服务端：优先使用相对路径（Next.js 会自动处理）
+  // 如果需要绝对 URL，可以使用环境变量
+  if (typeof window === 'undefined') {
+    // 如果设置了内部 API URL 环境变量，使用它
+    const internalApiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_APP_URL
+    if (internalApiUrl) {
+      return `${internalApiUrl.replace(/\/$/, '')}${normalizedPath}`
+    }
+    // 否则使用相对路径（推荐）
+    return normalizedPath
+  }
+  
+  // 客户端：使用相对路径
+  return normalizedPath
+}
+
+/**
+ * 获取安全的媒体 URL（修复 localhost HTTPS 问题）
+ *
+ * @description 
+ * - 如果媒体 URL 是 https://localhost，自动转换为相对路径或使用当前页面协议
+ * - 如果媒体 URL 为空，使用相对路径 /media
+ * @returns {string} 安全的媒体 URL
+ */
+export function getSafeMediaUrl(): string {
+  const mediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL || ''
+  
+  // 服务端：直接返回环境变量值
+  if (typeof window === 'undefined') {
+    return mediaUrl || '/media'
+  }
+  
+  // 客户端：修复 localhost HTTPS 问题
+  if (!mediaUrl) {
+    return '/media'
+  }
+  
+  try {
+    const url = new URL(mediaUrl)
+    
+    // 如果 hostname 是 localhost 或 127.0.0.1，且协议是 https
+    // 但当前页面是 http，则转换为相对路径或使用当前页面协议
+    if ((url.hostname === 'localhost' || url.hostname === '127.0.0.1') && 
+        url.protocol === 'https:' && 
+        window.location.protocol === 'http:') {
+      // 使用相对路径，让浏览器自动使用当前页面的协议和域名
+      return url.pathname || '/media'
+    }
+    
+    // 如果 hostname 是 localhost 且协议是 https，但当前页面也是 https
+    // 检查是否能访问，如果不能则回退到相对路径
+    if ((url.hostname === 'localhost' || url.hostname === '127.0.0.1') && 
+        url.protocol === 'https:') {
+      // 对于 localhost，通常使用相对路径更安全
+      return url.pathname || '/media'
+    }
+    
+    return mediaUrl
+  } catch {
+    // URL 解析失败，可能是相对路径，直接返回
+    return mediaUrl || '/media'
+  }
+}
+
+/**
  * 生成相册分享 URL
  *
  * @param {string} slug 相册 slug（会自动进行 URL 编码）

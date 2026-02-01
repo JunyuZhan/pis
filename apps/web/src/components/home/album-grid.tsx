@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { ImageIcon, Camera } from 'lucide-react'
 import { useState } from 'react'
+import { getSafeMediaUrl } from '@/lib/utils'
 import type { Album } from '@/types/database'
 import { OptimizedImage } from '@/components/ui/optimized-image'
 
@@ -88,7 +89,8 @@ function AlbumCard({ album, coverUrl, index }: {
 }
 
 export function AlbumGrid({ albums }: AlbumGridProps) {
-  const mediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL || ''
+  // 使用安全的媒体 URL（自动修复 localhost HTTPS 问题）
+  const mediaUrl = getSafeMediaUrl()
 
   return (
     <div className="w-full">
