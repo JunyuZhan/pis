@@ -153,7 +153,46 @@ async function proxyRequest(
       responseHeaders.set('Access-Control-Allow-Origin', origin)
     }
     
-    // 流式传输响应
+    // 如果是 HTML 响应，需要重写静态资源路径
+    const contentType = response.headers.get('content-type') || ''
+    const isHtml = contentType.includes('text/html')
+    
+    if (isHtml && method === 'GET') {
+      // 读取 HTML 内容
+      const html = await response.text()
+      
+      // 重写 MinIO Console 的绝对路径为相对路径
+      // 将 /styles/ 替换为 /minio-console/styles/
+      // 将 /static/ 替换为 /minio-console/static/
+      // 将 /images/ 替换为 /minio-console/images/
+      const rewrittenHtml = html
+        .replace(/href="\/styles\//g, 'href="/minio-console/styles/')
+        .replace(/href="\/static\//g, 'href="/minio-console/static/')
+        .replace(/href="\/images\//g, 'href="/minio-console/images/')
+        .replace(/src="\/styles\//g, 'src="/minio-console/styles/')
+        .replace(/src="\/static\//g, 'src="/minio-console/static/')
+        .replace(/src="\/images\//g, 'src="/minio-console/images/')
+        // JavaScript 中的路径引用（双引号）
+        .replace(/"\/styles\//g, '"/minio-console/styles/')
+        .replace(/"\/static\//g, '"/minio-console/static/')
+        .replace(/"\/images\//g, '"/minio-console/images/')
+        // JavaScript 中的路径引用（单引号）
+        .replace(/'\/styles\//g, "'/minio-console/styles/")
+        .replace(/'\/static\//g, "'/minio-console/static/")
+        .replace(/'\/images\//g, "'/minio-console/images/")
+        // CSS url() 函数中的路径
+        .replace(/url\(['"]?\/styles\//g, "url('/minio-console/styles/")
+        .replace(/url\(['"]?\/static\//g, "url('/minio-console/static/")
+        .replace(/url\(['"]?\/images\//g, "url('/minio-console/images/")
+      
+      return new NextResponse(rewrittenHtml, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: responseHeaders,
+      })
+    }
+    
+    // 非 HTML 响应，流式传输
     return new NextResponse(response.body, {
       status: response.status,
       statusText: response.statusText,
