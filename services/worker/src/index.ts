@@ -345,7 +345,40 @@ const worker = new Worker<PhotoJobData>(
 
         let shouldProceed = false;
 
-        if (existingPhoto.status === 'failed') {
+        if (existingPhoto.status === 'pending') {
+          // 如果状态仍然是 pending，说明更新失败可能是数据库连接问题或其他原因
+          // 重试一次更新，如果还是失败则抛出错误
+          const { data: retryUpdatedPhoto, error: retryError } = await supabase
+            .from('photos')
+            .update({ status: 'processing' })
+            .eq('id', photoId)
+            .eq('status', 'pending')
+            .is('deleted_at', null)
+            .select('id, status, rotation')
+            .single();
+          
+          if (retryError || !retryUpdatedPhoto) {
+            // 重试失败，可能是被其他 worker 处理了，检查当前状态
+            const { data: currentPhoto } = await supabase
+              .from('photos')
+              .select('id, status')
+              .eq('id', photoId)
+              .single();
+            
+            if (currentPhoto?.status === 'completed' || currentPhoto?.status === 'processing') {
+              // 已被其他 worker 处理，直接返回
+              return;
+            }
+            
+            // 如果还是 pending，说明有问题，抛出错误让 BullMQ 重试
+            console.error(`[${job.id}] Failed to update photo status from pending to processing:`, retryError?.message || 'Unknown error');
+            throw retryError || new Error('Failed to update photo status');
+          }
+          
+          // 重试成功，继续处理
+          updatedPhoto = retryUpdatedPhoto;
+          shouldProceed = true;
+        } else if (existingPhoto.status === 'failed') {
           // 如果是 failed 状态，重新开始处理（更新状态为 processing）
           const { error: retryError } = await supabase
             .from('photos')
@@ -388,11 +421,13 @@ const worker = new Worker<PhotoJobData>(
           return;
         }
         
-        // 如果上面处理了 failed 或接管了 processing，则不返回，继续执行
+        // 如果上面处理了 pending/failed 或接管了 processing，则不返回，继续执行
         if (shouldProceed) {
-          // 使用现有照片数据作为 updatedPhoto
-          // @ts-ignore
-          updatedPhoto = existingPhoto;
+          // 如果 updatedPhoto 还没有设置（failed 或 processing 的情况），使用 existingPhoto
+          if (!updatedPhoto) {
+            // @ts-ignore
+            updatedPhoto = existingPhoto;
+          }
         } else {
           return;
         }
