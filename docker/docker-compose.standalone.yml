@@ -19,7 +19,7 @@ name: pis
 #   - /minio-console/* : MinIO 管理控制台（通过 Next.js API Route 代理到 pis-minio:9001）
 #   - /api/worker/* : Worker API（通过 Next.js API Route 代理到 pis-worker:3001）
 #   - /health : 健康检查
-# 
+#
 # 其他容器（PostgreSQL、MinIO、Redis、Worker）：
 # - ❌ 不暴露端口，仅 Docker 内部网络访问
 # - ✅ 通过 Next.js Web 容器的路径统一访问
@@ -64,7 +64,11 @@ services:
     networks:
       - pis-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pis} -d ${POSTGRES_DB:-pis}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-pis} -d ${POSTGRES_DB:-pis}",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -82,11 +86,10 @@ services:
       - pis_minio_data:/data
     command: server /data --console-address ":9001"
     # 暴露端口用于直接上传（presigned URL 需要直接访问 MinIO）
-    # 19000: MinIO API（用于客户端直接上传，避免与其他项目冲突）
-    # 19001: MinIO Console（可选，也可通过 Next.js /minio-console/ 访问）
+    # 19001: MinIO Console（用于浏览器登录上传，避免公网 API 暴露）
     ports:
-      - "19000:9000"  # MinIO API，用于客户端直接上传
-      - "19001:9001"  # MinIO Console（可选）
+      # - "19000:9000"  # 不暴露 MinIO API（不使用 presigned URL）
+      - "19001:9001" # MinIO Console（用于浏览器登录上传）
     restart: unless-stopped
     networks:
       - pis-network
@@ -124,7 +127,7 @@ services:
       echo 'MinIO bucket initialized with access policies';
       exit 0;
       "
-    restart: "no"  # 只运行一次，Worker 会负责确保 bucket 存在
+    restart: "no" # 只运行一次，Worker 会负责确保 bucket 存在
 
   # ==================== 任务队列 ====================
   redis:
@@ -185,8 +188,8 @@ services:
       - WORKER_API_KEY=${WORKER_API_KEY:-changeme}
       # 存储公网 URL
       # STORAGE_PUBLIC_URL: 用于读取文件（通过 Next.js 代理）
-      - STORAGE_PUBLIC_URL=${STORAGE_PUBLIC_URL:-http://${DOMAIN:-localhost}:8081/media}
-      # MINIO_PUBLIC_URL: 用于 presigned URL（客户端直接上传到 MinIO）
+      - STORAGE_PUBLIC_URL=${STORAGE_PUBLIC_URL:-http://${DOMAIN:-localhost}:8080/media}
+      # MINIO_PUBLIC_URL: 不使用（MinIO API 不暴露），保留配置但无效
       - MINIO_PUBLIC_URL=${MINIO_PUBLIC_URL:-http://${DOMAIN:-localhost}:19000}
       # 告警配置
       - ALERT_ENABLED=${ALERT_ENABLED:-true}
@@ -266,7 +269,7 @@ services:
     ports:
       # 唯一对外暴露端口，所有服务通过路径访问
       # 如需修改端口避免冲突，请同时更新环境变量 NEXT_PUBLIC_APP_URL
-      - "8081:3000"    # HTTP 使用 8081（可根据服务器实际情况修改）
+      - "8080:3000" # HTTP 使用 8080（避开 80 端口冲突）
       # HTTPS 由内网穿透服务处理，不需要暴露 443
     depends_on:
       postgres:
@@ -289,7 +292,7 @@ services:
   # - 媒体文件代理：/media/* -> /app/media/[...path]/route.ts
   # - MinIO Console 代理：/minio-console/* -> /app/minio-console/[...path]/route.ts
   # - Worker API 代理：/api/worker/* -> /app/api/worker/[...path]/route.ts
-  # 
+  #
   # 注意：
   # - MinIO Console 的 WebSocket 功能不支持通过 Next.js 代理
   # - 如需访问 MinIO Console，可以临时暴露 MinIO Console 端口（仅本地访问）
