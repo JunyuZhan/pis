@@ -373,13 +373,55 @@ start_services() {
     if [ ! -d "$docker_dir" ]; then
         error "未找到 docker 目录: $docker_dir"
         error ""
-        error "可能的原因："
-        error "  1. docker 目录未完整拉取，请检查: ls -la ${PROJECT_ROOT}/ | grep docker"
-        error "  2. 如果 docker 目录不存在，请重新拉取代码: git pull origin main"
-        error "  3. 或者手动创建 docker 目录并复制配置文件"
-        error ""
-        warn "跳过服务启动，请手动检查并启动服务"
-        return 1
+        warn "尝试从 git 仓库拉取 docker 目录..."
+        
+        # 尝试从 git 拉取 docker 目录
+        if [ -d "${PROJECT_ROOT}/.git" ]; then
+            info "正在从 git 仓库拉取 docker 目录..."
+            cd "${PROJECT_ROOT}"
+            
+            # 尝试 checkout docker 目录
+            if git checkout HEAD -- docker/ 2>/dev/null || git checkout origin/main -- docker/ 2>/dev/null; then
+                success "docker 目录已从 git 仓库拉取"
+            else
+                # 尝试 git pull
+                if git pull origin main 2>/dev/null; then
+                    if [ -d "$docker_dir" ]; then
+                        success "docker 目录已通过 git pull 获取"
+                    else
+                        error "git pull 后仍未找到 docker 目录"
+                        error ""
+                        error "请手动执行以下命令："
+                        error "  cd ${PROJECT_ROOT}"
+                        error "  git checkout HEAD -- docker/"
+                        error "  或重新克隆代码: git clone https://github.com/JunyuZhan/pis-standalone.git"
+                        error ""
+                        warn "跳过服务启动，请手动检查并启动服务"
+                        return 1
+                    fi
+                else
+                    error "无法从 git 仓库拉取 docker 目录"
+                    error ""
+                    error "请手动执行以下命令："
+                    error "  cd ${PROJECT_ROOT}"
+                    error "  git checkout HEAD -- docker/"
+                    error "  或重新克隆代码: git clone https://github.com/JunyuZhan/pis-standalone.git"
+                    error ""
+                    warn "跳过服务启动，请手动检查并启动服务"
+                    return 1
+                fi
+            fi
+        else
+            error "未找到 .git 目录，无法自动拉取 docker 目录"
+            error ""
+            error "请手动执行以下操作："
+            error "  1. 检查 docker 目录: ls -la ${PROJECT_ROOT}/ | grep docker"
+            error "  2. 如果不存在，重新拉取代码: cd ${PROJECT_ROOT} && git pull origin main"
+            error "  3. 或重新克隆代码: git clone https://github.com/JunyuZhan/pis-standalone.git"
+            error ""
+            warn "跳过服务启动，请手动检查并启动服务"
+            return 1
+        fi
     fi
     
     cd "$docker_dir"
