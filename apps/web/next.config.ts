@@ -125,11 +125,19 @@ const nextConfig: NextConfig = {
       try {
         const mediaUrl = new URL(process.env.NEXT_PUBLIC_MEDIA_URL)
         const hostname = mediaUrl.hostname
-        // 同时添加 HTTP 和 HTTPS 两种协议
-        mediaOrigins = [
-          `http://${hostname}`,
-          `https://${hostname}`
-        ]
+        const port = mediaUrl.port
+        // 同时添加 HTTP 和 HTTPS 两种协议，包括端口（如果有）
+        if (port) {
+          mediaOrigins = [
+            `http://${hostname}:${port}`,
+            `https://${hostname}:${port}`
+          ]
+        } else {
+          mediaOrigins = [
+            `http://${hostname}`,
+            `https://${hostname}`
+          ]
+        }
       } catch {
         // 忽略解析错误
       }
@@ -152,12 +160,25 @@ const nextConfig: NextConfig = {
     }
     
     // 构建 CSP connect-src，包含媒体服务器（PostgreSQL 模式下不需要 Supabase）
+    // 注意：presigned URL 需要直接访问 MinIO，所以需要允许 localhost:19000
     const connectSrc = [
       "'self'",
       'https:',
       'wss:', // 允许所有 WebSocket 安全连接
       ...mediaOrigins,
-      ...supabaseOrigins // 仅在混合模式下添加
+      ...supabaseOrigins, // 仅在混合模式下添加
+      // 在开发环境或 standalone 模式下，允许 localhost 连接（包括常用端口）
+      // 这对于 presigned URL 直接上传到 MinIO 是必需的
+      // 注意：CSP 不支持通配符端口，需要明确列出端口
+      ...(isDev || process.env.NODE_ENV !== 'production' 
+        ? [
+            'http://localhost',
+            'https://localhost',
+            'http://localhost:19000', // MinIO API 端口（如果暴露）
+            'http://localhost:8081',  // Next.js Web 端口
+            'http://localhost:3000',  // Next.js 内部端口
+          ] 
+        : [])
     ].join(' ')
     
     return [
@@ -229,6 +250,9 @@ const nextConfig: NextConfig = {
           // },
           {
             key: 'Content-Security-Policy',
+            // 注意：presigned URL 需要直接访问 MinIO，但 MinIO API 端口在 standalone 模式下不暴露
+            // 上传组件有回退机制：如果 presigned URL 失败，会通过 Next.js API 代理上传
+            // 所以 CSP 不需要允许 localhost:19000，因为上传会回退到代理方式
             value: isDev ? '' : `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src ${connectSrc} https://challenges.cloudflare.com; media-src 'self' blob: https:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'self' https://challenges.cloudflare.com; frame-ancestors 'none';`,
           },
         ].filter(header => header.value !== ''), // 过滤空值
