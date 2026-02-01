@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Settings } from 'lucide-react'
 import { createClient } from '@/lib/database'
-import { getAlbumShareUrl, getAppBaseUrl } from '@/lib/utils'
+import { getAlbumShareUrl, getAppBaseUrl, getSafeMediaUrl } from '@/lib/utils'
 import { AlbumDetailClient } from '@/components/admin/album-detail-client'
 import { ShareLinkButton } from '@/components/admin/share-link-button'
 import { PackageDownloadButton } from '@/components/admin/package-download-button'
@@ -97,10 +97,10 @@ export default async function AlbumDetailPage({ params }: AlbumDetailPageProps) 
     const coverPhoto = coverPhotoResult.data as { preview_key: string | null; thumb_key: string | null } | null
     
     if (coverPhoto?.preview_key) {
-      const mediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL || '/media'
+      const mediaUrl = getSafeMediaUrl()
       backgroundImageUrl = `${mediaUrl.replace(/\/$/, '')}/${coverPhoto.preview_key.replace(/^\//, '')}`
     } else if (coverPhoto?.thumb_key) {
-      const mediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL || '/media'
+      const mediaUrl = getSafeMediaUrl()
       backgroundImageUrl = `${mediaUrl.replace(/\/$/, '')}/${coverPhoto.thumb_key.replace(/^\//, '')}`
     }
   }
@@ -156,7 +156,7 @@ export default async function AlbumDetailPage({ params }: AlbumDetailPageProps) 
         <AlbumDetailClient 
           album={album} 
           initialPhotos={photos}
-          mediaUrl={process.env.NEXT_PUBLIC_MEDIA_URL || '/media'}
+          mediaUrl={getSafeMediaUrl()}
         />
     </div>
   )

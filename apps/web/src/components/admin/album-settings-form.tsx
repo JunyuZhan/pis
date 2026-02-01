@@ -8,6 +8,7 @@ import { MultiWatermarkManager, type WatermarkItem } from './multi-watermark-man
 import { StylePresetSelector } from './style-preset-selector'
 import { StorageChecker } from './storage-checker'
 import { showSuccess, handleApiError } from '@/lib/toast'
+import { getSafeMediaUrl } from '@/lib/utils'
 
 type Album = Database['public']['Tables']['albums']['Row']
 
@@ -20,6 +21,8 @@ export function AlbumSettingsForm({ album, coverOriginalKey }: AlbumSettingsForm
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  // 使用安全的媒体 URL（自动修复 localhost HTTPS 问题）
+  const mediaUrl = getSafeMediaUrl()
   // 获取默认水印配置（用于初始化）
   const getDefaultWatermarkConfig = () => {
     const photographerName = process.env.NEXT_PUBLIC_PHOTOGRAPHER_NAME || 'PIS Photography'
@@ -639,8 +642,8 @@ export function AlbumSettingsForm({ album, coverOriginalKey }: AlbumSettingsForm
           onChange={(presetId) => handleChange('color_grading', presetId)}
           previewImage={
             // 使用封面照片的原图作为预览图片（未应用风格预设，才能正确预览不同风格效果）
-            coverOriginalKey && process.env.NEXT_PUBLIC_MEDIA_URL
-              ? `${process.env.NEXT_PUBLIC_MEDIA_URL.replace(/\/$/, '')}/${coverOriginalKey.replace(/^\//, '')}`
+            coverOriginalKey && mediaUrl
+              ? `${mediaUrl.replace(/\/$/, '')}/${coverOriginalKey.replace(/^\//, '')}`
               : undefined
           }
         />

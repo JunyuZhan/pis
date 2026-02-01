@@ -14,6 +14,7 @@ import { Providers } from '@/components/providers'
 import { PWAInstallPrompt } from '@/components/pwa-install-prompt'
 import { ServiceWorkerRegistration } from '@/components/service-worker-registration'
 import { SiteFooter } from '@/components/site-footer'
+import { getSafeMediaUrl } from '@/lib/utils'
 
 // 使用本地字体文件（避免 Google Fonts 网络依赖）
 // 字体文件应放在 apps/web/src/app/fonts/ 目录下（Next.js localFont 要求相对于源文件）
@@ -145,8 +146,22 @@ export default async function RootLayout({
   const messages = await getMessages()
   
   // 获取媒体服务器域名用于预连接
-  const mediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL || ''
-  const mediaHost = mediaUrl ? new URL(mediaUrl).origin : null
+  // 使用安全的媒体 URL（自动修复 localhost HTTPS 问题）
+  const mediaUrl = getSafeMediaUrl()
+  // 只有当 mediaUrl 是绝对 URL 时才进行 DNS prefetch/preconnect
+  // 如果是相对路径（如 /media），则跳过 prefetch（浏览器会自动处理）
+  let mediaHost: string | null = null
+  try {
+    if (mediaUrl && mediaUrl.startsWith('http')) {
+      const url = new URL(mediaUrl)
+      // 避免对 localhost HTTPS 进行 prefetch（可能导致问题）
+      if (!(url.hostname === 'localhost' || url.hostname === '127.0.0.1')) {
+        mediaHost = url.origin
+      }
+    }
+  } catch {
+    // URL 解析失败，可能是相对路径，跳过 prefetch
+  }
   
   return (
     <html lang={locale} className={`dark ${inter.variable} ${notoSerifSC.variable} ${playfairDisplay.variable}`} data-scroll-behavior="smooth">

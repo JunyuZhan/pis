@@ -9,7 +9,7 @@ import { PhotoGroupManager } from './photo-group-manager'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { showSuccess, handleApiError } from '@/lib/toast'
 import type { Album, Photo } from '@/types/database'
-import { cn } from '@/lib/utils'
+import { cn, getSafeMediaUrl } from '@/lib/utils'
 
 // 动态导入大型组件（按需加载，减少初始 bundle）
 const PhotoUploader = dynamic(() => import('./photo-uploader').then(mod => ({ default: mod.PhotoUploader })), {
@@ -269,13 +269,14 @@ export function AlbumDetailClient({ album, initialPhotos, mediaUrl: serverMediaU
   const [mediaUrl, setMediaUrl] = useState<string>(serverMediaUrl || '')
   
   useEffect(() => {
-    // 在客户端获取环境变量，确保使用最新的值
-    const clientMediaUrl = process.env.NEXT_PUBLIC_MEDIA_URL || ''
-    if (clientMediaUrl && clientMediaUrl !== mediaUrl) {
-      setMediaUrl(clientMediaUrl)
+    // 在客户端获取安全的媒体 URL（自动修复 localhost HTTPS 问题）
+    const safeClientMediaUrl = getSafeMediaUrl()
+    if (safeClientMediaUrl && safeClientMediaUrl !== mediaUrl) {
+      setMediaUrl(safeClientMediaUrl)
     } else if (!mediaUrl && serverMediaUrl) {
-      // 如果客户端没有值但服务器端有值，使用服务器端的值
-      setMediaUrl(serverMediaUrl)
+      // 如果客户端没有值但服务器端有值，使用服务器端的值（服务器端已经处理过）
+      // 但为了安全，再次使用 getSafeMediaUrl() 处理
+      setMediaUrl(getSafeMediaUrl())
     }
   }, [serverMediaUrl, mediaUrl])
 
