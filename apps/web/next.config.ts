@@ -2,11 +2,18 @@ import type { NextConfig } from 'next'
 import createNextIntlPlugin from 'next-intl/plugin'
 import { config } from 'dotenv'
 import { resolve } from 'path'
+import { existsSync } from 'fs'
+
+const rootDir = resolve(__dirname, '../../')
 
 // 从 monorepo 根目录加载 .env（统一配置）
-config({ path: resolve(__dirname, '../../.env') })
+// 先加载 .env，然后加载 .env.local（.env.local 会覆盖 .env 中的配置）
+config({ path: resolve(rootDir, '.env') })
+if (existsSync(resolve(rootDir, '.env.local'))) {
+  config({ path: resolve(rootDir, '.env.local'), override: true })
+}
 
-const withNextIntl = createNextIntlPlugin()
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 
 const nextConfig: NextConfig = {
   eslint: {
@@ -41,7 +48,19 @@ const nextConfig: NextConfig = {
       },
       {
         pathname: '/media/**',
-        search: '**', // 允许所有查询字符串（如 ?t=timestamp）
+        // 不设置 search，允许所有查询字符串（Next.js 15 要求）
+      },
+      {
+        pathname: '/media/processed/**',
+        // 明确匹配 processed 路径
+      },
+      {
+        pathname: '/media/processed/thumbs/**',
+        // 明确匹配 thumbs 路径
+      },
+      {
+        pathname: '/media/processed/previews/**',
+        // 明确匹配 previews 路径
       },
     ],
     remotePatterns: [
@@ -113,6 +132,8 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '10mb',
     },
+    // 确保模块正确加载
+    optimizePackageImports: ['lucide-react'],
   },
   // 安全头配置
   async headers() {
@@ -203,31 +224,38 @@ const nextConfig: NextConfig = {
       // 在开发环境或 standalone 模式下，允许 localhost 连接（包括常用端口）
       // 这对于 presigned URL 直接上传到 MinIO 是必需的
       // 注意：CSP 不支持通配符端口，需要明确列出端口
-      // 在生产环境中，如果 mediaOrigins 包含 localhost，也需要允许（standalone 模式可能使用 localhost）
+      // 开发模式（多端口暴露）：允许所有开发环境需要的端口
       ...(isDev || process.env.NODE_ENV !== 'production' 
         ? [
             'http://localhost',
             'https://localhost',
-            'http://localhost:19000', // MinIO API 端口（如果暴露）
-            'http://localhost:8081',  // Next.js Web 端口
+            'http://localhost:3000',  // Next.js Web 端口（开发模式）
+            'https://localhost:3000',  // Next.js Web 端口 (HTTPS)
+            'http://localhost:9000',  // MinIO API 端口（开发模式多端口暴露）
+            'http://localhost:9001',  // MinIO Console 端口（开发模式多端口暴露）
+            'http://localhost:3001',  // Worker API 端口（开发模式多端口暴露）
+            // 保留旧端口配置以兼容其他模式
+            'http://localhost:8081',  // Next.js Web 端口（生产模式）
             'https://localhost:8081',  // Next.js Web 端口 (HTTPS)
-            'http://localhost:3000',  // Next.js 内部端口
-            'https://localhost:3000',  // Next.js 内部端口 (HTTPS)
+            'http://localhost:19000', // MinIO API 端口（旧配置）
           ] 
         : [])
     ]
     
     // 在生产环境中，如果 mediaOrigins 包含 localhost，也需要添加到 CSP
     // 这适用于 standalone 模式，其中可能使用 localhost:8081 作为媒体服务器
+    // 开发模式使用 localhost:3000（多端口暴露）
     if (!isDev && process.env.NODE_ENV === 'production') {
       const hasLocalhost = mediaOrigins.some(origin => origin.includes('localhost'))
       if (hasLocalhost) {
         // 添加所有可能的 localhost 端口（standalone 模式常用）
         connectSrc.push(
-          'http://localhost:8081',
+          'http://localhost:8081',  // 生产模式（单端口）
           'https://localhost:8081',
-          'http://localhost:3000',
-          'https://localhost:3000'
+          'http://localhost:3000',   // 开发模式（多端口暴露）
+          'https://localhost:3000',
+          'http://localhost:9000',   // 开发模式 MinIO API
+          'http://localhost:9001'    // 开发模式 MinIO Console
         )
       }
     }
@@ -383,14 +411,96 @@ const nextConfig: NextConfig = {
       },
     ]
   },
-  // Webpack 配置 - 仅设置必要的 fallback
-  webpack: (config) => {
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-      net: false,
-      tls: false,
+  // Webpack 配置
+  // 生产级别的 webpack 配置，确保模块解析和代码分割的正确性
+  webpack: (config, { isServer, webpack }) => {
+    // 客户端配置
+    if (!isServer) {
+      // 设置必要的 fallback（避免 Node.js 模块在浏览器中报错）
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      }
+      
+      // 生产级别的优化配置
+      // 确保模块工厂函数正确工作，避免 "Cannot read properties of undefined (reading 'call')" 错误
+      config.optimization = {
+        ...config.optimization,
+        // 禁用模块连接，避免模块工厂函数冲突
+        concatenateModules: false,
+        // 配置代码分割策略，确保模块正确加载
+        splitChunks: {
+          chunks: 'all',
+          minSize: 20000,
+          maxSize: 244000,
+          cacheGroups: {
+            // 默认组：确保所有模块都能正确加载
+            default: {
+              minChunks: 1,
+              priority: -20,
+              reuseExistingChunk: true,
+            },
+            // 第三方库组：分离 node_modules 中的包
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              priority: -10,
+              reuseExistingChunk: true,
+              chunks: 'all',
+            },
+            // React 相关库：单独打包，确保稳定性
+            react: {
+              test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+              name: 'react',
+              priority: 20,
+              reuseExistingChunk: true,
+              chunks: 'all',
+            },
+            // Next.js 相关库：单独打包
+            nextjs: {
+              test: /[\\/]node_modules[\\/](next|@next)[\\/]/,
+              name: 'nextjs',
+              priority: 20,
+              reuseExistingChunk: true,
+              chunks: 'all',
+            },
+          },
+        },
+        // 确保模块 ID 生成稳定
+        moduleIds: 'deterministic',
+        // 确保 chunk ID 生成稳定
+        chunkIds: 'deterministic',
+      }
+      
+      // 确保模块解析配置正确
+      config.resolve = {
+        ...config.resolve,
+        // 确保模块扩展名解析顺序正确
+        extensions: [...(config.resolve?.extensions || []), '.ts', '.tsx', '.js', '.jsx'],
+        // 保持现有的别名配置
+        alias: {
+          ...config.resolve?.alias,
+        },
+        // 确保模块解析顺序正确
+        mainFields: ['browser', 'module', 'main'],
+      }
+      
+      // 确保 webpack 插件配置正确
+      config.plugins = config.plugins || []
     }
+    
+    // 忽略已知的、不影响功能的警告
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings || []),
+      { module: /node_modules/ },
+      { file: /\.next/ },
+      // 忽略 source map 解析警告（不影响功能）
+      /Failed to parse source map/,
+    ]
+    
+    // 确保返回配置对象
     return config
   },
 }

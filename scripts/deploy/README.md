@@ -36,14 +36,14 @@
 **完全自动化部署**（无需任何配置）：
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/scripts/deploy/one-click-deploy.sh | bash
+curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/deploy/one-click-deploy.sh | bash
 ```
 
 **引导式部署**（需要交互配置）：
 
 ```bash
-git clone https://github.com/JunyuZhan/pis-standalone.git
-cd pis-standalone/docker
+git clone https://github.com/JunyuZhan/pis.git
+cd pis/docker
 bash deploy.sh
 ```
 
@@ -85,7 +85,7 @@ bash scripts/deploy/start-internal-services.sh
 **用法：**
 ```bash
 # 从 GitHub 直接运行
-curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/scripts/deploy/one-click-deploy.sh | bash
+curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/deploy/one-click-deploy.sh | bash
 
 # 或在项目目录中运行
 bash scripts/deploy/one-click-deploy.sh
@@ -109,7 +109,7 @@ bash scripts/deploy/one-click-deploy.sh
 **用法：**
 ```bash
 # 在服务器上直接运行
-curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/scripts/deploy/deploy.sh | bash
+curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/deploy/deploy.sh | bash
 
 # 在本地运行，远程部署
 bash scripts/deploy/deploy.sh <服务器IP> [用户名]
@@ -265,9 +265,8 @@ bash scripts/deploy/verify-deployment.sh [SSH_HOST]
 
 | 文件 | 说明 | 使用场景 |
 |------|------|---------|
-| `docker/docker-compose.standalone.yml` | 完全自托管（推荐） | PostgreSQL + MinIO + Redis + Web + Worker + Nginx |
-| `docker/docker-compose.yml` | Supabase 版本（向后兼容） | MinIO + Redis + Worker（数据库使用 Supabase） |
-| `docker/docker-compose.dev.yml` | 开发环境 | 本地开发使用 |
+| `docker/docker-compose.yml` | 生产环境（推荐） | PostgreSQL + MinIO + Redis + Web + Worker（单端口模式） |
+| `docker/docker-compose.dev.yml` | 开发环境 | PostgreSQL + MinIO + Redis（Web 和 Worker 本地运行） |
 
 ---
 

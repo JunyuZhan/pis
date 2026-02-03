@@ -169,7 +169,7 @@ PIS 采用前后端分离的微服务架构，主要包含以下组件：
 ### Docker Compose 服务
 
 ```yaml
-# 位置: /opt/PIS/docker/docker-compose.yml
+# 位置: /opt/pis/docker/docker-compose.yml
 
 服务:
   - minio:      MinIO 对象存储 (端口 19000/19001)
@@ -234,7 +234,7 @@ CLOUDFLARE_ZONE_ID=55be2d2f25313170ff6a622cda4c37ec
 
 ### Worker 服务器环境变量 (192.168.50.10)
 
-在 `/opt/PIS/docker/.env` 文件中配置：
+在 `/opt/pis/docker/.env` 文件中配置：
 
 ```bash
 # ==================== 数据库配置 ====================
@@ -589,7 +589,7 @@ MinIO Bucket: pis-photos/
 
 ```bash
 # 查看服务状态
-cd /opt/PIS/docker
+cd /opt/pis/docker
 docker-compose ps
 
 # 查看日志
@@ -600,7 +600,7 @@ docker-compose logs -f minio
 docker-compose restart worker
 
 # 更新代码
-cd /opt/PIS
+cd /opt/pis
 git pull
 cd docker
 docker-compose up -d --build worker

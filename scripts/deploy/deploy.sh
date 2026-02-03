@@ -6,10 +6,10 @@
 # 两种使用方式：
 # 
 # 1. 在服务器上直接运行（推荐）：
-#    curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/scripts/deploy/deploy.sh | bash
+#    curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/deploy/deploy.sh | bash
 #    
 # 2. 在本地运行，远程部署：
-#    git clone https://github.com/JunyuZhan/pis-standalone.git && cd pis-standalone
+#    git clone https://github.com/JunyuZhan/pis.git && cd pis
 #    bash scripts/deploy/deploy.sh <服务器IP> [用户名]
 # ============================================
 
@@ -296,7 +296,7 @@ load_language
 
 # 配置
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/pis}"
-GITHUB_REPO="${GITHUB_REPO:-https://github.com/JunyuZhan/pis-standalone.git}"
+GITHUB_REPO="${GITHUB_REPO:-https://github.com/JunyuZhan/pis.git}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-main}"
 
 # 打印标题
@@ -320,7 +320,7 @@ detect_mode() {
     if [ -n "$1" ]; then
         # 有参数，是远程部署模式
         echo "remote"
-    elif [ -d ".git" ] || [ -f "docker/deploy.sh" ] || [ -f "docker/docker-compose.standalone.yml" ]; then
+    elif [ -d ".git" ] || [ -f "docker/deploy.sh" ] || [ -f "docker/docker-compose.yml" ]; then
         # 在项目目录中运行
         if [ -n "$1" ]; then
             echo "remote"
@@ -393,7 +393,7 @@ deploy_local() {
     CURRENT_DIR="$(pwd)"
     IS_PROJECT_DIR=false
     
-    if [ -d ".git" ] || [ -f "docker/deploy.sh" ] || [ -f "docker/docker-compose.standalone.yml" ]; then
+    if [ -d ".git" ] || [ -f "docker/deploy.sh" ] || [ -f "docker/docker-compose.yml" ]; then
         IS_PROJECT_DIR=true
         DEPLOY_DIR="$CURRENT_DIR"
         echo ""
@@ -661,7 +661,7 @@ AUTH_MODE=custom
 EOF
             
             # 使用 Standalone docker-compose
-            cp docker/docker-compose.standalone.yml docker/docker-compose.yml.active
+            cp docker/docker-compose.yml docker/docker-compose.yml.active
             ;;
         *)
             error "Invalid deployment mode: $DB_CHOICE"
@@ -941,7 +941,7 @@ deploy_remote() {
     [ -n "$GITHUB_BRANCH" ] && ENV_VARS="${ENV_VARS}export GITHUB_BRANCH='${GITHUB_BRANCH}'; "
     
     # 在远程执行
-    ssh -t ${SSH_USER}@${SSH_HOST} "${ENV_VARS} curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/scripts/deploy/deploy.sh | bash"
+    ssh -t ${SSH_USER}@${SSH_HOST} "${ENV_VARS} curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/deploy/deploy.sh | bash"
 }
 
 # ============================================
@@ -998,7 +998,7 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     echo "PIS 一键部署"
     echo ""
     echo "在服务器上运行:"
-    echo "  curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/scripts/deploy/deploy.sh | bash"
+    echo "  curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/deploy/deploy.sh | bash"
     echo ""
     echo "在本地远程部署:"
     echo "  bash scripts/deploy/deploy.sh <服务器IP> [用户名]"
@@ -1009,7 +1009,7 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     echo ""
     echo "示例（非交互式部署 Standalone 模式）:"
     echo "  DEPLOYMENT_MODE=standalone POSTGRES_DB=pis POSTGRES_USER=pis POSTGRES_PASSWORD=xxx DOMAIN=example.com \\"
-    echo "    curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/scripts/deploy/deploy.sh | bash"
+    echo "    curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/deploy/deploy.sh | bash"
     echo ""
     exit 0
 fi

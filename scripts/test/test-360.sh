@@ -298,7 +298,7 @@ print_section "1️⃣3️⃣  配置验证测试"
 
 test_step "13.1 环境变量配置" "docker exec pis-web env | grep -qE '(DATABASE|REDIS|MINIO)' || true"
 
-test_step "13.2 Docker Compose 配置" "[ -f docker/docker-compose.standalone.yml ]"
+test_step "13.2 Docker Compose 配置" "[ -f docker/docker-compose.dev.yml ]"
 
 test_step "13.3 网络配置" "docker network ls | grep -q 'pis-network'"
 

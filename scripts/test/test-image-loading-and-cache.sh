@@ -114,7 +114,7 @@ if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 400 ]; then
     test_step "1.1 Media 代理有缓存头" "echo '$media_headers' | grep -qiE '(Cache-Control|ETag|Last-Modified|Expires)'"
 else
     # 文件不存在时，检查代码中是否有缓存头设置
-    test_step "1.1 Media 代理缓存头配置" "grep -r 'Cache-Control.*max-age' /Users/apple/Documents/Project/PIS/pis-standalone/apps/web/src/app/media/ > /dev/null 2>&1"
+    test_step "1.1 Media 代理缓存头配置" "grep -r 'Cache-Control.*max-age' /Users/apple/Documents/Project/PIS/pis/apps/web/src/app/media/ > /dev/null 2>&1"
 fi
 
 # 检查缓存策略

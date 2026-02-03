@@ -60,7 +60,7 @@ git push origin v1.0.0
 ### 方法 1: 使用 GitHub Web UI（推荐）
 
 1. **访问 Releases 页面**
-   - 打开：`https://github.com/JunyuZhan/pis-standalone/releases`
+   - 打开：`https://github.com/JunyuZhan/pis/releases`
    - 点击 "Draft a new release"
 
 2. **填写发布信息**
@@ -110,7 +110,7 @@ gh release create v1.0.0 \
 
 ```bash
 # 测试一键部署脚本（使用新版本标签）
-curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/v1.0.0/scripts/one-click-deploy.sh | bash
+curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/v1.0.0/scripts/one-click-deploy.sh | bash
 ```
 
 ### 3. 更新文档链接（如需要）
@@ -137,7 +137,7 @@ Initial stable release of PIS (Private Instant Photo Sharing).
 
 ## Installation
 \`\`\`bash
-curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/scripts/one-click-deploy.sh | bash
+curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/one-click-deploy.sh | bash
 \`\`\`
 
 See [CHANGELOG.md](CHANGELOG.md) for full details.

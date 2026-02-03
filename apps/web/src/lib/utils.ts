@@ -91,6 +91,7 @@ export function formatRelativeTime(date: string | Date): string {
  * 获取应用基础 URL（用于生成分享链接）
  *
  * @description 优先使用环境变量，否则回退到 window.location.origin (客户端) 或默认值 (服务端)
+ * @description 开发环境：如果配置的端口和当前端口不匹配，自动使用当前域名
  * @returns {string} 基础 URL 字符串
  */
 export function getAppBaseUrl(): string {
@@ -98,8 +99,32 @@ export function getAppBaseUrl(): string {
   if (typeof window === 'undefined') {
     return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   }
+  
   // 客户端：优先使用环境变量，否则使用当前域名
-  return process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!envUrl) {
+    return window.location.origin
+  }
+  
+  // 开发环境：如果配置的端口和当前端口不匹配，使用当前域名
+  try {
+    const url = new URL(envUrl)
+    const currentPort = window.location.port || (window.location.protocol === 'https:' ? '443' : '80')
+    const currentHost = window.location.hostname
+    
+    // 如果当前是开发环境（localhost:3000），但配置的是生产端口（8080），使用当前域名
+    if ((currentHost === 'localhost' || currentHost === '127.0.0.1') &&
+        (url.hostname === 'localhost' || url.hostname === '127.0.0.1') &&
+        url.port === '8080' && 
+        (currentPort === '3000' || currentPort === '')) {
+      return window.location.origin
+    }
+    
+    return envUrl
+  } catch {
+    // URL 解析失败，使用环境变量或当前域名
+    return envUrl || window.location.origin
+  }
 }
 
 /**
@@ -142,6 +167,7 @@ export function getInternalApiUrl(path: string): string {
  * @description 
  * - 如果媒体 URL 是 https://localhost，自动转换为相对路径或使用当前页面协议
  * - 如果媒体 URL 为空，使用相对路径 /media
+ * - 开发环境：如果配置了 localhost:8080 但实际运行在 3000 端口，自动转换为相对路径
  * @returns {string} 安全的媒体 URL
  */
 export function getSafeMediaUrl(): string {
@@ -150,6 +176,11 @@ export function getSafeMediaUrl(): string {
   // 如果媒体 URL 为空，使用相对路径
   if (!mediaUrl) {
     return '/media'
+  }
+  
+  // 如果已经是相对路径，直接返回
+  if (mediaUrl.startsWith('/')) {
+    return mediaUrl
   }
   
   try {
@@ -163,14 +194,59 @@ export function getSafeMediaUrl(): string {
       return url.pathname || '/media'
     }
     
-    // 客户端：如果 hostname 是 localhost 且协议是 https，但当前页面是 http
-    // 则转换为相对路径或使用当前页面协议
-    if (typeof window !== 'undefined' &&
-        (url.hostname === 'localhost' || url.hostname === '127.0.0.1') && 
-        url.protocol === 'https:' && 
-        window.location.protocol === 'http:') {
-      // 使用相对路径，让浏览器自动使用当前页面的协议和域名
-      return url.pathname || '/media'
+    // 客户端：开发环境特殊处理
+    // 如果配置了 localhost:8080 但实际运行在 3000 端口，转换为相对路径
+    if (typeof window !== 'undefined') {
+      const currentPort = window.location.port || (window.location.protocol === 'https:' ? '443' : '80')
+      const currentHost = window.location.hostname
+      
+      // 开发环境：如果配置的端口和当前端口不匹配，使用相对路径
+      // 这样可以避免端口不匹配导致的连接错误
+      if ((currentHost === 'localhost' || currentHost === '127.0.0.1') &&
+          (url.hostname === 'localhost' || url.hostname === '127.0.0.1')) {
+        // 开发环境通常运行在 3000 端口（或空端口，表示默认 HTTP 80）
+        // 如果配置的端口是 8080（生产环境），但当前端口是 3000 或空（开发环境），使用相对路径
+        const isDevelopment = currentPort === '3000' || currentPort === ''
+        const isProductionPort = url.port === '8080'
+        
+        if (isDevelopment && isProductionPort) {
+          // 开发环境但配置了生产端口，强制使用相对路径
+          console.warn('[getSafeMediaUrl] 检测到开发环境端口不匹配，转换为相对路径:', {
+            currentPort,
+            configuredPort: url.port,
+            originalUrl: mediaUrl,
+            convertedPath: url.pathname || '/media'
+          })
+          return url.pathname || '/media'
+        }
+        
+        // 如果配置的端口和当前端口不匹配，且不是标准端口（80/443），使用相对路径
+        if (url.port && url.port !== currentPort && currentPort !== '80' && currentPort !== '443') {
+          console.warn('[getSafeMediaUrl] 检测到端口不匹配，转换为相对路径:', {
+            currentPort,
+            configuredPort: url.port,
+            originalUrl: mediaUrl,
+            convertedPath: url.pathname || '/media'
+          })
+          return url.pathname || '/media'
+        }
+      }
+      
+      // 如果 hostname 是 localhost 且协议是 https，但当前页面是 http
+      // 则转换为相对路径或使用当前页面协议
+      if ((url.hostname === 'localhost' || url.hostname === '127.0.0.1') && 
+          url.protocol === 'https:' && 
+          window.location.protocol === 'http:') {
+        // 使用相对路径，让浏览器自动使用当前页面的协议和域名
+        return url.pathname || '/media'
+      }
+      
+      // 强制检查：如果当前是开发环境（3000端口），且配置的 URL 包含 8080，强制转换为相对路径
+      // 这是最后的保障，确保开发环境不会使用错误的端口
+      if (currentPort === '3000' && mediaUrl.includes(':8080')) {
+        console.warn('[getSafeMediaUrl] 强制转换：开发环境检测到 8080 端口，转换为相对路径')
+        return url.pathname || '/media'
+      }
     }
     
     return mediaUrl

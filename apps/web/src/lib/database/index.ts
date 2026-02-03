@@ -48,6 +48,15 @@ function getDatabaseType(): 'supabase' | 'postgresql' {
   return dbType === 'supabase' ? 'supabase' : 'postgresql'
 }
 
+function isSupabaseConfigured(mode: 'client' | 'admin'): boolean {
+  const publicUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (mode === 'admin') {
+    const adminUrl = process.env.SUPABASE_URL || publicUrl
+    return Boolean(adminUrl && process.env.SUPABASE_SERVICE_ROLE_KEY)
+  }
+  return Boolean(publicUrl && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+}
+
 /**
  * 创建数据库客户端（用于 Server Components）
  *
@@ -71,7 +80,7 @@ function getDatabaseType(): 'supabase' | 'postgresql' {
 export async function createClient(): Promise<DatabaseClient> {
   const dbType = getDatabaseType()
 
-  if (dbType === 'postgresql') {
+  if (dbType === 'postgresql' || !isSupabaseConfigured('client')) {
     const { createPostgreSQLClient } = await import('./postgresql-client')
     return createPostgreSQLClient() as unknown as DatabaseClient
   } else {
@@ -108,7 +117,7 @@ export async function createClientFromRequest(
 ): Promise<DatabaseClient> {
   const dbType = getDatabaseType()
 
-  if (dbType === 'postgresql') {
+  if (dbType === 'postgresql' || !isSupabaseConfigured('client')) {
     const { createPostgreSQLClient } = await import('./postgresql-client')
     return createPostgreSQLClient() as unknown as DatabaseClient
   } else {
@@ -138,7 +147,7 @@ export async function createClientFromRequest(
 export async function createAdminClient(): Promise<DatabaseClient> {
   const dbType = getDatabaseType()
 
-  if (dbType === 'postgresql') {
+  if (dbType === 'postgresql' || !isSupabaseConfigured('admin')) {
     const { createPostgreSQLAdminClient } = await import('./postgresql-client')
     return createPostgreSQLAdminClient() as unknown as DatabaseClient
   } else {

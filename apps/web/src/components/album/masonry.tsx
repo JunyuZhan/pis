@@ -199,11 +199,16 @@ export function MasonryGrid({
           // 回滚
           setSelectedMap((prev) => ({ ...prev, [photoId]: currentSelected }))
           onSelectChange?.(photoId, currentSelected)
+          
+          // 显示错误信息
+          const errorData = await res.json()
+          handleApiError(new Error(errorData.error?.message || '操作失败'), '选片失败')
         }
-      } catch {
+      } catch (error) {
         // 回滚
         setSelectedMap((prev) => ({ ...prev, [photoId]: currentSelected }))
         onSelectChange?.(photoId, currentSelected)
+        handleApiError(error, '选片失败')
       }
     },
     [onSelectChange]

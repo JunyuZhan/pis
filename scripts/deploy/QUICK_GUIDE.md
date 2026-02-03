@@ -25,14 +25,14 @@
 #### 方法 1：使用随机密钥（推荐）
 
 ```bash
-cd /opt/pis-standalone
+cd /opt/pis
 bash scripts/deploy/quick-deploy.sh
 ```
 
 #### 方法 2：自定义 MinIO 密码
 
 ```bash
-cd /opt/pis-standalone
+cd /opt/pis
 bash scripts/deploy/quick-deploy.sh --minio-user albert --minio-pass Zjy-1314
 ```
 
@@ -92,14 +92,14 @@ cat .deployment-info
 #### 方法 1：普通升级（推荐）
 
 ```bash
-cd /opt/pis-standalone
+cd /opt/pis
 bash scripts/deploy/quick-upgrade.sh
 ```
 
 #### 方法 2：强制升级
 
 ```bash
-cd /opt/pis-standalone
+cd /opt/pis
 bash scripts/deploy/quick-upgrade.sh --force
 ```
 
@@ -131,28 +131,28 @@ bash scripts/deploy/quick-upgrade.sh --force
 #### 方法 1：首次部署（生成配置）
 
 ```bash
-cd /opt/pis-standalone
+cd /opt/pis
 bash scripts/deploy/quick-deploy.sh
 ```
 
 #### 方法 2：首次部署（自定义 MinIO 密码）
 
 ```bash
-cd /opt/pis-standalone
+cd /opt/pis
 bash scripts/deploy/quick-deploy.sh --minio-user albert --minio-pass Zjy-1314
 ```
 
 #### 方法 3：升级（保留配置）
 
 ```bash
-cd /opt/pis-standalone
+cd /opt/pis
 bash scripts/deploy/quick-upgrade.sh
 ```
 
 #### 方法 4：强制升级（忽略警告）
 
 ```bash
-cd /opt/pis-standalone
+cd /opt/pis
 bash scripts/deploy/quick-upgrade.sh --force
 ```
 
@@ -166,7 +166,7 @@ bash scripts/deploy/quick-upgrade.sh --force
 
 ```bash
 # 1. 进入项目目录
-cd /Users/apple/Documents/Project/PIS/pis-standalone
+cd /Users/apple/Documents/Project/PIS/pis
 
 # 2. 首次部署（生成配置）
 bash scripts/deploy/quick-deploy.sh --minio-user albert --minio-pass Zjy-1314
@@ -188,7 +188,7 @@ cat .deployment-info
 
 ```bash
 # 1. 进入项目目录
-cd /opt/pis-standalone
+cd /opt/pis
 
 # 2. 拉取最新代码
 git pull origin main
@@ -212,7 +212,7 @@ docker compose logs -f
 
 ```bash
 # 1. 进入项目目录
-cd /Users/apple/Documents/Project/PIS/pis-standalone
+cd /Users/apple/Documents/Project/PIS/pis
 
 # 2. 升级（保留配置）
 bash scripts/deploy/quick-upgrade.sh
@@ -235,7 +235,7 @@ bash scripts/deploy/quick-upgrade.sh --force
 
 ```bash
 # 1. 进入项目目录
-cd /opt/pis-standalone
+cd /opt/pis
 
 # 2. 拉取最新代码
 git pull origin main
@@ -264,7 +264,7 @@ docker compose logs -f
 
 ```bash
 # 1. 编辑配置文件
-cd /opt/pis-standalone
+cd /opt/pis
 vim .env
 
 # 2. 修改 MinIO 配置
@@ -297,21 +297,21 @@ bash scripts/deploy/quick-deploy.sh --minio-user albert --minio-pass Zjy-1314
 ### 启动服务
 
 ```bash
-cd /opt/pis-standalone/docker
+cd /opt/pis/docker
 docker compose up -d
 ```
 
 ### 停止服务
 
 ```bash
-cd /opt/pis-standalone/docker
+cd /opt/pis/docker
 docker compose down
 ```
 
 ### 重新构建并启动
 
 ```bash
-cd /opt/pis-standalone/docker
+cd /opt/pis/docker
 docker compose down
 docker compose up -d --build
 ```
@@ -319,21 +319,21 @@ docker compose up -d --build
 ### 查看服务状态
 
 ```bash
-cd /opt/pis-standalone/docker
+cd /opt/pis/docker
 docker compose ps
 ```
 
 ### 查看服务日志
 
 ```bash
-cd /opt/pis-standalone/docker
+cd /opt/pis/docker
 docker compose logs -f
 ```
 
 ### 重启特定服务
 
 ```bash
-cd /opt/pis-standalone/docker
+cd /opt/pis/docker
 docker compose restart pis-minio
 docker compose restart pis-web
 docker compose restart pis-worker
@@ -378,7 +378,7 @@ docker compose restart pis-worker
 
 ```bash
 # 恢复备份
-cp /opt/pis-standalone/.env.backup /opt/pis-standalone/.env
+cp /opt/pis/.env.backup /opt/pis/.env
 
 # 提交更改
 git add .env
@@ -394,7 +394,7 @@ git push origin main
 
 ```bash
 # 暂存更改
-cd /opt/pis-standalone
+cd /opt/pis
 git stash push -m "Auto-stash before pull"
 
 # 拉取代码
@@ -412,7 +412,7 @@ git stash pop
 
 ```bash
 # 1. 检查配置
-cd /opt/pis-standalone
+cd /opt/pis
 grep MINIO_ROOT .env
 
 # 2. 重启 MinIO 容器
@@ -431,7 +431,7 @@ docker exec pis-minio env | grep MINIO_ROOT
 
 ```bash
 # 1. 查看日志
-cd /opt/pis-standalone/docker
+cd /opt/pis/docker
 docker compose logs -f
 
 # 2. 检查配置
@@ -460,12 +460,12 @@ docker compose up -d --build
 
 | 命令                                                            | 说明           |
 | --------------------------------------------------------------- | -------------- |
-| `cd /opt/pis-standalone && git pull origin main`                | 拉取最新代码   |
-| `cd /opt/pis-standalone/docker && docker compose up -d`         | 启动服务       |
-| `cd /opt/pis-standalone/docker && docker compose down`          | 停止服务       |
-| `cd /opt/pis-standalone/docker && docker compose up -d --build` | 重新构建并启动 |
-| `cd /opt/pis-standalone/docker && docker compose ps`            | 查看服务状态   |
-| `cd /opt/pis-standalone/docker && docker compose logs -f`       | 查看服务日志   |
+| `cd /opt/pis && git pull origin main`                | 拉取最新代码   |
+| `cd /opt/pis/docker && docker compose up -d`         | 启动服务       |
+| `cd /opt/pis/docker && docker compose down`          | 停止服务       |
+| `cd /opt/pis/docker && docker compose up -d --build` | 重新构建并启动 |
+| `cd /opt/pis/docker && docker compose ps`            | 查看服务状态   |
+| `cd /opt/pis/docker && docker compose logs -f`       | 查看服务日志   |
 | `docker restart pis-minio`                                      | 重启 MinIO     |
 | `docker restart pis-web`                                        | 重启 Web       |
 | `docker restart pis-worker`                                     | 重启 Worker    |
@@ -478,11 +478,11 @@ docker compose up -d --build
 
 ```bash
 # 本地（Mac）
-cd /Users/apple/Documents/Project/PIS/pis-standalone
+cd /Users/apple/Documents/Project/PIS/pis
 bash scripts/deploy/quick-deploy.sh --minio-user albert --minio-pass Zjy-1314
 
 # 服务器（192.168.50.10）
-cd /opt/pis-standalone
+cd /opt/pis
 git pull origin main
 cd docker
 docker compose up -d
@@ -492,11 +492,11 @@ docker compose up -d
 
 ```bash
 # 本地（Mac）
-cd /Users/apple/Documents/Project/PIS/pis-standalone
+cd /Users/apple/Documents/Project/PIS/pis
 bash scripts/deploy/quick-upgrade.sh
 
 # 服务器（192.168.50.10）
-cd /opt/pis-standalone
+cd /opt/pis
 git pull origin main
 cd docker
 docker compose down
@@ -507,14 +507,14 @@ docker compose up -d --build
 
 ```bash
 # 本地（Mac）
-cd /Users/apple/Documents/Project/PIS/pis-standalone
+cd /Users/apple/Documents/Project/PIS/pis
 vim .env
 git add .env
 git commit -m "feat: 修改配置"
 git push origin main
 
 # 服务器（192.168.50.10）
-cd /opt/pis-standalone
+cd /opt/pis
 git pull origin main
 cd docker
 docker compose restart <service-name>

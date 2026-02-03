@@ -98,7 +98,10 @@
       "rotateRight": "顺时针旋转",
       "rotateRightTitle": "顺时针旋转90度",
       "downloadOriginal": "下载原图",
-      "downloadOriginalTitle": "下载原图（当前为预览图，下载获取高清原图）"
+      "downloadOriginalTitle": "下载原图（当前为预览图，下载获取高清原图）",
+      "share": "分享",
+      "shareTitle": "分享照片",
+      "linkCopied": "链接已复制"
     }
   },
   "admin": {

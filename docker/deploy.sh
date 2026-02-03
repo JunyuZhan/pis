@@ -556,7 +556,7 @@ EOF
             echo ""
             echo "启动完全自托管服务:"
             echo "  $ cd docker"
-            echo "  $ docker-compose -f docker-compose.standalone.yml up -d"
+            echo "  $ docker-compose -f docker-compose.yml up -d"
             echo ""
             echo -e "${GREEN}3. 数据库初始化${NC}"
             echo ""
@@ -1242,7 +1242,7 @@ main() {
         fi
         
         echo -e "${CYAN}正在启动 Docker 服务...${NC}"
-        if $COMPOSE_CMD -f docker-compose.standalone.yml up -d 2>&1 | tee /tmp/docker-startup.log; then
+        if $COMPOSE_CMD -f docker-compose.yml up -d 2>&1 | tee /tmp/docker-startup.log; then
             print_success "服务启动成功"
         else
             print_error "服务启动失败，请检查日志"

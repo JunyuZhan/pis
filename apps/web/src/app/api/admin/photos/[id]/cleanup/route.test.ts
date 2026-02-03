@@ -7,25 +7,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { DELETE } from './route'
 import { createMockRequest } from '@/test/test-utils'
+import { getCurrentUser } from '@/lib/auth/api-helpers'
 
 // Mock dependencies
-vi.mock('@/lib/supabase/server', () => {
-  const mockAuth = {
-    getUser: vi.fn(),
-  }
+vi.mock('@/lib/database', () => ({
+  createClient: vi.fn(),
+  createAdminClient: vi.fn(),
+}))
 
-  const mockSupabaseClient = {
-    auth: mockAuth,
-    from: vi.fn(),
-  }
-
-  const mockAdminClient = {
-    from: vi.fn(),
-  }
-
+vi.mock('@/lib/auth/api-helpers', () => {
   return {
-    createClient: vi.fn().mockResolvedValue(mockSupabaseClient),
-    createAdminClient: vi.fn().mockReturnValue(mockAdminClient),
+    getCurrentUser: vi.fn(),
   }
 })
 
@@ -33,22 +25,27 @@ vi.mock('@/lib/supabase/server', () => {
 global.fetch = vi.fn()
 
 describe('DELETE /api/admin/photos/[id]/cleanup', () => {
-  let mockAuth: any
-  let mockSupabaseClient: any
   let mockAdminClient: any
+
+  const validPhotoId = '550e8400-e29b-41d4-a716-446655440000'
+  const validAlbumId = '550e8400-e29b-41d4-a716-446655440001'
+  const validUserId = '550e8400-e29b-41d4-a716-446655440002'
 
   beforeEach(async () => {
     vi.clearAllMocks()
     
-    const { createClient, createAdminClient } = await import('@/lib/supabase/server')
-    mockSupabaseClient = await createClient()
-    mockAuth = mockSupabaseClient.auth
-    mockAdminClient = createAdminClient()
+    const { createAdminClient } = await import('@/lib/database')
+    
+    mockAdminClient = {
+      from: vi.fn(),
+      delete: vi.fn().mockResolvedValue({ data: [], error: null }),
+    }
+    vi.mocked(createAdminClient).mockResolvedValue(mockAdminClient)
     
     // 默认用户已登录
-    mockAuth.getUser.mockResolvedValue({
-      data: { user: { id: 'user-123', email: 'test@example.com' } },
-      error: null,
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      id: validUserId,
+      email: 'test@example.com',
     })
 
     // 默认fetch成功
@@ -60,16 +57,13 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
 
   describe('authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
-      mockAuth.getUser.mockResolvedValue({
-        data: { user: null },
-        error: null,
-      })
+      vi.mocked(getCurrentUser).mockResolvedValue(null)
 
-      const request = createMockRequest('http://localhost:3000/api/admin/photos/photo-123/cleanup', {
+      const request = createMockRequest(`http://localhost:3000/api/admin/photos/${validPhotoId}/cleanup`, {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const response = await DELETE(request, { params: Promise.resolve({ id: validPhotoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(401)
@@ -92,24 +86,24 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         single: mockSingle,
       })
 
-      const request = createMockRequest('http://localhost:3000/api/admin/photos/photo-123/cleanup', {
+      const request = createMockRequest(`http://localhost:3000/api/admin/photos/${validPhotoId}/cleanup`, {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const response = await DELETE(request, { params: Promise.resolve({ id: validPhotoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
-      expect(data.message).toContain('可能已被清理')
+      expect(data.data.success).toBe(true)
+      expect(data.data.message).toContain('可能已被清理')
     })
 
     it('should return 400 if photo status is not pending or failed', async () => {
       const mockPhoto = {
-        id: 'photo-123',
+        id: validPhotoId,
         status: 'completed',
-        album_id: 'album-123',
-        original_key: 'raw/album-123/photo-123.jpg',
+        album_id: validAlbumId,
+        original_key: `raw/${validAlbumId}/${validPhotoId}.jpg`,
       }
 
       const mockSelect = vi.fn().mockReturnThis()
@@ -125,24 +119,24 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         single: mockSingle,
       })
 
-      const request = createMockRequest('http://localhost:3000/api/admin/photos/photo-123/cleanup', {
+      const request = createMockRequest(`http://localhost:3000/api/admin/photos/${validPhotoId}/cleanup`, {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const response = await DELETE(request, { params: Promise.resolve({ id: validPhotoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.error.code).toBe('INVALID_STATUS')
+      expect(data.error.code).toBe('VALIDATION_ERROR')
       expect(data.error.message).toContain('只能清理pending或failed状态的照片')
     })
 
     it('should allow cleanup for pending status', async () => {
       const mockPhoto = {
-        id: 'photo-123',
+        id: validPhotoId,
         status: 'pending',
-        album_id: 'album-123',
-        original_key: 'raw/album-123/photo-123.jpg',
+        album_id: validAlbumId,
+        original_key: `raw/${validAlbumId}/${validPhotoId}.jpg`,
       }
 
       const mockSelect = vi.fn().mockReturnThis()
@@ -152,43 +146,31 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         error: null,
       })
 
-      const mockDelete = vi.fn().mockReturnThis()
-      const mockEq2 = vi.fn().mockResolvedValue({
-        data: null,
-        error: null,
-      })
-
       mockAdminClient.from
         .mockReturnValueOnce({
           select: mockSelect,
           eq: mockEq,
           single: mockSingle,
         })
-        .mockReturnValueOnce({
-          delete: mockDelete,
-          eq: mockEq2,
-        })
 
-      mockDelete.mockReturnThis()
-
-      const request = createMockRequest('http://localhost:3000/api/admin/photos/photo-123/cleanup', {
+      const request = createMockRequest(`http://localhost:3000/api/admin/photos/${validPhotoId}/cleanup`, {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const response = await DELETE(request, { params: Promise.resolve({ id: validPhotoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
-      expect(data.message).toContain('已清理')
+      expect(data.data.success).toBe(true)
+      expect(data.data.message).toContain('已清理')
     })
 
     it('should allow cleanup for failed status', async () => {
       const mockPhoto = {
-        id: 'photo-123',
+        id: validPhotoId,
         status: 'failed',
-        album_id: 'album-123',
-        original_key: 'raw/album-123/photo-123.jpg',
+        album_id: validAlbumId,
+        original_key: `raw/${validAlbumId}/${validPhotoId}.jpg`,
       }
 
       const mockSelect = vi.fn().mockReturnThis()
@@ -198,44 +180,32 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         error: null,
       })
 
-      const mockDelete = vi.fn().mockReturnThis()
-      const mockEq2 = vi.fn().mockResolvedValue({
-        data: null,
-        error: null,
-      })
-
       mockAdminClient.from
         .mockReturnValueOnce({
           select: mockSelect,
           eq: mockEq,
           single: mockSingle,
         })
-        .mockReturnValueOnce({
-          delete: mockDelete,
-          eq: mockEq2,
-        })
 
-      mockDelete.mockReturnThis()
-
-      const request = createMockRequest('http://localhost:3000/api/admin/photos/photo-123/cleanup', {
+      const request = createMockRequest(`http://localhost:3000/api/admin/photos/${validPhotoId}/cleanup`, {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const response = await DELETE(request, { params: Promise.resolve({ id: validPhotoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
+      expect(data.data.success).toBe(true)
     })
   })
 
   describe('MinIO cleanup', () => {
     it('should call Worker API to cleanup MinIO file', async () => {
       const mockPhoto = {
-        id: 'photo-123',
+        id: validPhotoId,
         status: 'pending',
-        album_id: 'album-123',
-        original_key: 'raw/album-123/photo-123.jpg',
+        album_id: validAlbumId,
+        original_key: `raw/${validAlbumId}/${validPhotoId}.jpg`,
       }
 
       const mockSelect = vi.fn().mockReturnThis()
@@ -245,48 +215,36 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         error: null,
       })
 
-      const mockDelete = vi.fn().mockReturnThis()
-      const mockEq2 = vi.fn().mockResolvedValue({
-        data: null,
-        error: null,
-      })
-
       mockAdminClient.from
         .mockReturnValueOnce({
           select: mockSelect,
           eq: mockEq,
           single: mockSingle,
         })
-        .mockReturnValueOnce({
-          delete: mockDelete,
-          eq: mockEq2,
-        })
-
-      mockDelete.mockReturnThis()
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
       })
 
-      const request = createMockRequest('http://localhost:3000/api/admin/photos/photo-123/cleanup', {
+      const request = createMockRequest(`http://localhost:3000/api/admin/photos/${validPhotoId}/cleanup`, {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const response = await DELETE(request, { params: Promise.resolve({ id: validPhotoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
+      expect(data.data.success).toBe(true)
       expect(global.fetch).toHaveBeenCalled()
     })
 
     it('should continue cleanup even if MinIO cleanup fails', async () => {
       const mockPhoto = {
-        id: 'photo-123',
+        id: validPhotoId,
         status: 'pending',
-        album_id: 'album-123',
-        original_key: 'raw/album-123/photo-123.jpg',
+        album_id: validAlbumId,
+        original_key: `raw/${validAlbumId}/${validPhotoId}.jpg`,
       }
 
       const mockSelect = vi.fn().mockReturnThis()
@@ -296,24 +254,12 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         error: null,
       })
 
-      const mockDelete = vi.fn().mockReturnThis()
-      const mockEq2 = vi.fn().mockResolvedValue({
-        data: null,
-        error: null,
-      })
-
       mockAdminClient.from
         .mockReturnValueOnce({
           select: mockSelect,
           eq: mockEq,
           single: mockSingle,
         })
-        .mockReturnValueOnce({
-          delete: mockDelete,
-          eq: mockEq2,
-        })
-
-      mockDelete.mockReturnThis()
 
       // MinIO cleanup fails
       global.fetch = vi.fn().mockResolvedValue({
@@ -321,23 +267,23 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         status: 500,
       })
 
-      const request = createMockRequest('http://localhost:3000/api/admin/photos/photo-123/cleanup', {
+      const request = createMockRequest(`http://localhost:3000/api/admin/photos/${validPhotoId}/cleanup`, {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const response = await DELETE(request, { params: Promise.resolve({ id: validPhotoId }) })
       const data = await response.json()
 
       // 即使 MinIO 清理失败，数据库记录也应该被删除
       expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
+      expect(data.data.success).toBe(true)
     })
 
     it('should skip MinIO cleanup if original_key is null', async () => {
       const mockPhoto = {
-        id: 'photo-123',
+        id: validPhotoId,
         status: 'pending',
-        album_id: 'album-123',
+        album_id: validAlbumId,
         original_key: null,
       }
 
@@ -348,34 +294,22 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         error: null,
       })
 
-      const mockDelete = vi.fn().mockReturnThis()
-      const mockEq2 = vi.fn().mockResolvedValue({
-        data: null,
-        error: null,
-      })
-
       mockAdminClient.from
         .mockReturnValueOnce({
           select: mockSelect,
           eq: mockEq,
           single: mockSingle,
         })
-        .mockReturnValueOnce({
-          delete: mockDelete,
-          eq: mockEq2,
-        })
 
-      mockDelete.mockReturnThis()
-
-      const request = createMockRequest('http://localhost:3000/api/admin/photos/photo-123/cleanup', {
+      const request = createMockRequest(`http://localhost:3000/api/admin/photos/${validPhotoId}/cleanup`, {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const response = await DELETE(request, { params: Promise.resolve({ id: validPhotoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
+      expect(data.data.success).toBe(true)
       // 如果没有 original_key，不应该调用 Worker API
       expect(global.fetch).not.toHaveBeenCalled()
     })
@@ -384,9 +318,9 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
   describe('database deletion', () => {
     it('should delete photo record successfully', async () => {
       const mockPhoto = {
-        id: 'photo-123',
+        id: validPhotoId,
         status: 'pending',
-        album_id: 'album-123',
+        album_id: validAlbumId,
         original_key: null,
       }
 
@@ -397,42 +331,30 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         error: null,
       })
 
-      const mockDelete = vi.fn().mockReturnThis()
-      const mockEq2 = vi.fn().mockResolvedValue({
-        data: null,
-        error: null,
-      })
-
       mockAdminClient.from
         .mockReturnValueOnce({
           select: mockSelect,
           eq: mockEq,
           single: mockSingle,
         })
-        .mockReturnValueOnce({
-          delete: mockDelete,
-          eq: mockEq2,
-        })
 
-      mockDelete.mockReturnThis()
-
-      const request = createMockRequest('http://localhost:3000/api/admin/photos/photo-123/cleanup', {
+      const request = createMockRequest(`http://localhost:3000/api/admin/photos/${validPhotoId}/cleanup`, {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const response = await DELETE(request, { params: Promise.resolve({ id: validPhotoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
-      expect(mockDelete).toHaveBeenCalled()
+      expect(data.data.success).toBe(true)
+      expect(mockAdminClient.delete).toHaveBeenCalledWith('photos', { id: validPhotoId })
     })
 
     it('should return 500 on database deletion error', async () => {
       const mockPhoto = {
-        id: 'photo-123',
+        id: validPhotoId,
         status: 'pending',
-        album_id: 'album-123',
+        album_id: validAlbumId,
         original_key: null,
       }
 
@@ -443,40 +365,33 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         error: null,
       })
 
-      const mockDelete = vi.fn().mockReturnThis()
-      const mockEq2 = vi.fn().mockResolvedValue({
-        data: null,
-        error: { message: 'Delete failed' },
-      })
-
       mockAdminClient.from
         .mockReturnValueOnce({
           select: mockSelect,
           eq: mockEq,
           single: mockSingle,
         })
-        .mockReturnValueOnce({
-          delete: mockDelete,
-          eq: mockEq2,
-        })
 
-      mockDelete.mockReturnThis()
+      mockAdminClient.delete.mockResolvedValueOnce({
+        data: null,
+        error: { message: 'Delete failed' },
+      })
 
-      const request = createMockRequest('http://localhost:3000/api/admin/photos/photo-123/cleanup', {
+      const request = createMockRequest(`http://localhost:3000/api/admin/photos/${validPhotoId}/cleanup`, {
         method: 'DELETE',
       })
 
-      const response = await DELETE(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const response = await DELETE(request, { params: Promise.resolve({ id: validPhotoId }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)
-      expect(data.error.code).toBe('DB_ERROR')
+      expect(data.error.code).toBe('INTERNAL_ERROR')
     })
   })
 
   describe('error handling', () => {
     it('should return 500 on params error', async () => {
-      const request = createMockRequest('http://localhost:3000/api/admin/photos/photo-123/cleanup', {
+      const request = createMockRequest(`http://localhost:3000/api/admin/photos/${validPhotoId}/cleanup`, {
         method: 'DELETE',
       })
 

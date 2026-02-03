@@ -1,6 +1,6 @@
 # PIS Deployment Guide
 
-> Author: junyuzhan (junyuzhan@outlook.com)  
+> Author: junyuzhan (junyuzhan@outlook.com)
 > License: MIT
 
 ## Table of Contents
@@ -30,8 +30,8 @@ The new guided deployment script provides an interactive setup experience with a
 
 ```bash
 # Clone the repository
-git clone https://github.com/JunyuZhan/pis-standalone.git
-cd pis-standalone
+git clone https://github.com/JunyuZhan/pis.git
+cd pis
 
 # Run guided deployment (interactive)
 bash docker/deploy.sh
@@ -40,8 +40,8 @@ bash docker/deploy.sh
 **Or deploy from your local machine:**
 
 ```bash
-git clone https://github.com/JunyuZhan/pis-standalone.git
-cd pis-standalone
+git clone https://github.com/JunyuZhan/pis.git
+cd pis
 
 # Deploy to remote server
 bash docker/deploy.sh <server-ip> <ssh-user>
@@ -147,13 +147,13 @@ https://yourdomain.com/media    # Media files
 
 ```bash
 # Standalone mode - View logs
-cd /opt/pis/docker && docker-compose -f docker-compose.standalone.yml logs -f
+cd /opt/pis/docker && docker-compose -f docker-compose.yml logs -f
 
 # Standalone mode - Restart services
-cd /opt/pis/docker && docker-compose -f docker-compose.standalone.yml restart
+cd /opt/pis/docker && docker-compose -f docker-compose.yml restart
 
 # Update code
-cd /opt/pis && git pull && cd docker && docker-compose -f docker-compose.standalone.yml up -d --build
+cd /opt/pis && git pull && cd docker && docker-compose -f docker-compose.yml up -d --build
 ```
 
 ### Quick Troubleshooting
@@ -161,7 +161,7 @@ cd /opt/pis && git pull && cd docker && docker-compose -f docker-compose.standal
 **Q: Deployment failed?**
 
 ```bash
-cd /opt/pis/docker && docker-compose -f docker-compose.standalone.yml logs
+cd /opt/pis/docker && docker-compose -f docker-compose.yml logs
 ```
 
 **Q: Port already in use?**
@@ -295,7 +295,7 @@ Go to project → **Settings** → **API**, copy the following information:
 4. Click **Create user**
 5. ✅ Done! You can now use this email and password to log in at `/admin/login`
 
-**Note**: 
+**Note**:
 - The email and password you create here will be used to log in to the admin dashboard
 - Make sure to check "Auto Confirm User" so you can log in immediately
 - You can create multiple admin accounts if needed
@@ -325,7 +325,7 @@ Go to project → **Settings** → **API**, copy the following information:
 
 ```bash
 git clone https://github.com/your-username/pis.git
-cd pis-standalone
+cd pis
 pnpm install
 ```
 

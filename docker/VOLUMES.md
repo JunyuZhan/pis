@@ -19,7 +19,7 @@ PIS 支持多种部署架构，所有 Docker Compose 文件使用统一的存储
 
 ## 不同架构的卷配置
 
-### 完全自托管 (`docker-compose.standalone.yml`)
+### 完全自托管 (`docker-compose.yml`)
 - `pis_postgres_data` - PostgreSQL 数据库
 - `pis_minio_data` - MinIO 对象存储
 - `pis_redis_data` - Redis 缓存/队列
@@ -32,7 +32,7 @@ PIS 支持多种部署架构，所有 Docker Compose 文件使用统一的存储
 
 **注意**: 
 - 混合部署模式下，数据库由 Supabase 托管（向后兼容），前端由 Vercel 托管，无需本地数据库卷
-- 推荐使用完全自托管模式（`docker-compose.standalone.yml`），所有服务都在本地
+- 推荐使用完全自托管模式（`docker-compose.yml`），所有服务都在本地
 
 ## 卷管理命令
 

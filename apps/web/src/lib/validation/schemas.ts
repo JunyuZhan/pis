@@ -298,7 +298,7 @@ export const templateIdSchema = z.object({
 // ============================================
 
 export const verifyPasswordSchema = z.object({
-  password: z.string().min(1, '密码不能为空'),
+  password: z.string({ required_error: '密码不能为空' }).min(1, '密码不能为空'),
 });
 
 export const selectPhotoSchema = z.object({

@@ -40,9 +40,9 @@ export function AlbumFooter() {
 
           <div className="flex items-center gap-1">
             <span>{t('poweredBy')}</span>
-            <a 
-              href="https://github.com/JunyuZhan/pis-standalone" 
-              target="_blank" 
+            <a
+              href="https://github.com/JunyuZhan/pis"
+              target="_blank"
               rel="noopener noreferrer"
               className="text-accent hover:underline"
             >

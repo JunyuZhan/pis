@@ -98,7 +98,10 @@
       "rotateRight": "Rotate Clockwise",
       "rotateRightTitle": "Rotate 90° clockwise",
       "downloadOriginal": "Download Original",
-      "downloadOriginalTitle": "Download original image (currently viewing preview, download for high-resolution original)"
+      "downloadOriginalTitle": "Download original image (currently viewing preview, download for high-resolution original)",
+      "share": "Share",
+      "shareTitle": "Share Photo",
+      "linkCopied": "Link copied"
     }
   },
   "admin": {

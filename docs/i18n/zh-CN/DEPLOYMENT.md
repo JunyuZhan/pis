@@ -30,8 +30,8 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/JunyuZhan/pis-standalone.git
-cd pis-standalone
+git clone https://github.com/JunyuZhan/pis.git
+cd pis
 
 # 运行引导式部署（交互式）
 bash docker/deploy.sh
@@ -40,8 +40,8 @@ bash docker/deploy.sh
 **或从本地机器部署：**
 
 ```bash
-git clone https://github.com/JunyuZhan/pis-standalone.git
-cd pis-standalone
+git clone https://github.com/JunyuZhan/pis.git
+cd pis
 
 # 部署到远程服务器
 bash docker/deploy.sh <服务器IP> <SSH用户>
@@ -147,13 +147,13 @@ https://yourdomain.com/media    # 媒体文件
 
 ```bash
 # 独立模式 - 查看日志
-cd /opt/pis/docker && docker-compose -f docker-compose.standalone.yml logs -f
+cd /opt/pis/docker && docker-compose -f docker-compose.yml logs -f
 
 # 独立模式 - 重启服务
-cd /opt/pis/docker && docker-compose -f docker-compose.standalone.yml restart
+cd /opt/pis/docker && docker-compose -f docker-compose.yml restart
 
 # 更新代码
-cd /opt/pis && git pull && cd docker && docker-compose -f docker-compose.standalone.yml up -d --build
+cd /opt/pis && git pull && cd docker && docker-compose -f docker-compose.yml up -d --build
 ```
 
 ### 快速故障排除
@@ -161,7 +161,7 @@ cd /opt/pis && git pull && cd docker && docker-compose -f docker-compose.standal
 **问：部署失败？**
 
 ```bash
-cd /opt/pis/docker && docker-compose -f docker-compose.standalone.yml logs
+cd /opt/pis/docker && docker-compose -f docker-compose.yml logs
 ```
 
 **问：端口已被占用？**
@@ -308,7 +308,7 @@ ss -tuln | grep -E ":(80|443|9000|9001|3001)"
 
 ```bash
 git clone https://github.com/your-username/pis.git
-cd pis-standalone
+cd pis
 pnpm install
 ```
 

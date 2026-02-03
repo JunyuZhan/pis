@@ -10,7 +10,7 @@ import { createMockRequest } from '@/test/test-utils'
 import { checkRateLimit } from '@/middleware-rate-limit'
 
 // Mock dependencies
-vi.mock('@/lib/supabase/server', () => {
+vi.mock('@/lib/database', () => {
   const mockSupabaseClient = {
     from: vi.fn(),
   }
@@ -30,7 +30,7 @@ describe('POST /api/public/albums/[slug]/verify-password', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     
-    const { createClient } = await import('@/lib/supabase/server')
+    const { createClient } = await import('@/lib/database')
     mockSupabaseClient = await createClient()
     
     // 默认允许速率限制
@@ -143,7 +143,7 @@ describe('POST /api/public/albums/[slug]/verify-password', () => {
       const data = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.error.code).toBe('INVALID_REQUEST')
+      expect(data.error.code).toBe('VALIDATION_ERROR')
     })
 
     it('should return 400 for missing password', async () => {
@@ -157,7 +157,9 @@ describe('POST /api/public/albums/[slug]/verify-password', () => {
 
       expect(response.status).toBe(400)
       expect(data.error.code).toBe('VALIDATION_ERROR')
-      expect(data.error.message).toContain('请提供密码')
+      // Zod validation details contains the message
+      const details = data.error.details as Array<{ message: string }>
+      expect(details[0].message).toContain('密码不能为空')
     })
 
     it('should return 400 for non-string password', async () => {
@@ -260,7 +262,7 @@ describe('POST /api/public/albums/[slug]/verify-password', () => {
       const data = await response.json()
 
       expect(response.status).toBe(403)
-      expect(data.error.code).toBe('EXPIRED')
+      expect(data.error.code).toBe('FORBIDDEN')
       expect(data.error.message).toContain('已过期')
     })
 
@@ -295,7 +297,7 @@ describe('POST /api/public/albums/[slug]/verify-password', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.verified).toBe(true)
+      expect(data.data.verified).toBe(true)
     })
   })
 
@@ -327,7 +329,7 @@ describe('POST /api/public/albums/[slug]/verify-password', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.verified).toBe(true)
+      expect(data.data.verified).toBe(true)
     })
 
     it('should return verified:true for correct password', async () => {
@@ -357,7 +359,7 @@ describe('POST /api/public/albums/[slug]/verify-password', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.verified).toBe(true)
+      expect(data.data.verified).toBe(true)
     })
 
     it('should return 401 for incorrect password', async () => {
@@ -386,8 +388,8 @@ describe('POST /api/public/albums/[slug]/verify-password', () => {
       const response = await POST(request, { params: Promise.resolve({ slug: 'test-slug' }) })
       const data = await response.json()
 
-      expect(response.status).toBe(401)
-      expect(data.error.code).toBe('INVALID_PASSWORD')
+      expect(response.status).toBe(400)
+      expect(data.error.code).toBe('VALIDATION_ERROR')
       expect(data.error.message).toContain('密码错误')
     })
   })

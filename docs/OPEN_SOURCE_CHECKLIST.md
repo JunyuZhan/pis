@@ -51,7 +51,7 @@
 
 ### 1. 默认密码
 
-**位置**: `docker/docker-compose.standalone.yml`
+**位置**: `docker/docker-compose.yml`
 
 **问题**: 包含默认密码（如 `changeme`, `minioadmin`）
 

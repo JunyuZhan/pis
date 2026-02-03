@@ -42,13 +42,15 @@ describe('GET /api/admin/albums/[id]/groups/[groupId]', () => {
   describe('authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
       mockGetCurrentUser.mockResolvedValue(null)
+      const validAlbumId = '550e8400-e29b-41d4-a716-446655440000'
+      const validGroupId = '550e8400-e29b-41d4-a716-446655440001'
 
       const request = createMockRequest(
-        'http://localhost:3000/api/admin/albums/album-123/groups/group-123'
+        `http://localhost:3000/api/admin/albums/${validAlbumId}/groups/${validGroupId}`
       )
 
       const response = await GET(request, {
-        params: Promise.resolve({ id: 'album-123', groupId: 'group-123' }),
+        params: Promise.resolve({ id: validAlbumId, groupId: validGroupId }),
       })
       const data = await response.json()
 
@@ -110,10 +112,13 @@ describe('GET /api/admin/albums/[id]/groups/[groupId]', () => {
 
       // Mock assignments query
       const mockSelectAssignments = vi.fn().mockReturnThis()
-      const mockEqAssignments = vi.fn().mockResolvedValue({
+      const mockExecuteAssignments = vi.fn().mockResolvedValue({
         data: assignments,
         count: 2,
         error: null,
+      })
+      const mockEqAssignments = vi.fn().mockReturnValue({
+        execute: mockExecuteAssignments,
       })
 
       mockDb.from
@@ -227,9 +232,11 @@ describe('PATCH /api/admin/albums/[id]/groups/[groupId]', () => {
   describe('authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
       mockGetCurrentUser.mockResolvedValue(null)
+      const validAlbumId = '550e8400-e29b-41d4-a716-446655440000'
+      const validGroupId = '550e8400-e29b-41d4-a716-446655440001'
 
       const request = createMockRequest(
-        'http://localhost:3000/api/admin/albums/album-123/groups/group-123',
+        `http://localhost:3000/api/admin/albums/${validAlbumId}/groups/${validGroupId}`,
         {
           method: 'PATCH',
           body: {
@@ -239,7 +246,7 @@ describe('PATCH /api/admin/albums/[id]/groups/[groupId]', () => {
       )
 
       const response = await PATCH(request, {
-        params: Promise.resolve({ id: 'album-123', groupId: 'group-123' }),
+        params: Promise.resolve({ id: validAlbumId, groupId: validGroupId }),
       })
       const data = await response.json()
 
@@ -299,10 +306,13 @@ describe('PATCH /api/admin/albums/[id]/groups/[groupId]', () => {
 
       // Mock assignments count
       const mockSelectAssignments = vi.fn().mockReturnThis()
-      const mockEqAssignments = vi.fn().mockResolvedValue({
+      const mockExecuteAssignments = vi.fn().mockResolvedValue({
         data: [],
         count: 0,
         error: null,
+      })
+      const mockEqAssignments = vi.fn().mockReturnValue({
+        execute: mockExecuteAssignments
       })
 
       mockDb.from
@@ -456,16 +466,18 @@ describe('DELETE /api/admin/albums/[id]/groups/[groupId]', () => {
   describe('authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
       mockGetCurrentUser.mockResolvedValue(null)
+      const validAlbumId = '550e8400-e29b-41d4-a716-446655440000'
+      const validGroupId = '550e8400-e29b-41d4-a716-446655440001'
 
       const request = createMockRequest(
-        'http://localhost:3000/api/admin/albums/album-123/groups/group-123',
+        `http://localhost:3000/api/admin/albums/${validAlbumId}/groups/${validGroupId}`,
         {
           method: 'DELETE',
         }
       )
 
       const response = await DELETE(request, {
-        params: Promise.resolve({ id: 'album-123', groupId: 'group-123' }),
+        params: Promise.resolve({ id: validAlbumId, groupId: validGroupId }),
       })
       const data = await response.json()
 

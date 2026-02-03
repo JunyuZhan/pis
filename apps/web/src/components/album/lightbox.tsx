@@ -7,10 +7,10 @@ import Zoom from 'yet-another-react-lightbox/plugins/zoom'
 import Captions from 'yet-another-react-lightbox/plugins/captions'
 import 'yet-another-react-lightbox/styles.css'
 import 'yet-another-react-lightbox/plugins/captions.css'
-import { Download, Heart, RotateCw, RotateCcw } from 'lucide-react'
+import { Download, Heart, RotateCw, RotateCcw, Share2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { cn, getSafeMediaUrl } from '@/lib/utils'
-import { handleApiError } from '@/lib/toast'
+import { handleApiError, showSuccess } from '@/lib/toast'
 import type { Photo } from '@/types/database'
 
 interface PhotoLightboxProps {
@@ -292,11 +292,16 @@ export function PhotoLightbox({
       if (!res.ok) {
         // 回滚
         setSelectedMap((prev) => ({ ...prev, [photoId]: !newSelected }))
+        
+        // 显示错误信息
+        const errorData = await res.json()
+        handleApiError(new Error(errorData.error?.message || '操作失败'), '选片失败')
       } else {
         onSelectChange?.(photoId, newSelected)
       }
-    } catch {
+    } catch (error) {
       setSelectedMap((prev) => ({ ...prev, [photoId]: !newSelected }))
+      handleApiError(error, '选片失败')
     }
   }, [currentPhoto, selectedMap, onSelectChange])
 
@@ -322,6 +327,30 @@ export function PhotoLightbox({
       }
     })
   }, [currentPhotoId])
+
+  // 分享照片
+  const handleShare = useCallback(async () => {
+    const shareUrl = window.location.href
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: t('shareTitle'),
+          url: shareUrl,
+        })
+      } catch {
+        // 用户取消分享
+      }
+    } else {
+      // 复制链接
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        showSuccess(t('linkCopied'))
+      } catch (err) {
+        console.error('Failed to copy:', err)
+      }
+    }
+  }, [t])
 
   const toolbarButtons = useMemo(() => {
     if (!currentPhoto) {
@@ -391,9 +420,23 @@ export function PhotoLightbox({
       )
     }
 
+    buttons.push(
+      <button
+        key="share"
+        type="button"
+        onClick={handleShare}
+        className="yarl__button flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors min-h-[44px] active:scale-[0.98] touch-manipulation"
+        aria-label={t('share')}
+        title={t('shareTitle')}
+      >
+        <Share2 className="w-5 h-5" />
+        <span className="hidden sm:inline text-sm">{t('share')}</span>
+      </button>
+    )
+
     buttons.push('close')
     return buttons
-  }, [currentPhoto, selectedMap, allowDownload, handleSelect, handleDownload, handleRotate, t])
+  }, [currentPhoto, selectedMap, allowDownload, handleSelect, handleDownload, handleRotate, handleShare, t])
 
   // 如果未打开或没有照片，不渲染
   if (!open || photos.length === 0) {

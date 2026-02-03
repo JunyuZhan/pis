@@ -3,17 +3,17 @@
 > A self-hosted photo delivery system designed for photographers
 
 <p align="center">
-  <a href="https://github.com/JunyuZhan/pis-standalone/stargazers">
-    <img src="https://img.shields.io/github/stars/JunyuZhan/pis-standalone?style=social" alt="GitHub stars" />
+  <a href="https://github.com/JunyuZhan/pis/stargazers">
+    <img src="https://img.shields.io/github/stars/JunyuZhan/pis?style=social" alt="GitHub stars" />
   </a>
 </p>
 
 <p align="center">
-  <a href="https://star-history.com/#JunyuZhan/pis-standalone&Date">
+  <a href="https://star-history.com/#JunyuZhan/pis&Date">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=JunyuZhan/pis-standalone&type=Date&theme=dark" />
-      <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=JunyuZhan/pis-standalone&type=Date" />
-      <img src="https://api.star-history.com/svg?repos=JunyuZhan/pis-standalone&type=Date" alt="Star History Chart" />
+      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=JunyuZhan/pis&type=Date&theme=dark" />
+      <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=JunyuZhan/pis&type=Date" />
+      <img src="https://api.star-history.com/svg?repos=JunyuZhan/pis&type=Date" alt="Star History Chart" />
     </picture>
   </a>
 </p>
@@ -34,7 +34,7 @@
 <p align="center">
   <strong>📦 Deployment Versions:</strong>
   <a href="https://github.com/JunyuZhan/pis-cloud">☁️ Cloud Version</a> |
-  <a href="https://github.com/JunyuZhan/pis-standalone">🏠 Standalone Version</a> (Current)
+  <a href="https://github.com/JunyuZhan/pis">🏠 Standalone Version</a> (Current)
 </p>
 
 ---
@@ -114,7 +114,7 @@
 
 ```bash
 # One command to deploy everything (no interaction required)
-curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/scripts/deploy/one-click-deploy.sh | bash
+curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/deploy/one-click-deploy.sh | bash
 ```
 
 This script will automatically:
@@ -128,16 +128,16 @@ This script will automatically:
 
 ```bash
 # Clone repository and run interactive configuration wizard
-git clone https://github.com/JunyuZhan/pis-standalone.git
-cd pis-standalone/docker
+git clone https://github.com/JunyuZhan/pis.git
+cd pis/docker
 bash deploy.sh
 ```
 
 Or manually:
 
 ```bash
-git clone https://github.com/JunyuZhan/pis-standalone.git
-cd pis-standalone/docker
+git clone https://github.com/JunyuZhan/pis.git
+cd pis/docker
 bash deploy.sh
 ```
 

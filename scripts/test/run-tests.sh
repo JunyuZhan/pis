@@ -50,7 +50,7 @@ echo -e "${CYAN}[2/8] 容器状态检查...${NC}"
 {
     echo "2. 容器状态"
     echo "---"
-    docker compose -f docker/docker-compose.standalone.yml ps | tee -a "$REPORT_FILE"
+    docker compose -f docker/docker-compose.dev.yml ps | tee -a "$REPORT_FILE"
     echo ""
 } >> "$REPORT_FILE"
 echo -e "${GREEN}✅ 完成${NC}"
@@ -106,7 +106,7 @@ echo -e "${CYAN}[5/8] 代码质量测试...${NC}"
     echo "---"
     
     echo "运行 ESLint:"
-    cd /Users/apple/Documents/Project/PIS/pis-standalone
+    cd /Users/apple/Documents/Project/PIS/pis
     pnpm lint 2>&1 | head -50 | tee -a "$REPORT_FILE" || echo "ESLint 检查完成（有警告）" | tee -a "$REPORT_FILE"
     echo ""
     echo ""
@@ -119,7 +119,7 @@ echo -e "${CYAN}[6/8] 单元测试...${NC}"
     echo "6. 单元测试"
     echo "---"
     
-    cd /Users/apple/Documents/Project/PIS/pis-standalone
+    cd /Users/apple/Documents/Project/PIS/pis
     pnpm test 2>&1 | tee -a "$REPORT_FILE"
     echo ""
     echo ""
@@ -132,7 +132,7 @@ echo -e "${CYAN}[7/8] 安全检查...${NC}"
     echo "7. 安全检查"
     echo "---"
     
-    cd /Users/apple/Documents/Project/PIS/pis-standalone
+    cd /Users/apple/Documents/Project/PIS/pis
     bash scripts/utils/check-security.sh 2>&1 | tee -a "$REPORT_FILE" || echo "安全检查完成（有警告）" | tee -a "$REPORT_FILE"
     echo ""
     echo ""

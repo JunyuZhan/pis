@@ -10,7 +10,7 @@
 #   - 支持自定义配置
 #
 # 使用方法：
-#   cd /opt/pis-standalone
+#   cd /opt/pis
 #   bash scripts/deploy/quick-deploy.sh                    # 一键部署并启动服务
 #   bash scripts/deploy/quick-deploy.sh --no-start         # 只生成配置，不启动服务
 #   bash scripts/deploy/quick-deploy.sh --minio-user albert --minio-pass Zjy-1314
@@ -283,19 +283,19 @@ save_deployment_info() {
 # 
 
 # 启动所有服务（在服务器上运行）:
-# cd /opt/pis-standalone/docker
+# cd /opt/pis/docker
 # docker compose up -d
 
 # 停止所有服务（在服务器上运行）:
-# cd /opt/pis-standalone/docker
+# cd /opt/pis/docker
 # docker compose down
 
 # 查看服务状态（在服务器上运行）:
-# cd /opt/pis-standalone/docker
+# cd /opt/pis/docker
 # docker compose ps
 
 # 查看服务日志（在服务器上运行）:
-# cd /opt/pis-standalone/docker
+# cd /opt/pis/docker
 # docker compose logs -f
 
 # ==================== 下一步操作 ====================
@@ -307,11 +307,11 @@ save_deployment_info() {
 #    git push origin main
 
 # 2. 在服务器上拉取代码
-#    cd /opt/pis-standalone
+#    cd /opt/pis
 #    git pull origin main
 
 # 3. 启动服务（在服务器上运行）
-#    cd /opt/pis-standalone/docker
+#    cd /opt/pis/docker
 #    docker compose up -d
 
 # 4. 访问 MinIO Console 上传文件
@@ -394,7 +394,7 @@ start_services() {
                         error "请手动执行以下命令："
                         error "  cd ${PROJECT_ROOT}"
                         error "  git checkout HEAD -- docker/"
-                        error "  或重新克隆代码: git clone https://github.com/JunyuZhan/pis-standalone.git"
+                        error "  或重新克隆代码: git clone https://github.com/JunyuZhan/pis.git"
                         error ""
                         warn "跳过服务启动，请手动检查并启动服务"
                         return 1
@@ -405,7 +405,7 @@ start_services() {
                     error "请手动执行以下命令："
                     error "  cd ${PROJECT_ROOT}"
                     error "  git checkout HEAD -- docker/"
-                    error "  或重新克隆代码: git clone https://github.com/JunyuZhan/pis-standalone.git"
+                    error "  或重新克隆代码: git clone https://github.com/JunyuZhan/pis.git"
                     error ""
                     warn "跳过服务启动，请手动检查并启动服务"
                     return 1
@@ -417,7 +417,7 @@ start_services() {
             error "请手动执行以下操作："
             error "  1. 检查 docker 目录: ls -la ${PROJECT_ROOT}/ | grep docker"
             error "  2. 如果不存在，重新拉取代码: cd ${PROJECT_ROOT} && git pull origin main"
-            error "  3. 或重新克隆代码: git clone https://github.com/JunyuZhan/pis-standalone.git"
+            error "  3. 或重新克隆代码: git clone https://github.com/JunyuZhan/pis.git"
             error ""
             warn "跳过服务启动，请手动检查并启动服务"
             return 1
@@ -427,7 +427,7 @@ start_services() {
     cd "$docker_dir"
     
     # 检查 docker-compose 文件
-    local compose_file="docker-compose.standalone.yml"
+    local compose_file="docker-compose.yml"
     if [ ! -f "$compose_file" ]; then
         warn "未找到 $compose_file，尝试使用 docker-compose.yml"
         compose_file="docker-compose.yml"
@@ -512,11 +512,11 @@ show_completion() {
         echo -e "     git push origin main"
         echo ""
         echo -e "  2. ${CYAN}在服务器上拉取代码${NC}"
-        echo -e "     cd /opt/pis-standalone"
+        echo -e "     cd /opt/pis"
         echo -e "     git pull origin main"
         echo ""
         echo -e "  3. ${CYAN}启动服务（在服务器上运行）${NC}"
-        echo -e "     cd /opt/pis-standalone/docker"
+        echo -e "     cd /opt/pis/docker"
         echo -e "     docker compose up -d"
         echo ""
         echo -e "  4. ${CYAN}查看部署信息${NC}"

@@ -184,13 +184,13 @@ test_step "7.2 Media 代理 CORS 支持" "curl -s --max-time $TIMEOUT -H 'Origin
 print_section "8️⃣  图片处理配置测试"
 
 # 检查缩略图尺寸配置
-test_step "8.1 缩略图尺寸配置" "grep -r 'thumbSize\|400' /Users/apple/Documents/Project/PIS/pis-standalone/services/worker/src/processor.ts > /dev/null 2>&1 || echo '400' | grep -q '400'"
+test_step "8.1 缩略图尺寸配置" "grep -r 'thumbSize\|400' /Users/apple/Documents/Project/PIS/pis/services/worker/src/processor.ts > /dev/null 2>&1 || echo '400' | grep -q '400'"
 
 # 检查预览图尺寸配置
-test_step "8.2 预览图尺寸配置" "grep -r 'PREVIEW_MAX_SIZE\|1920\|maxPreviewSize' /Users/apple/Documents/Project/PIS/pis-standalone/services/worker/src/processor.ts > /dev/null 2>&1 || echo '1920' | grep -q '1920'"
+test_step "8.2 预览图尺寸配置" "grep -r 'PREVIEW_MAX_SIZE\|1920\|maxPreviewSize' /Users/apple/Documents/Project/PIS/pis/services/worker/src/processor.ts > /dev/null 2>&1 || echo '1920' | grep -q '1920'"
 
 # 检查 BlurHash 生成
-test_step "8.3 BlurHash 生成配置" "grep -r 'blurhash\|BlurHash' /Users/apple/Documents/Project/PIS/pis-standalone/services/worker/src/processor.ts > /dev/null 2>&1"
+test_step "8.3 BlurHash 生成配置" "grep -r 'blurhash\|BlurHash' /Users/apple/Documents/Project/PIS/pis/services/worker/src/processor.ts > /dev/null 2>&1"
 
 # ============================================
 # 9. 存储功能测试
@@ -223,10 +223,10 @@ test_step "10.2 队列键格式检查" "docker exec pis-redis redis-cli KEYS '*q
 print_section "1️⃣1️⃣  EXIF 处理测试"
 
 # 检查 EXIF 读取功能
-test_step "11.1 EXIF 读取功能" "grep -r 'exif\|EXIF' /Users/apple/Documents/Project/PIS/pis-standalone/services/worker/src/processor.ts > /dev/null 2>&1"
+test_step "11.1 EXIF 读取功能" "grep -r 'exif\|EXIF' /Users/apple/Documents/Project/PIS/pis/services/worker/src/processor.ts > /dev/null 2>&1"
 
 # 检查 EXIF 旋转功能
-test_step "11.2 EXIF 旋转功能" "grep -r 'orientation\|rotate\|Rotation' /Users/apple/Documents/Project/PIS/pis-standalone/services/worker/src/processor.ts > /dev/null 2>&1"
+test_step "11.2 EXIF 旋转功能" "grep -r 'orientation\|rotate\|Rotation' /Users/apple/Documents/Project/PIS/pis/services/worker/src/processor.ts > /dev/null 2>&1"
 
 # ============================================
 # 12. 水印功能测试
@@ -234,10 +234,10 @@ test_step "11.2 EXIF 旋转功能" "grep -r 'orientation\|rotate\|Rotation' /Use
 print_section "1️⃣2️⃣  水印功能测试"
 
 # 检查水印配置
-test_step "12.1 水印配置支持" "grep -r 'watermark\|Watermark' /Users/apple/Documents/Project/PIS/pis-standalone/services/worker/src/processor.ts > /dev/null 2>&1"
+test_step "12.1 水印配置支持" "grep -r 'watermark\|Watermark' /Users/apple/Documents/Project/PIS/pis/services/worker/src/processor.ts > /dev/null 2>&1"
 
 # 检查水印类型（文本/Logo）
-test_step "12.2 水印类型支持" "grep -r 'text.*logo\|logo.*text' /Users/apple/Documents/Project/PIS/pis-standalone/services/worker/src/processor.ts > /dev/null 2>&1 || grep -r '\"text\"\|\"logo\"' /Users/apple/Documents/Project/PIS/pis-standalone/services/worker/src/processor.ts > /dev/null 2>&1"
+test_step "12.2 水印类型支持" "grep -r 'text.*logo\|logo.*text' /Users/apple/Documents/Project/PIS/pis/services/worker/src/processor.ts > /dev/null 2>&1 || grep -r '\"text\"\|\"logo\"' /Users/apple/Documents/Project/PIS/pis/services/worker/src/processor.ts > /dev/null 2>&1"
 
 # ============================================
 # 13. 风格预设测试
@@ -245,10 +245,10 @@ test_step "12.2 水印类型支持" "grep -r 'text.*logo\|logo.*text' /Users/app
 print_section "1️⃣3️⃣  风格预设测试"
 
 # 检查风格预设功能
-test_step "13.1 风格预设功能" "grep -r 'style.*preset\|StylePreset\|stylePreset' /Users/apple/Documents/Project/PIS/pis-standalone/services/worker/src/processor.ts > /dev/null 2>&1"
+test_step "13.1 风格预设功能" "grep -r 'style.*preset\|StylePreset\|stylePreset' /Users/apple/Documents/Project/PIS/pis/services/worker/src/processor.ts > /dev/null 2>&1"
 
 # 检查风格预设文件
-test_step "13.2 风格预设配置文件" "[ -f /Users/apple/Documents/Project/PIS/pis-standalone/services/worker/src/lib/style-presets.ts ]"
+test_step "13.2 风格预设配置文件" "[ -f /Users/apple/Documents/Project/PIS/pis/services/worker/src/lib/style-presets.ts ]"
 
 # ============================================
 # 14. 重新处理功能测试

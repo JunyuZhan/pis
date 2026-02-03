@@ -481,7 +481,7 @@ run_migrations() {
     
     echo "📋 PostgreSQL 执行步骤（推荐，自动初始化）:"
     echo "  - Docker Compose 会在首次启动时自动初始化数据库"
-    echo "  - 如果使用 docker-compose.standalone.yml，无需手动操作"
+    echo "  - 如果使用 docker-compose.yml，无需手动操作"
     echo ""
     echo "  手动初始化（外部数据库或已有数据卷）:"
     echo "  1. 连接到数据库: psql -U pis -d pis"

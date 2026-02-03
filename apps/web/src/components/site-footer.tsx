@@ -30,7 +30,7 @@ export function SiteFooter() {
           <div className="flex items-center gap-1">
             <span>{t('poweredBy')}</span>
             <Link
-              href="https://github.com/JunyuZhan/pis-standalone"
+              href="https://github.com/JunyuZhan/pis"
               target="_blank"
               rel="noopener noreferrer"
               className="text-accent hover:underline transition-colors"

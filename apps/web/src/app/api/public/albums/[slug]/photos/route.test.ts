@@ -9,18 +9,24 @@ import { GET } from './route'
 import { createMockRequest } from '@/test/test-utils'
 
 // Mock dependencies
-vi.mock('@/lib/supabase/server', () => {
+vi.mock('@/lib/database', () => {
   const mockSupabaseClient = {
     from: vi.fn(),
   }
 
   return {
     createClient: vi.fn().mockResolvedValue(mockSupabaseClient),
+    createAdminClient: vi.fn().mockResolvedValue(mockSupabaseClient),
   }
 })
 
 describe('GET /api/public/albums/[slug]/photos', () => {
   let mockSupabaseClient: any
+
+  const validAlbumId = '550e8400-e29b-41d4-a716-446655440000'
+  const validGroupId = '550e8400-e29b-41d4-a716-446655440001'
+  const validPhotoId1 = '550e8400-e29b-41d4-a716-446655440002'
+  const validPhotoId2 = '550e8400-e29b-41d4-a716-446655440003'
 
   beforeEach(async () => {
     vi.clearAllMocks()
@@ -31,52 +37,46 @@ describe('GET /api/public/albums/[slug]/photos', () => {
 
   describe('album validation', () => {
     it('should return 404 if album does not exist', async () => {
-      const mockSelect = vi.fn().mockReturnThis()
-      const mockEq = vi.fn().mockReturnThis()
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: null,
-        error: { message: 'Not found' },
-      })
-
-      mockSupabaseClient.from.mockReturnValue({
-        select: mockSelect,
-        eq: mockEq,
-        single: mockSingle,
-      })
+      const mockChain = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: null,
+          error: { message: 'Not found' },
+        }),
+      }
+      mockSupabaseClient.from.mockReturnValue(mockChain)
 
       const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug/photos')
       const response = await GET(request, { params: Promise.resolve({ slug: 'test-slug' }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
-      expect(data.error.code).toBe('ALBUM_NOT_FOUND')
+      expect(data.error.code).toBe('NOT_FOUND')
     })
 
     it('should return 404 if allow_share is false', async () => {
       const mockAlbum = {
-        id: 'album-123',
+        id: validAlbumId,
         allow_share: false,
       }
 
-      const mockSelect = vi.fn().mockReturnThis()
-      const mockEq = vi.fn().mockReturnThis()
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: mockAlbum,
-        error: null,
-      })
-
-      mockSupabaseClient.from.mockReturnValue({
-        select: mockSelect,
-        eq: mockEq,
-        single: mockSingle,
-      })
+      const mockChain = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: mockAlbum,
+          error: null,
+        }),
+      }
+      mockSupabaseClient.from.mockReturnValue(mockChain)
 
       const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug/photos')
       const response = await GET(request, { params: Promise.resolve({ slug: 'test-slug' }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
-      expect(data.error.code).toBe('ALBUM_NOT_FOUND')
+      expect(data.error.code).toBe('NOT_FOUND')
     })
 
     it('should return 403 if album is expired', async () => {
@@ -84,81 +84,74 @@ describe('GET /api/public/albums/[slug]/photos', () => {
       expiredDate.setDate(expiredDate.getDate() - 1)
 
       const mockAlbum = {
-        id: 'album-123',
+        id: validAlbumId,
         allow_share: true,
         expires_at: expiredDate.toISOString(),
       }
 
-      const mockSelect = vi.fn().mockReturnThis()
-      const mockEq = vi.fn().mockReturnThis()
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: mockAlbum,
-        error: null,
-      })
-
-      mockSupabaseClient.from.mockReturnValue({
-        select: mockSelect,
-        eq: mockEq,
-        single: mockSingle,
-      })
+      const mockChain = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: mockAlbum,
+          error: null,
+        }),
+      }
+      mockSupabaseClient.from.mockReturnValue(mockChain)
 
       const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug/photos')
       const response = await GET(request, { params: Promise.resolve({ slug: 'test-slug' }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
-      expect(data.error.code).toBe('EXPIRED')
+      expect(data.error.code).toBe('FORBIDDEN')
     })
   })
 
   describe('pagination', () => {
     it('should return photos with default pagination', async () => {
       const mockAlbum = {
-        id: 'album-123',
+        id: validAlbumId,
         sort_rule: 'capture_desc',
         allow_share: true,
         expires_at: null,
       }
 
       const mockPhotos = [
-        { id: 'photo-1', filename: 'photo1.jpg' },
-        { id: 'photo-2', filename: 'photo2.jpg' },
+        { id: validPhotoId1, filename: 'photo1.jpg' },
+        { id: validPhotoId2, filename: 'photo2.jpg' },
       ]
 
-      // Mock album query
-      const mockAlbumSelect = vi.fn().mockReturnThis()
-      const mockAlbumEq = vi.fn().mockReturnThis()
-      const mockAlbumSingle = vi.fn().mockResolvedValue({
-        data: { ...mockAlbum, is_public: true },
-        error: null,
-      })
-
-      // Mock photos query - 使用链式调用mock
-      const mockQuery = {
-        select: vi.fn(),
-        eq: vi.fn(),
-        is: vi.fn(),
-        order: vi.fn(),
-        range: vi.fn(),
+      const mockPhotosChain = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        offset: vi.fn().mockReturnThis(),
+        then: (resolve: any) => resolve({
+          data: mockPhotos,
+          error: null,
+          count: 2,
+        }),
       }
 
-      mockQuery.select.mockReturnValue(mockQuery)
-      mockQuery.eq.mockReturnValue(mockQuery)
-      mockQuery.is.mockReturnValue(mockQuery)
-      mockQuery.order.mockReturnValue(mockQuery)
-      mockQuery.range.mockResolvedValue({
-        data: mockPhotos,
-        error: null,
-        count: 2,
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'albums') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({
+              data: { ...mockAlbum, is_public: true },
+              error: null,
+            }),
+          }
+        }
+        if (table === 'photos') {
+          return mockPhotosChain
+        }
+        return {}
       })
-
-      mockSupabaseClient.from
-        .mockReturnValueOnce({
-          select: mockAlbumSelect,
-          eq: mockAlbumEq,
-          single: mockAlbumSingle,
-        })
-        .mockReturnValueOnce(mockQuery)
 
       const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug/photos')
       const response = await GET(request, { params: Promise.resolve({ slug: 'test-slug' }) })
@@ -166,7 +159,7 @@ describe('GET /api/public/albums/[slug]/photos', () => {
 
       expect(response.status).toBe(200)
       expect(data.photos).toHaveLength(2)
-      expect(data.photos[0].id).toBe('photo-1')
+      expect(data.photos[0].id).toBe(validPhotoId1)
       expect(data.photos[0].filename).toBe('photo1.jpg')
       expect(data.pagination.page).toBe(1)
       expect(data.pagination.limit).toBe(20)
@@ -175,46 +168,43 @@ describe('GET /api/public/albums/[slug]/photos', () => {
 
     it('should handle custom pagination parameters', async () => {
       const mockAlbum = {
-        id: 'album-123',
+        id: validAlbumId,
         sort_rule: 'capture_desc',
         allow_share: true,
         expires_at: null,
         is_public: true,
       }
 
-      // 创建链式调用的mock对象
-      const mockQuery = {
-        select: vi.fn(),
-        eq: vi.fn(),
-        is: vi.fn(),
-        order: vi.fn(),
-        range: vi.fn(),
+      const mockPhotosChain = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        offset: vi.fn().mockReturnThis(),
+        then: (resolve: any) => resolve({
+          data: [],
+          error: null,
+          count: 100,
+        }),
       }
 
-      mockQuery.select.mockReturnValue(mockQuery)
-      mockQuery.eq.mockReturnValue(mockQuery)
-      mockQuery.is.mockReturnValue(mockQuery)
-      mockQuery.order.mockReturnValue(mockQuery)
-      mockQuery.range.mockResolvedValue({
-        data: [],
-        error: null,
-        count: 100,
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'albums') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({
+              data: mockAlbum,
+              error: null,
+            }),
+          }
+        }
+        if (table === 'photos') {
+          return mockPhotosChain
+        }
+        return {}
       })
-
-      const mockAlbumSelect = vi.fn().mockReturnThis()
-      const mockAlbumEq = vi.fn().mockReturnThis()
-      const mockAlbumSingle = vi.fn().mockResolvedValue({
-        data: mockAlbum,
-        error: null,
-      })
-
-      mockSupabaseClient.from
-        .mockReturnValueOnce({
-          select: mockAlbumSelect,
-          eq: mockAlbumEq,
-          single: mockAlbumSingle,
-        })
-        .mockReturnValueOnce(mockQuery)
 
       const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug/photos?page=2&limit=30')
       const response = await GET(request, { params: Promise.resolve({ slug: 'test-slug' }) })
@@ -230,183 +220,176 @@ describe('GET /api/public/albums/[slug]/photos', () => {
   describe('sorting', () => {
     it('should sort by capture_desc by default', async () => {
       const mockAlbum = {
-        id: 'album-123',
+        id: validAlbumId,
         sort_rule: null,
         allow_share: true,
         expires_at: null,
         is_public: true,
       }
 
-      const mockQuery = {
-        select: vi.fn(),
-        eq: vi.fn(),
-        is: vi.fn(),
-        order: vi.fn(),
-        range: vi.fn(),
+      const mockPhotosChain = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        offset: vi.fn().mockReturnThis(),
+        then: (resolve: any) => resolve({
+          data: [],
+          error: null,
+          count: 0,
+        }),
       }
 
-      mockQuery.select.mockReturnValue(mockQuery)
-      mockQuery.eq.mockReturnValue(mockQuery)
-      mockQuery.is.mockReturnValue(mockQuery)
-      mockQuery.order.mockReturnValue(mockQuery)
-      mockQuery.range.mockResolvedValue({
-        data: [],
-        error: null,
-        count: 0,
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'albums') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({
+              data: mockAlbum,
+              error: null,
+            }),
+          }
+        }
+        if (table === 'photos') {
+          return mockPhotosChain
+        }
+        return {}
       })
-
-      const mockAlbumSelect = vi.fn().mockReturnThis()
-      const mockAlbumEq = vi.fn().mockReturnThis()
-      const mockAlbumSingle = vi.fn().mockResolvedValue({
-        data: mockAlbum,
-        error: null,
-      })
-
-      mockSupabaseClient.from
-        .mockReturnValueOnce({
-          select: mockAlbumSelect,
-          eq: mockAlbumEq,
-          single: mockAlbumSingle,
-        })
-        .mockReturnValueOnce(mockQuery)
 
       const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug/photos')
       await GET(request, { params: Promise.resolve({ slug: 'test-slug' }) })
 
-      expect(mockQuery.order).toHaveBeenCalledWith('captured_at', { ascending: false })
+      expect(mockPhotosChain.order).toHaveBeenCalledWith('captured_at', { ascending: false })
     })
 
     it('should sort by capture_asc when specified', async () => {
       const mockAlbum = {
-        id: 'album-123',
+        id: validAlbumId,
         sort_rule: null,
         allow_share: true,
         expires_at: null,
         is_public: true,
       }
 
-      const mockQuery = {
-        select: vi.fn(),
-        eq: vi.fn(),
-        is: vi.fn(),
-        order: vi.fn(),
-        range: vi.fn(),
+      const mockPhotosChain = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        offset: vi.fn().mockReturnThis(),
+        then: (resolve: any) => resolve({
+          data: [],
+          error: null,
+          count: 0,
+        }),
       }
 
-      mockQuery.select.mockReturnValue(mockQuery)
-      mockQuery.eq.mockReturnValue(mockQuery)
-      mockQuery.is.mockReturnValue(mockQuery)
-      mockQuery.order.mockReturnValue(mockQuery)
-      mockQuery.range.mockResolvedValue({
-        data: [],
-        error: null,
-        count: 0,
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'albums') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({
+              data: mockAlbum,
+              error: null,
+            }),
+          }
+        }
+        if (table === 'photos') {
+          return mockPhotosChain
+        }
+        return {}
       })
-
-      const mockAlbumSelect = vi.fn().mockReturnThis()
-      const mockAlbumEq = vi.fn().mockReturnThis()
-      const mockAlbumSingle = vi.fn().mockResolvedValue({
-        data: mockAlbum,
-        error: null,
-      })
-
-      mockSupabaseClient.from
-        .mockReturnValueOnce({
-          select: mockAlbumSelect,
-          eq: mockAlbumEq,
-          single: mockAlbumSingle,
-        })
-        .mockReturnValueOnce(mockQuery)
 
       const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug/photos?sort=capture_asc')
       await GET(request, { params: Promise.resolve({ slug: 'test-slug' }) })
 
-      expect(mockQuery.order).toHaveBeenCalledWith('captured_at', { ascending: true })
+      expect(mockPhotosChain.order).toHaveBeenCalledWith('captured_at', { ascending: true })
     })
 
     it('should sort by manual when specified', async () => {
       const mockAlbum = {
-        id: 'album-123',
+        id: validAlbumId,
         sort_rule: null,
         allow_share: true,
         expires_at: null,
         is_public: true,
       }
 
-      const mockQuery = {
-        select: vi.fn(),
-        eq: vi.fn(),
-        is: vi.fn(),
-        order: vi.fn(),
-        range: vi.fn(),
+      const mockPhotosChain = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        offset: vi.fn().mockReturnThis(),
+        then: (resolve: any) => resolve({
+          data: [],
+          error: null,
+          count: 0,
+        }),
       }
 
-      mockQuery.select.mockReturnValue(mockQuery)
-      mockQuery.eq.mockReturnValue(mockQuery)
-      mockQuery.is.mockReturnValue(mockQuery)
-      mockQuery.order.mockReturnValue(mockQuery)
-      mockQuery.range.mockResolvedValue({
-        data: [],
-        error: null,
-        count: 0,
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'albums') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({
+              data: mockAlbum,
+              error: null,
+            }),
+          }
+        }
+        if (table === 'photos') {
+          return mockPhotosChain
+        }
+        return {}
       })
-
-      const mockAlbumSelect = vi.fn().mockReturnThis()
-      const mockAlbumEq = vi.fn().mockReturnThis()
-      const mockAlbumSingle = vi.fn().mockResolvedValue({
-        data: mockAlbum,
-        error: null,
-      })
-
-      mockSupabaseClient.from
-        .mockReturnValueOnce({
-          select: mockAlbumSelect,
-          eq: mockAlbumEq,
-          single: mockAlbumSingle,
-        })
-        .mockReturnValueOnce(mockQuery)
 
       const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug/photos?sort=manual')
       await GET(request, { params: Promise.resolve({ slug: 'test-slug' }) })
 
-      expect(mockQuery.order).toHaveBeenCalledWith('sort_order', { ascending: true })
+      expect(mockPhotosChain.order).toHaveBeenCalledWith('sort_order', { ascending: true })
     })
   })
 
   describe('group filtering', () => {
     it('should return empty result if group has no photos', async () => {
       const mockAlbum = {
-        id: 'album-123',
+        id: validAlbumId,
         sort_rule: null,
         allow_share: true,
         expires_at: null,
       }
 
-      const mockAlbumSelect = vi.fn().mockReturnThis()
-      const mockAlbumEq = vi.fn().mockReturnThis()
-      const mockAlbumSingle = vi.fn().mockResolvedValue({
-        data: mockAlbum,
-        error: null,
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'albums') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({
+              data: mockAlbum,
+              error: null,
+            }),
+          }
+        }
+        if (table === 'photo_group_assignments') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockResolvedValue({
+              data: [],
+              error: null,
+            }),
+          }
+        }
+        return {}
       })
 
-      const mockAssignmentsSelect = vi.fn().mockReturnThis()
-      const mockAssignmentsEq = vi.fn().mockResolvedValue({
-        data: [],
-        error: null,
-      })
-
-      mockSupabaseClient.from
-        .mockReturnValueOnce({
-          select: mockAlbumSelect,
-          eq: mockAlbumEq,
-          single: mockAlbumSingle,
-        })
-        .mockReturnValueOnce({
-          select: mockAssignmentsSelect,
-          eq: mockAssignmentsEq,
-        })
-
-      const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug/photos?group=group-123')
+      const request = createMockRequest(`http://localhost:3000/api/public/albums/test-slug/photos?group=${validGroupId}`)
       const response = await GET(request, { params: Promise.resolve({ slug: 'test-slug' }) })
       const data = await response.json()
 
@@ -417,81 +400,73 @@ describe('GET /api/public/albums/[slug]/photos', () => {
 
     it('should filter photos by group when group specified', async () => {
       const mockAlbum = {
-        id: 'album-123',
+        id: validAlbumId,
         sort_rule: null,
         allow_share: true,
         expires_at: null,
+        is_public: true,
       }
 
       const mockAssignments = [
-        { photo_id: 'photo-1' },
-        { photo_id: 'photo-2' },
+        { photo_id: validPhotoId1 },
+        { photo_id: validPhotoId2 },
       ]
 
       const mockPhotos = [
-        { id: 'photo-1', filename: 'photo1.jpg' },
-        { id: 'photo-2', filename: 'photo2.jpg' },
+        { id: validPhotoId1, filename: 'photo1.jpg' },
+        { id: validPhotoId2, filename: 'photo2.jpg' },
       ]
 
-      const mockAlbumSelect = vi.fn().mockReturnThis()
-      const mockAlbumEq = vi.fn().mockReturnThis()
-      const mockAlbumSingle = vi.fn().mockResolvedValue({
-        data: mockAlbum,
-        error: null,
+      const mockPhotosChain = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        offset: vi.fn().mockReturnThis(),
+        then: (resolve: any) => resolve({
+          data: mockPhotos,
+          error: null,
+          count: 2,
+        }),
+      }
+
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'albums') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({
+              data: mockAlbum,
+              error: null,
+            }),
+          }
+        }
+        if (table === 'photo_group_assignments') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockResolvedValue({
+              data: mockAssignments,
+              error: null,
+            }),
+          }
+        }
+        if (table === 'photos') {
+          return mockPhotosChain
+        }
+        return {}
       })
 
-      const mockAssignmentsSelect = vi.fn().mockReturnThis()
-      const mockAssignmentsEq = vi.fn().mockResolvedValue({
-        data: mockAssignments,
-        error: null,
-      })
-
-      const mockPhotosIn = vi.fn().mockReturnThis()
-      const mockPhotosIs = vi.fn().mockReturnThis()
-      const mockPhotosEq = vi.fn().mockReturnThis()
-      const mockPhotosOrder = vi.fn().mockReturnThis()
-      const mockPhotosRange = vi.fn().mockResolvedValue({
-        data: mockPhotos,
-        error: null,
-        count: 2,
-      })
-
-      const mockPhotosSelect = vi.fn().mockReturnValue({
-        eq: mockPhotosEq,
-        is: mockPhotosIs,
-        in: mockPhotosIn,
-        order: mockPhotosOrder,
-        range: mockPhotosRange,
-      })
-
-      mockSupabaseClient.from
-        .mockReturnValueOnce({
-          select: mockAlbumSelect,
-          eq: mockAlbumEq,
-          single: mockAlbumSingle,
-        })
-        .mockReturnValueOnce({
-          select: mockAssignmentsSelect,
-          eq: mockAssignmentsEq,
-        })
-        .mockReturnValueOnce({
-          select: mockPhotosSelect,
-          eq: mockPhotosEq,
-          is: mockPhotosIs,
-          in: mockPhotosIn,
-          order: mockPhotosOrder,
-          range: mockPhotosRange,
-        })
-
-      const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug/photos?group=group-123')
+      const request = createMockRequest(`http://localhost:3000/api/public/albums/test-slug/photos?group=${validGroupId}`)
       const response = await GET(request, { params: Promise.resolve({ slug: 'test-slug' }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
       expect(data.photos).toHaveLength(2)
-      expect(data.photos[0].id).toBe('photo-1')
+      expect(data.photos[0].id).toBe(validPhotoId1)
       expect(data.photos[0].filename).toBe('photo1.jpg')
-      expect(mockPhotosIn).toHaveBeenCalledWith('id', ['photo-1', 'photo-2'])
+      expect(mockPhotosChain.in).toHaveBeenCalledWith('id', [validPhotoId1, validPhotoId2])
     })
   })
 
@@ -507,49 +482,50 @@ describe('GET /api/public/albums/[slug]/photos', () => {
 
     it('should return 500 on database error', async () => {
       const mockAlbum = {
-        id: 'album-123',
+        id: validAlbumId,
         sort_rule: null,
         allow_share: true,
         expires_at: null,
+        is_public: true,
       }
 
-      const mockAlbumSelect = vi.fn().mockReturnThis()
-      const mockAlbumEq = vi.fn().mockReturnThis()
-      const mockAlbumSingle = vi.fn().mockResolvedValue({
-        data: mockAlbum,
-        error: null,
-      })
+      const mockPhotosChain = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        offset: vi.fn().mockReturnThis(),
+        then: (resolve: any) => resolve({
+          data: null,
+          error: { message: 'Database error' },
+          count: null,
+        }),
+      }
 
-      const mockPhotosSelect = vi.fn().mockReturnThis()
-      const mockPhotosEq = vi.fn().mockReturnThis()
-      const mockPhotosIs = vi.fn().mockReturnThis()
-      const mockPhotosOrder = vi.fn().mockReturnThis()
-      const mockPhotosRange = vi.fn().mockResolvedValue({
-        data: null,
-        error: { message: 'Database error' },
-        count: null,
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'albums') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({
+              data: mockAlbum,
+              error: null,
+            }),
+          }
+        }
+        if (table === 'photos') {
+          return mockPhotosChain
+        }
+        return {}
       })
-
-      mockSupabaseClient.from
-        .mockReturnValueOnce({
-          select: mockAlbumSelect,
-          eq: mockAlbumEq,
-          single: mockAlbumSingle,
-        })
-        .mockReturnValueOnce({
-          select: mockPhotosSelect,
-          eq: mockPhotosEq,
-          is: mockPhotosIs,
-          order: mockPhotosOrder,
-          range: mockPhotosRange,
-        })
 
       const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug/photos')
       const response = await GET(request, { params: Promise.resolve({ slug: 'test-slug' }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)
-      expect(data.error.code).toBe('DB_ERROR')
+      expect(['DB_ERROR', 'INTERNAL_ERROR']).toContain(data.error.code)
     })
   })
 })

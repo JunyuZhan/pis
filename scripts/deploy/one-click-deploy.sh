@@ -4,7 +4,7 @@
 # ============================================
 # 
 # 使用方法：
-#   curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/scripts/one-click-deploy.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/one-click-deploy.sh | bash
 # 
 # 或在项目目录中运行：
 #   bash scripts/one-click-deploy.sh
@@ -132,7 +132,7 @@ install_docker_compose() {
 # 检测项目目录
 detect_project_dir() {
     # 如果当前目录是项目目录
-    if [ -f "docker/deploy.sh" ] || [ -f "docker/docker-compose.standalone.yml" ]; then
+    if [ -f "docker/deploy.sh" ] || [ -f "docker/docker-compose.yml" ]; then
         PROJECT_DIR="$(pwd)"
         export PROJECT_DIR
         success "检测到项目目录: $PROJECT_DIR"
@@ -157,7 +157,7 @@ detect_project_dir() {
             fi
         fi
         
-        GITHUB_REPO="${GITHUB_REPO:-https://github.com/JunyuZhan/pis-standalone.git}"
+        GITHUB_REPO="${GITHUB_REPO:-https://github.com/JunyuZhan/pis.git}"
         GITHUB_BRANCH="${GITHUB_BRANCH:-main}"
         
         git clone -b ${GITHUB_BRANCH} ${GITHUB_REPO} ${PROJECT_DIR}
@@ -207,7 +207,7 @@ DATABASE_NAME=${POSTGRES_DB}
 DATABASE_USER=${POSTGRES_USER}
 DATABASE_PASSWORD=${POSTGRES_PASSWORD}
 
-# PostgreSQL 容器配置（docker-compose.standalone.yml 使用）
+# PostgreSQL 容器配置（docker-compose.yml 使用）
 POSTGRES_DB=${POSTGRES_DB}
 POSTGRES_USER=${POSTGRES_USER}
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -296,8 +296,8 @@ start_services() {
     
     # 使用 standalone compose 文件（强制覆盖以确保使用正确的配置）
     info "使用 standalone 模式配置..."
-    cp docker-compose.standalone.yml docker-compose.yml
-    success "已复制 docker-compose.standalone.yml 为 docker-compose.yml"
+    cp docker-compose.yml docker-compose.yml
+    success "已复制 docker-compose.yml 为 docker-compose.yml"
     
     # 停止旧容器（如果有）
     $COMPOSE_CMD down 2>/dev/null || true
@@ -464,7 +464,7 @@ main() {
 # 3. 检测项目目录
 detect_project_dir() {
     # 如果当前目录是项目目录
-    if [ -f "docker/deploy.sh" ] || [ -f "docker/docker-compose.standalone.yml" ]; then
+    if [ -f "docker/deploy.sh" ] || [ -f "docker/docker-compose.yml" ]; then
         PROJECT_DIR="$(pwd)"
         export PROJECT_DIR
         success "检测到项目目录: $PROJECT_DIR"
@@ -489,7 +489,7 @@ detect_project_dir() {
             fi
         fi
         
-        GITHUB_REPO="${GITHUB_REPO:-https://github.com/JunyuZhan/pis-standalone.git}"
+        GITHUB_REPO="${GITHUB_REPO:-https://github.com/JunyuZhan/pis.git}"
         GITHUB_BRANCH="${GITHUB_BRANCH:-main}"
         
         git clone -b ${GITHUB_BRANCH} ${GITHUB_REPO} ${PROJECT_DIR}

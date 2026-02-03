@@ -69,7 +69,7 @@ elif [ -d "$(dirname "$0")/.." ]; then
 else
   echo "❌ 未找到项目目录"
   echo "   请设置 PROJECT_DIR 环境变量或确保在项目目录中运行"
-  echo "   例如: PROJECT_DIR=/path/to/pis-standalone bash scripts/update-worker-on-server.sh"
+  echo "   例如: PROJECT_DIR=/path/to/pis bash scripts/update-worker-on-server.sh"
   exit 1
 fi
 

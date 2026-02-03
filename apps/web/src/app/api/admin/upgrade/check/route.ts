@@ -45,13 +45,13 @@ export async function GET(request: NextRequest) {
     }
 
     // 获取项目根目录
-    // 优先级：环境变量 > Docker 容器挂载路径（/opt/pis-standalone） > 从当前文件位置推断
+    // 优先级：环境变量 > Docker 容器挂载路径（/opt/pis） > 从当前文件位置推断
     let projectRoot = process.env.PROJECT_ROOT
     
     if (!projectRoot) {
       // 尝试常见的 Docker 部署路径
       const commonPaths = [
-        '/opt/pis-standalone',  // Docker 容器挂载路径（docker-compose 中配置）
+        '/opt/pis',  // Docker 容器挂载路径（docker-compose 中配置）
         '/app',                  // Docker 容器内 Next.js 应用路径
       ]
       

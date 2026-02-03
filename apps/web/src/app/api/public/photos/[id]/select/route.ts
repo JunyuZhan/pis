@@ -51,7 +51,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     try {
       body = await request.json()
     } catch {
-      return handleError(new Error('请求格式错误'), '请求体格式错误，请提供有效的JSON')
+      return ApiError.badRequest('请求体格式错误，请提供有效的JSON')
     }
 
     // 验证输入
@@ -76,16 +76,29 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return ApiError.notFound('照片不存在')
     }
 
+    const photo = photoResult.data
+
     // 验证相册存在且未删除
     const albumResult = await db
-      .from<{ id: string }>('albums')
-      .select('id')
-      .eq('id', photoResult.data.album_id)
+      .from<{ id: string; is_public: boolean; expires_at: string | null }>('albums')
+      .select('id, is_public, expires_at')
+      .eq('id', photo.album_id)
       .is('deleted_at', null)
       .single()
 
     if (albumResult.error || !albumResult.data) {
       return ApiError.notFound('相册不存在')
+    }
+
+    const album = albumResult.data
+
+    // 验证相册访问权限
+    if (!album.is_public) {
+      return ApiError.forbidden('禁止访问非公开相册')
+    }
+
+    if (album.expires_at && new Date(album.expires_at) < new Date()) {
+      return ApiError.forbidden('相册已过期')
     }
 
     // 更新选中状态
@@ -125,8 +138,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const db = await createClient()
 
     const photoResult = await db
-      .from<{ id: string; is_selected: boolean }>('photos')
-      .select('id, is_selected')
+      .from<{ id: string; is_selected: boolean; album_id: string }>('photos')
+      .select('id, is_selected, album_id')
       .eq('id', id)
       .eq('status', 'completed')
       .is('deleted_at', null)
@@ -137,6 +150,28 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const photo = photoResult.data
+
+    // 验证相册状态
+    const albumResult = await db
+      .from<{ id: string; is_public: boolean; expires_at: string | null }>('albums')
+      .select('id, is_public, expires_at')
+      .eq('id', photo.album_id)
+      .is('deleted_at', null)
+      .single()
+
+    if (albumResult.error || !albumResult.data) {
+      return ApiError.notFound('相册不存在')
+    }
+
+    const album = albumResult.data
+
+    if (!album.is_public) {
+      return ApiError.forbidden('禁止访问非公开相册')
+    }
+
+    if (album.expires_at && new Date(album.expires_at) < new Date()) {
+      return ApiError.forbidden('相册已过期')
+    }
     
     return createSuccessResponse({
       id: photo.id,

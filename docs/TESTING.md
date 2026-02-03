@@ -404,10 +404,10 @@ test.skip('这个测试暂时跳过', async () => {
 **解决方案**:
 ```bash
 # 启动所有容器
-docker compose -f docker/docker-compose.standalone.yml up -d
+docker compose -f docker/docker-compose.dev.yml up -d
 
 # 等待容器健康
-docker compose -f docker/docker-compose.standalone.yml ps
+docker compose -f docker/docker-compose.dev.yml ps
 ```
 
 ### Q: 测试失败：端口被占用

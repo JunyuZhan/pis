@@ -22,7 +22,7 @@
 运行引导式部署脚本可以自动生成所有必需的安全密钥：
 
 ```bash
-git clone https://github.com/JunyuZhan/PIS.git
+git clone https://github.com/JunyuZhan/pis.git
 cd pis
 bash docker/deploy.sh
 ```
@@ -193,7 +193,7 @@ CLOUDFLARE_ZONE_ID=55be2d2f25313170ff6a622cda4c37ec
 
 **原因**: Vercel 需要重新部署才能应用新的环境变量
 
-**解决**: 
+**解决**:
 - 在 Vercel Dashboard → Deployments 中点击 **Redeploy**
 - 或推送新的代码触发自动部署
 
@@ -201,7 +201,7 @@ CLOUDFLARE_ZONE_ID=55be2d2f25313170ff6a622cda4c37ec
 
 **原因**: `WORKER_API_KEY` 与 Worker 服务器不一致
 
-**解决**: 
+**解决**:
 - 检查 Vercel 和 Worker 服务器的 `WORKER_API_KEY` 是否完全相同
 - 确保没有多余的空格或换行符
 
@@ -209,7 +209,7 @@ CLOUDFLARE_ZONE_ID=55be2d2f25313170ff6a622cda4c37ec
 
 **原因**: PostgreSQL 连接配置错误
 
-**解决**: 
+**解决**:
 - 检查 `DATABASE_URL` 格式是否正确，或分别检查 `DATABASE_HOST`、`DATABASE_PORT`、`DATABASE_NAME`、`DATABASE_USER`、`DATABASE_PASSWORD`
 - 确保数据库服务器允许来自 Vercel IP 的连接
 - 如果使用 SSL，确保 `DATABASE_SSL=true` 且数据库服务器支持 SSL
@@ -218,7 +218,7 @@ CLOUDFLARE_ZONE_ID=55be2d2f25313170ff6a622cda4c37ec
 
 **原因**: `NEXT_PUBLIC_MEDIA_URL` 使用了 HTTP 或配置错误
 
-**解决**: 
+**解决**:
 - 确保 `NEXT_PUBLIC_MEDIA_URL` 使用 HTTPS
 - 检查 URL 格式是否正确（包含 `/pis-photos` 路径）
 
@@ -227,7 +227,7 @@ CLOUDFLARE_ZONE_ID=55be2d2f25313170ff6a622cda4c37ec
 ## Worker 服务器环境变量
 
 ### 文件位置
-`/opt/PIS/docker/.env`
+`/opt/pis/docker/.env`
 
 ### 完整配置
 
@@ -593,10 +593,10 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```bash
 # 1. 编辑环境变量文件
 ssh root@192.168.50.10
-vi /opt/PIS/docker/.env
+vi /opt/pis/docker/.env
 
 # 2. 重启 Worker 服务
-cd /opt/PIS/docker
+cd /opt/pis/docker
 docker-compose restart worker
 
 # 3. 验证配置
@@ -607,7 +607,7 @@ docker-compose exec worker env | grep MINIO
 
 ```bash
 # 备份 Worker 服务器配置
-ssh root@192.168.50.10 "cp /opt/PIS/docker/.env /opt/PIS/docker/.env.backup.$(date +%Y%m%d)"
+ssh root@192.168.50.10 "cp /opt/pis/docker/.env /opt/pis/docker/.env.backup.$(date +%Y%m%d)"
 
 # 备份 frpc 配置
 ssh root@192.168.50.10 "cp /opt/1panel/apps/frpc/frpc/data/frpc.toml /opt/1panel/apps/frpc/frpc/data/frpc.toml.backup.$(date +%Y%m%d)"

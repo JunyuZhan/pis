@@ -152,9 +152,9 @@ print_section "3️⃣  代码质量测试"
 if [ "$SKIP_BUILD" = false ]; then
     echo -e "${YELLOW}正在运行代码质量检查...${NC}"
     
-    test_check "TypeScript 类型检查" "cd /Users/apple/Documents/Project/PIS/pis-standalone && pnpm --filter @pis/web exec tsc --noEmit" true
-    test_check "ESLint 代码检查" "cd /Users/apple/Documents/Project/PIS/pis-standalone && pnpm lint" true
-    test_check "代码格式化检查" "cd /Users/apple/Documents/Project/PIS/pis-standalone && pnpm format --check" true
+    test_check "TypeScript 类型检查" "cd /Users/apple/Documents/Project/PIS/pis && pnpm --filter @pis/web exec tsc --noEmit" true
+    test_check "ESLint 代码检查" "cd /Users/apple/Documents/Project/PIS/pis && pnpm lint" true
+    test_check "代码格式化检查" "cd /Users/apple/Documents/Project/PIS/pis && pnpm format --check" true
 else
     echo -e "${YELLOW}跳过代码质量检查（--skip-build）${NC}"
 fi
@@ -165,7 +165,7 @@ fi
 print_section "4️⃣  单元测试和集成测试"
 
 echo -e "${YELLOW}正在运行测试套件...${NC}"
-test_check "运行所有测试" "cd /Users/apple/Documents/Project/PIS/pis-standalone && pnpm test" true
+test_check "运行所有测试" "cd /Users/apple/Documents/Project/PIS/pis && pnpm test" true
 
 # ============================================
 # 5. API 业务逻辑测试
@@ -241,7 +241,7 @@ print_section "8️⃣  安全测试"
 
 if [ "$SKIP_SECURITY" = false ]; then
     # 运行安全检查脚本
-    test_check "运行安全检查脚本" "cd /Users/apple/Documents/Project/PIS/pis-standalone && bash scripts/utils/check-security.sh" true
+    test_check "运行安全检查脚本" "cd /Users/apple/Documents/Project/PIS/pis && bash scripts/utils/check-security.sh" true
     
     # SQL 注入测试（登录端点）
     echo -e "${YELLOW}进行 SQL 注入测试...${NC}"
@@ -273,13 +273,13 @@ fi
 print_section "9️⃣  功能完整性测试"
 
 # 检查关键文件是否存在
-test_check "Web 应用构建输出存在" "test -d /Users/apple/Documents/Project/PIS/pis-standalone/apps/web/.next || docker exec pis-web ls -d /app/apps/web/.next > /dev/null 2>&1" true
+test_check "Web 应用构建输出存在" "test -d /Users/apple/Documents/Project/PIS/pis/apps/web/.next || docker exec pis-web ls -d /app/apps/web/.next > /dev/null 2>&1" true
 
 # 检查环境变量配置
-test_check "环境变量文件存在" "test -f /Users/apple/Documents/Project/PIS/pis-standalone/.env.example"
+test_check "环境变量文件存在" "test -f /Users/apple/Documents/Project/PIS/pis/.env.example"
 
 # 检查 Docker Compose 配置
-test_check "Docker Compose 配置存在" "test -f /Users/apple/Documents/Project/PIS/pis-standalone/docker/docker-compose.standalone.yml"
+test_check "Docker Compose 配置存在" "test -f /Users/apple/Documents/Project/PIS/pis/docker/docker-compose.dev.yml"
 
 # ============================================
 # 10. 日志和错误处理测试

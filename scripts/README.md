@@ -76,11 +76,11 @@ bash scripts/utils/setup-fonts.sh
 ### 一键部署
 ```bash
 # 完全自动化部署（推荐）
-curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/scripts/deploy/one-click-deploy.sh | bash
+curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/deploy/one-click-deploy.sh | bash
 
 # 或交互式配置部署
-git clone https://github.com/JunyuZhan/pis-standalone.git
-cd pis-standalone/docker
+git clone https://github.com/JunyuZhan/pis.git
+cd pis/docker
 bash deploy.sh
 ```
 

@@ -26,7 +26,7 @@ Internet
 
 ```bash
 cd docker
-vim docker-compose.standalone.yml
+vim docker-compose.yml
 ```
 
 修改 `nginx` 服务的端口映射：
@@ -78,8 +78,8 @@ NEXT_PUBLIC_MEDIA_URL=https://yourname.ddnsto.com/media
 
 ```bash
 cd docker
-docker compose -f docker-compose.standalone.yml down
-docker compose -f docker-compose.standalone.yml up -d
+docker compose -f docker-compose.yml down
+docker compose -f docker-compose.yml up -d
 ```
 
 ### 步骤 4：验证本地访问
@@ -346,7 +346,7 @@ nginx:
 ```bash
 # 1. 修改端口
 cd docker
-sed -i 's/"80:80"/"8080:80"/' docker-compose.standalone.yml
+sed -i 's/"80:80"/"8080:80"/' docker-compose.yml
 
 # 2. 更新环境变量（需要手动编辑域名）
 cd ..
@@ -355,7 +355,7 @@ vim .env
 
 # 3. 重启服务
 cd docker
-docker compose -f docker-compose.standalone.yml up -d
+docker compose -f docker-compose.yml up -d
 
 # 4. 验证
 curl http://localhost:8080/health

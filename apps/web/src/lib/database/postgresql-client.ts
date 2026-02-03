@@ -39,6 +39,20 @@ import type { DatabaseFilters, DatabaseValue, QueryParameterValue, RpcParams } f
 /** 全局连接池（单例模式） */
 let pool: Pool | null = null
 
+function isTruthyEnv(value?: string): boolean {
+  if (!value) return false
+  return ['true', '1', 'yes', 'y', 'on'].includes(value.toLowerCase())
+}
+
+function shouldEnableSsl(connectionString?: string): boolean {
+  const sslEnv = process.env.DATABASE_SSL
+  if (sslEnv !== undefined) {
+    return isTruthyEnv(sslEnv)
+  }
+  if (!connectionString) return false
+  return /(sslmode=require|ssl=true|ssl=1)/i.test(connectionString)
+}
+
 /**
  * 获取 PostgreSQL 连接池
  *
@@ -56,6 +70,7 @@ let pool: Pool | null = null
 function getPool(): Pool {
   if (!pool) {
     const connectionString = process.env.DATABASE_URL
+    const enableSsl = shouldEnableSsl(connectionString)
     
     if (!connectionString) {
       // 从环境变量构建连接字符串
@@ -63,8 +78,9 @@ function getPool(): Pool {
       const port = parseInt(process.env.DATABASE_PORT || process.env.POSTGRES_PORT || '5432', 10)
       const database = process.env.DATABASE_NAME || process.env.POSTGRES_DB || 'pis'
       const user = process.env.DATABASE_USER || process.env.POSTGRES_USER || 'pis'
+      // 优先使用 DATABASE_PASSWORD，如果未设置则使用 POSTGRES_PASSWORD，最后默认为空
       const password = process.env.DATABASE_PASSWORD || process.env.POSTGRES_PASSWORD || ''
-      const ssl = process.env.DATABASE_SSL === 'true'
+      const ssl = enableSsl
       
       pool = new Pool({
         host,
@@ -85,6 +101,7 @@ function getPool(): Pool {
     } else {
       pool = new Pool({
         connectionString,
+        ssl: enableSsl ? { rejectUnauthorized: false } : false,
         max: 20,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 2000,

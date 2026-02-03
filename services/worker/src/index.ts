@@ -32,6 +32,20 @@ for (const envPath of envPaths) {
   }
 }
 
+// 加载 .env.local（如果存在，会覆盖 .env 中的配置）
+// 支持容器内挂载路径和项目根目录
+const envLocalPaths = [
+  '/app/.env.local', // Docker 容器挂载路径
+  resolve(rootDir, '.env.local'), // 项目根目录
+];
+
+for (const envLocalPath of envLocalPaths) {
+  if (existsSync(envLocalPath)) {
+    config({ path: envLocalPath, override: true });
+    break;
+  }
+}
+
 // 初始化 logger（需要在加载环境变量之后）
 // 使用动态导入确保环境变量已加载
 let logger: any;

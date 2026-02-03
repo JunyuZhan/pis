@@ -92,7 +92,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         photoIds = (assignmentsResult.data as PhotoGroupAssignment[]).map((a) => a.photo_id)
       } else {
         // 如果分组中没有照片，直接返回空结果
-        return createSuccessResponse({
+        return NextResponse.json({
           photos: [],
           pagination: {
             page: 1,

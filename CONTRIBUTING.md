@@ -16,7 +16,7 @@ This project adheres to a [Code of Conduct](CODE_OF_CONDUCT.md). By participatin
 
 ### Reporting Bugs
 
-1. Check if the bug has already been reported in [Issues](https://github.com/JunyuZhan/pis-standalone/issues)
+1. Check if the bug has already been reported in [Issues](https://github.com/JunyuZhan/pis/issues)
 2. If not, create a new issue with:
    - Clear title and description
    - Steps to reproduce

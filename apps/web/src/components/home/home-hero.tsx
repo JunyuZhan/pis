@@ -16,7 +16,9 @@ interface HomeHeroProps {
 export function HomeHero({ featuredAlbum, coverPhoto }: HomeHeroProps) {
   const t = useTranslations('home.hero')
   const [isLoaded, setIsLoaded] = useState(false)
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
+  // 默认假设用户偏好减少动画，确保文字初始可见
+  // 如果检测到用户不偏好减少动画，再启用动画效果
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(true)
   // 使用安全的媒体 URL（自动修复 localhost HTTPS 问题）
   const mediaUrl = getSafeMediaUrl()
   const { scrollY } = useScroll()
@@ -86,9 +88,9 @@ export function HomeHero({ featuredAlbum, coverPhoto }: HomeHeroProps) {
         <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
           {/* Logo/品牌标识 */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: prefersReducedMotion ? 1 : 0, y: prefersReducedMotion ? 0 : 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.6, ease: 'easeOut' }}
             className="flex items-center justify-center gap-1.5 sm:gap-2 mb-1 sm:mb-2"
           >
             <Aperture className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
@@ -99,9 +101,9 @@ export function HomeHero({ featuredAlbum, coverPhoto }: HomeHeroProps) {
 
           {/* 主标题 */}
           <motion.h1
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: prefersReducedMotion ? 1 : 0, y: prefersReducedMotion ? 0 : 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.1, ease: 'easeOut' }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.7, delay: prefersReducedMotion ? 0 : 0.1, ease: 'easeOut' }}
             className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-serif font-bold text-white drop-shadow-2xl leading-tight px-2"
           >
             {t('title')}
@@ -111,9 +113,9 @@ export function HomeHero({ featuredAlbum, coverPhoto }: HomeHeroProps) {
 
           {/* 副标题 */}
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: prefersReducedMotion ? 1 : 0, y: prefersReducedMotion ? 0 : 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2, ease: 'easeOut' }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.7, delay: prefersReducedMotion ? 0 : 0.2, ease: 'easeOut' }}
             className="text-sm sm:text-base md:text-lg lg:text-xl text-white/90 font-light tracking-wide max-w-2xl mx-auto px-2"
           >
             {t('tagline')}
@@ -122,9 +124,9 @@ export function HomeHero({ featuredAlbum, coverPhoto }: HomeHeroProps) {
           {/* 特色相册信息 */}
           {featuredAlbum && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: prefersReducedMotion ? 1 : 0, y: prefersReducedMotion ? 0 : 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.3, ease: 'easeOut' }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.7, delay: prefersReducedMotion ? 0 : 0.3, ease: 'easeOut' }}
               className="pt-2 sm:pt-4"
             >
               <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
@@ -142,9 +144,9 @@ export function HomeHero({ featuredAlbum, coverPhoto }: HomeHeroProps) {
       {/* 向下滚动提示 */}
       <motion.a
         href="#works"
-        initial={{ opacity: 0 }}
+        initial={{ opacity: prefersReducedMotion ? 1 : 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1.2, duration: 0.5 }}
+        transition={{ delay: prefersReducedMotion ? 0 : 1.2, duration: prefersReducedMotion ? 0 : 0.5 }}
         className="absolute bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center text-white/70 cursor-pointer hover:text-white transition-colors touch-manipulation"
       >
         <span className="text-[10px] sm:text-xs mb-1 sm:mb-2 tracking-wider uppercase">{t('explore')}</span>

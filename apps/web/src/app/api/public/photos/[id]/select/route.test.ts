@@ -9,23 +9,19 @@ import { GET, PATCH } from './route'
 import { createMockRequest } from '@/test/test-utils'
 
 // Mock dependencies
-vi.mock('@/lib/supabase/server', () => {
-  const mockAuth = {
-    getUser: vi.fn(),
+vi.mock('@/lib/database', () => {
+  const mockAdminClient = {
+    from: vi.fn(),
+    update: vi.fn(),
   }
 
   const mockSupabaseClient = {
-    auth: mockAuth,
-    from: vi.fn(),
-  }
-
-  const mockAdminClient = {
     from: vi.fn(),
   }
 
   return {
     createClient: vi.fn().mockResolvedValue(mockSupabaseClient),
-    createAdminClient: vi.fn().mockReturnValue(mockAdminClient),
+    createAdminClient: vi.fn().mockResolvedValue(mockAdminClient),
   }
 })
 
@@ -35,24 +31,37 @@ describe('GET /api/public/photos/[id]/select', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     
-    const { createClient } = await import('@/lib/supabase/server')
+    const { createClient } = await import('@/lib/database')
     mockSupabaseClient = await createClient()
   })
 
   describe('photo retrieval', () => {
     it('should return photo selection status successfully', async () => {
       const mockPhoto = {
-        id: 'photo-123',
+        id: '550e8400-e29b-41d4-a716-446655440000',
         is_selected: true,
+        album_id: '550e8400-e29b-41d4-a716-446655440001',
+      }
+
+      const mockAlbum = {
+        id: '550e8400-e29b-41d4-a716-446655440001',
+        is_public: true,
+        deleted_at: null,
+        expires_at: null,
       }
 
       const mockSelect = vi.fn().mockReturnThis()
       const mockEq = vi.fn().mockReturnThis()
       const mockIs = vi.fn().mockReturnThis()
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: mockPhoto,
-        error: null,
-      })
+      const mockSingle = vi.fn()
+        .mockResolvedValueOnce({
+          data: mockPhoto,
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: mockAlbum,
+          error: null,
+        })
 
       mockSupabaseClient.from.mockReturnValue({
         select: mockSelect,
@@ -61,13 +70,13 @@ describe('GET /api/public/photos/[id]/select', () => {
         single: mockSingle,
       })
 
-      const request = createMockRequest('http://localhost:3000/api/public/photos/photo-123/select')
-      const response = await GET(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const request = createMockRequest('http://localhost:3000/api/public/photos/550e8400-e29b-41d4-a716-446655440000/select')
+      const response = await GET(request, { params: Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.id).toBe('photo-123')
-      expect(data.isSelected).toBe(true)
+      expect(data.data.id).toBe('550e8400-e29b-41d4-a716-446655440000')
+      expect(data.data.isSelected).toBe(true)
     })
 
     it('should return 404 if photo does not exist', async () => {
@@ -86,8 +95,8 @@ describe('GET /api/public/photos/[id]/select', () => {
         single: mockSingle,
       })
 
-      const request = createMockRequest('http://localhost:3000/api/public/photos/photo-123/select')
-      const response = await GET(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const request = createMockRequest('http://localhost:3000/api/public/photos/550e8400-e29b-41d4-a716-446655440000/select')
+      const response = await GET(request, { params: Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -110,18 +119,103 @@ describe('GET /api/public/photos/[id]/select', () => {
         single: mockSingle,
       })
 
-      const request = createMockRequest('http://localhost:3000/api/public/photos/photo-123/select')
-      const response = await GET(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const request = createMockRequest('http://localhost:3000/api/public/photos/550e8400-e29b-41d4-a716-446655440000/select')
+      const response = await GET(request, { params: Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
       expect(data.error.code).toBe('NOT_FOUND')
     })
+
+    it('should return 403 if album is not public', async () => {
+      const mockPhoto = {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        album_id: '550e8400-e29b-41d4-a716-446655440001',
+      }
+
+      const mockAlbum = {
+        id: '550e8400-e29b-41d4-a716-446655440001',
+        is_public: false,
+        deleted_at: null,
+        expires_at: null,
+      }
+
+      const mockSelect = vi.fn().mockReturnThis()
+      const mockEq = vi.fn().mockReturnThis()
+      const mockIs = vi.fn().mockReturnThis()
+      const mockSingle = vi.fn()
+        .mockResolvedValueOnce({
+          data: mockPhoto,
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: mockAlbum,
+          error: null,
+        })
+
+      mockSupabaseClient.from.mockReturnValue({
+        select: mockSelect,
+        eq: mockEq,
+        is: mockIs,
+        single: mockSingle,
+      })
+
+      const request = createMockRequest('http://localhost:3000/api/public/photos/550e8400-e29b-41d4-a716-446655440000/select')
+      const response = await GET(request, { params: Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' }) })
+      const data = await response.json()
+
+      expect(response.status).toBe(403)
+      expect(data.error.code).toBe('FORBIDDEN')
+    })
+
+    it('should return 403 if album is expired', async () => {
+      const mockPhoto = {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        album_id: '550e8400-e29b-41d4-a716-446655440001',
+      }
+
+      const expiredDate = new Date()
+      expiredDate.setDate(expiredDate.getDate() - 1)
+
+      const mockAlbum = {
+        id: '550e8400-e29b-41d4-a716-446655440001',
+        is_public: true,
+        deleted_at: null,
+        expires_at: expiredDate.toISOString(),
+      }
+
+      const mockSelect = vi.fn().mockReturnThis()
+      const mockEq = vi.fn().mockReturnThis()
+      const mockIs = vi.fn().mockReturnThis()
+      const mockSingle = vi.fn()
+        .mockResolvedValueOnce({
+          data: mockPhoto,
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: mockAlbum,
+          error: null,
+        })
+
+      mockSupabaseClient.from.mockReturnValue({
+        select: mockSelect,
+        eq: mockEq,
+        is: mockIs,
+        single: mockSingle,
+      })
+
+      const request = createMockRequest('http://localhost:3000/api/public/photos/550e8400-e29b-41d4-a716-446655440000/select')
+      const response = await GET(request, { params: Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' }) })
+      const data = await response.json()
+
+      expect(response.status).toBe(403)
+      expect(data.error.code).toBe('FORBIDDEN')
+    })
   })
 
   describe('error handling', () => {
     it('should return 500 on params error', async () => {
-      const request = createMockRequest('http://localhost:3000/api/public/photos/photo-123/select')
+      const request = createMockRequest('http://localhost:3000/api/public/photos/550e8400-e29b-41d4-a716-446655440000/select')
       const response = await GET(request, { params: Promise.reject(new Error('Invalid params')) })
       const data = await response.json()
 
@@ -142,8 +236,8 @@ describe('GET /api/public/photos/[id]/select', () => {
         single: mockSingle,
       })
 
-      const request = createMockRequest('http://localhost:3000/api/public/photos/photo-123/select')
-      const response = await GET(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const request = createMockRequest('http://localhost:3000/api/public/photos/550e8400-e29b-41d4-a716-446655440000/select')
+      const response = await GET(request, { params: Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)
@@ -159,32 +253,32 @@ describe('PATCH /api/public/photos/[id]/select', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     
-    const { createClient, createAdminClient } = await import('@/lib/supabase/server')
+    const { createClient, createAdminClient } = await import('@/lib/database')
     mockSupabaseClient = await createClient()
-    mockAdminClient = createAdminClient()
+    mockAdminClient = await createAdminClient()
   })
 
   describe('request validation', () => {
     it('should return 400 for invalid JSON body', async () => {
-      const request = createMockRequest('http://localhost:3000/api/public/photos/photo-123/select', {
+      const request = createMockRequest('http://localhost:3000/api/public/photos/550e8400-e29b-41d4-a716-446655440000/select', {
         method: 'PATCH',
         body: 'invalid-json',
       })
 
-      const response = await PATCH(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const response = await PATCH(request, { params: Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.error.code).toBe('INVALID_REQUEST')
+      expect(data.error.code).toBe('VALIDATION_ERROR')
     })
 
     it('should return 400 for invalid isSelected type', async () => {
-      const request = createMockRequest('http://localhost:3000/api/public/photos/photo-123/select', {
+      const request = createMockRequest('http://localhost:3000/api/public/photos/550e8400-e29b-41d4-a716-446655440000/select', {
         method: 'PATCH',
         body: { isSelected: 'true' }, // 字符串而不是布尔值
       })
 
-      const response = await PATCH(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const response = await PATCH(request, { params: Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -209,12 +303,11 @@ describe('PATCH /api/public/photos/[id]/select', () => {
         single: mockSingle,
       })
 
-      const request = createMockRequest('http://localhost:3000/api/public/photos/photo-123/select', {
+      const request = createMockRequest('http://localhost:3000/api/public/photos/550e8400-e29b-41d4-a716-446655440000/select', {
         method: 'PATCH',
         body: { isSelected: true },
       })
-
-      const response = await PATCH(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const response = await PATCH(request, { params: Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -237,12 +330,11 @@ describe('PATCH /api/public/photos/[id]/select', () => {
         single: mockSingle,
       })
 
-      const request = createMockRequest('http://localhost:3000/api/public/photos/photo-123/select', {
+      const request = createMockRequest('http://localhost:3000/api/public/photos/550e8400-e29b-41d4-a716-446655440000/select', {
         method: 'PATCH',
         body: { isSelected: true },
       })
-
-      const response = await PATCH(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const response = await PATCH(request, { params: Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -250,23 +342,27 @@ describe('PATCH /api/public/photos/[id]/select', () => {
     })
 
     it('should return 404 if album is deleted', async () => {
+      // Mock photo exists
       const mockPhoto = {
-        id: 'photo-123',
-        album_id: 'album-123',
-        deleted_at: null,
-        albums: {
-          id: 'album-123',
-          deleted_at: '2024-01-01T00:00:00Z', // 相册已删除
-        },
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        album_id: '550e8400-e29b-41d4-a716-446655440001',
       }
 
+      // Mock album check returns null (deleted or not found)
       const mockSelect = vi.fn().mockReturnThis()
       const mockEq = vi.fn().mockReturnThis()
       const mockIs = vi.fn().mockReturnThis()
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: null, // 由于相册已删除，inner join会返回null
-        error: null,
-      })
+      
+      // First call for photo, second for album
+      const mockSingle = vi.fn()
+        .mockResolvedValueOnce({
+          data: mockPhoto,
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: null,
+          error: { message: 'Not found' },
+        })
 
       mockSupabaseClient.from.mockReturnValue({
         select: mockSelect,
@@ -275,44 +371,142 @@ describe('PATCH /api/public/photos/[id]/select', () => {
         single: mockSingle,
       })
 
-      const request = createMockRequest('http://localhost:3000/api/public/photos/photo-123/select', {
+      const request = createMockRequest('http://localhost:3000/api/public/photos/550e8400-e29b-41d4-a716-446655440000/select', {
         method: 'PATCH',
         body: { isSelected: true },
       })
-
-      const response = await PATCH(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const response = await PATCH(request, { params: Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
       expect(data.error.code).toBe('NOT_FOUND')
+    })
+
+    it('should return 403 if album is not public', async () => {
+      const mockPhoto = {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        album_id: '550e8400-e29b-41d4-a716-446655440001',
+      }
+
+      const mockAlbum = {
+        id: '550e8400-e29b-41d4-a716-446655440001',
+        is_public: false,
+        deleted_at: null,
+        expires_at: null,
+      }
+
+      const mockSelect = vi.fn().mockReturnThis()
+      const mockEq = vi.fn().mockReturnThis()
+      const mockIs = vi.fn().mockReturnThis()
+      const mockSingle = vi.fn()
+        .mockResolvedValueOnce({
+          data: mockPhoto,
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: mockAlbum,
+          error: null,
+        })
+
+      mockSupabaseClient.from.mockReturnValue({
+        select: mockSelect,
+        eq: mockEq,
+        is: mockIs,
+        single: mockSingle,
+      })
+
+      const request = createMockRequest('http://localhost:3000/api/public/photos/550e8400-e29b-41d4-a716-446655440000/select', {
+        method: 'PATCH',
+        body: { isSelected: true },
+      })
+      const response = await PATCH(request, { params: Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' }) })
+      const data = await response.json()
+
+      expect(response.status).toBe(403)
+      expect(data.error.code).toBe('FORBIDDEN')
+    })
+
+    it('should return 403 if album is expired', async () => {
+      const mockPhoto = {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        album_id: '550e8400-e29b-41d4-a716-446655440001',
+      }
+
+      const expiredDate = new Date()
+      expiredDate.setDate(expiredDate.getDate() - 1)
+
+      const mockAlbum = {
+        id: '550e8400-e29b-41d4-a716-446655440001',
+        is_public: true,
+        deleted_at: null,
+        expires_at: expiredDate.toISOString(),
+      }
+
+      const mockSelect = vi.fn().mockReturnThis()
+      const mockEq = vi.fn().mockReturnThis()
+      const mockIs = vi.fn().mockReturnThis()
+      const mockSingle = vi.fn()
+        .mockResolvedValueOnce({
+          data: mockPhoto,
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: mockAlbum,
+          error: null,
+        })
+
+      mockSupabaseClient.from.mockReturnValue({
+        select: mockSelect,
+        eq: mockEq,
+        is: mockIs,
+        single: mockSingle,
+      })
+
+      const request = createMockRequest('http://localhost:3000/api/public/photos/550e8400-e29b-41d4-a716-446655440000/select', {
+        method: 'PATCH',
+        body: { isSelected: true },
+      })
+      const response = await PATCH(request, { params: Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' }) })
+      const data = await response.json()
+
+      expect(response.status).toBe(403)
+      expect(data.error.code).toBe('FORBIDDEN')
     })
   })
 
   describe('successful update', () => {
     it('should update selection status to true', async () => {
       const mockPhoto = {
-        id: 'photo-123',
-        album_id: 'album-123',
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        album_id: '550e8400-e29b-41d4-a716-446655440001',
         deleted_at: null,
-        albums: {
-          id: 'album-123',
-          deleted_at: null,
-        },
+      }
+      
+      const mockAlbum = {
+        id: '550e8400-e29b-41d4-a716-446655440001',
+        deleted_at: null,
+        is_public: true,
+        expires_at: null,
       }
 
       const mockUpdatedPhoto = {
-        id: 'photo-123',
+        id: '550e8400-e29b-41d4-a716-446655440000',
         is_selected: true,
       }
 
-      // Mock photo query
       const mockSelect = vi.fn().mockReturnThis()
       const mockEq = vi.fn().mockReturnThis()
       const mockIs = vi.fn().mockReturnThis()
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: mockPhoto,
-        error: null,
-      })
+      
+      const mockSingle = vi.fn()
+        .mockResolvedValueOnce({
+          data: mockPhoto,
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: mockAlbum,
+          error: null,
+        })
 
       mockSupabaseClient.from.mockReturnValue({
         select: mockSelect,
@@ -321,60 +515,55 @@ describe('PATCH /api/public/photos/[id]/select', () => {
         single: mockSingle,
       })
 
-      // Mock admin update
-      const mockAdminUpdate = vi.fn().mockReturnThis()
-      const mockAdminEq = vi.fn().mockReturnThis()
-      const mockAdminSelect = vi.fn().mockReturnThis()
-      const mockAdminSingle = vi.fn().mockResolvedValue({
-        data: mockUpdatedPhoto,
+      mockAdminClient.update.mockResolvedValue({
+        data: [mockUpdatedPhoto],
         error: null,
       })
 
-      mockAdminClient.from.mockReturnValue({
-        update: mockAdminUpdate,
-        eq: mockAdminEq,
-        select: mockAdminSelect,
-        single: mockAdminSingle,
-      })
-
-      mockAdminUpdate.mockReturnThis()
-
-      const request = createMockRequest('http://localhost:3000/api/public/photos/photo-123/select', {
+      const request = createMockRequest('http://localhost:3000/api/public/photos/550e8400-e29b-41d4-a716-446655440000/select', {
         method: 'PATCH',
         body: { isSelected: true },
       })
 
-      const response = await PATCH(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const response = await PATCH(request, { params: Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.id).toBe('photo-123')
-      expect(data.isSelected).toBe(true)
+      expect(data.data.id).toBe('550e8400-e29b-41d4-a716-446655440000')
+      expect(data.data.isSelected).toBe(true)
     })
 
     it('should update selection status to false', async () => {
       const mockPhoto = {
-        id: 'photo-123',
-        album_id: 'album-123',
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        album_id: '550e8400-e29b-41d4-a716-446655440001',
         deleted_at: null,
-        albums: {
-          id: 'album-123',
-          deleted_at: null,
-        },
+      }
+      
+      const mockAlbum = {
+        id: '550e8400-e29b-41d4-a716-446655440001',
+        deleted_at: null,
+        is_public: true,
+        expires_at: null,
       }
 
       const mockUpdatedPhoto = {
-        id: 'photo-123',
+        id: '550e8400-e29b-41d4-a716-446655440000',
         is_selected: false,
       }
 
       const mockSelect = vi.fn().mockReturnThis()
       const mockEq = vi.fn().mockReturnThis()
       const mockIs = vi.fn().mockReturnThis()
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: mockPhoto,
-        error: null,
-      })
+      const mockSingle = vi.fn()
+        .mockResolvedValueOnce({
+          data: mockPhoto,
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: mockAlbum,
+          error: null,
+        })
 
       mockSupabaseClient.from.mockReturnValue({
         select: mockSelect,
@@ -383,40 +572,28 @@ describe('PATCH /api/public/photos/[id]/select', () => {
         single: mockSingle,
       })
 
-      const mockAdminUpdate = vi.fn().mockReturnThis()
-      const mockAdminEq = vi.fn().mockReturnThis()
-      const mockAdminSelect = vi.fn().mockReturnThis()
-      const mockAdminSingle = vi.fn().mockResolvedValue({
-        data: mockUpdatedPhoto,
+      mockAdminClient.update.mockResolvedValue({
+        data: [mockUpdatedPhoto],
         error: null,
       })
 
-      mockAdminClient.from.mockReturnValue({
-        update: mockAdminUpdate,
-        eq: mockAdminEq,
-        select: mockAdminSelect,
-        single: mockAdminSingle,
-      })
-
-      mockAdminUpdate.mockReturnThis()
-
-      const request = createMockRequest('http://localhost:3000/api/public/photos/photo-123/select', {
+      const request = createMockRequest('http://localhost:3000/api/public/photos/550e8400-e29b-41d4-a716-446655440000/select', {
         method: 'PATCH',
         body: { isSelected: false },
       })
 
-      const response = await PATCH(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const response = await PATCH(request, { params: Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.id).toBe('photo-123')
-      expect(data.isSelected).toBe(false)
+      expect(data.data.id).toBe('550e8400-e29b-41d4-a716-446655440000')
+      expect(data.data.isSelected).toBe(false)
     })
   })
 
   describe('error handling', () => {
     it('should return 500 on params error', async () => {
-      const request = createMockRequest('http://localhost:3000/api/public/photos/photo-123/select', {
+      const request = createMockRequest('http://localhost:3000/api/public/photos/550e8400-e29b-41d4-a716-446655440000/select', {
         method: 'PATCH',
         body: { isSelected: true },
       })
@@ -430,22 +607,30 @@ describe('PATCH /api/public/photos/[id]/select', () => {
 
     it('should return 500 on database update error', async () => {
       const mockPhoto = {
-        id: 'photo-123',
-        album_id: 'album-123',
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        album_id: '550e8400-e29b-41d4-a716-446655440001',
         deleted_at: null,
-        albums: {
-          id: 'album-123',
-          deleted_at: null,
-        },
+      }
+      
+      const mockAlbum = {
+        id: '550e8400-e29b-41d4-a716-446655440001',
+        deleted_at: null,
+        is_public: true,
+        expires_at: null,
       }
 
       const mockSelect = vi.fn().mockReturnThis()
       const mockEq = vi.fn().mockReturnThis()
       const mockIs = vi.fn().mockReturnThis()
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: mockPhoto,
-        error: null,
-      })
+      const mockSingle = vi.fn()
+        .mockResolvedValueOnce({
+          data: mockPhoto,
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: mockAlbum,
+          error: null,
+        })
 
       mockSupabaseClient.from.mockReturnValue({
         select: mockSelect,
@@ -454,33 +639,21 @@ describe('PATCH /api/public/photos/[id]/select', () => {
         single: mockSingle,
       })
 
-      const mockAdminUpdate = vi.fn().mockReturnThis()
-      const mockAdminEq = vi.fn().mockReturnThis()
-      const mockAdminSelect = vi.fn().mockReturnThis()
-      const mockAdminSingle = vi.fn().mockResolvedValue({
+      mockAdminClient.update.mockResolvedValue({
         data: null,
         error: { message: 'Update failed' },
       })
 
-      mockAdminClient.from.mockReturnValue({
-        update: mockAdminUpdate,
-        eq: mockAdminEq,
-        select: mockAdminSelect,
-        single: mockAdminSingle,
-      })
-
-      mockAdminUpdate.mockReturnThis()
-
-      const request = createMockRequest('http://localhost:3000/api/public/photos/photo-123/select', {
+      const request = createMockRequest('http://localhost:3000/api/public/photos/550e8400-e29b-41d4-a716-446655440000/select', {
         method: 'PATCH',
         body: { isSelected: true },
       })
 
-      const response = await PATCH(request, { params: Promise.resolve({ id: 'photo-123' }) })
+      const response = await PATCH(request, { params: Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)
-      expect(data.error.code).toBe('DB_ERROR')
+      expect(data.error.code).toBe('INTERNAL_ERROR')
     })
   })
 })

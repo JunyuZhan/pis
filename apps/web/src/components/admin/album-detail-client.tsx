@@ -267,23 +267,29 @@ export function AlbumDetailClient({ album, initialPhotos, mediaUrl: serverMediaU
   // 在客户端直接使用 getSafeMediaUrl()，避免使用服务端可能传入的 https://localhost/media
   // 这样可以确保客户端始终使用安全的媒体 URL（自动修复 localhost HTTPS 问题）
   const [mediaUrl, setMediaUrl] = useState<string>(() => {
-    // 客户端初始化时直接使用 getSafeMediaUrl()
-    if (typeof window !== 'undefined') {
-      return getSafeMediaUrl()
-    }
     // 服务端渲染时使用传入的值或默认值
-    return serverMediaUrl || '/media'
+    if (typeof window === 'undefined') {
+      return serverMediaUrl || '/media'
+    }
+    // 客户端初始化时直接使用 getSafeMediaUrl()
+    return getSafeMediaUrl()
   })
   
   useEffect(() => {
-    // 在客户端确保使用安全的媒体 URL（自动修复 localhost HTTPS 问题）
+    // 在客户端挂载后立即更新 mediaUrl，确保使用正确的值
+    // 这样可以修复 Next.js 启动时内联的环境变量可能不正确的问题
     if (typeof window !== 'undefined') {
       const safeClientMediaUrl = getSafeMediaUrl()
       if (safeClientMediaUrl !== mediaUrl) {
+        console.log('[AlbumDetailClient] 更新 mediaUrl:', {
+          old: mediaUrl,
+          new: safeClientMediaUrl,
+          env: process.env.NEXT_PUBLIC_MEDIA_URL
+        })
         setMediaUrl(safeClientMediaUrl)
       }
     }
-  }, [mediaUrl])
+  }, []) // 只在客户端挂载时执行一次
 
   // toggleSelection removed as it's not used
 

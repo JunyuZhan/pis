@@ -10,7 +10,7 @@
 #   - 支持强制更新
 #
 # 使用方法：
-#   cd /opt/pis-standalone
+#   cd /opt/pis
 #   bash scripts/deploy/quick-upgrade.sh
 #   bash scripts/deploy/quick-upgrade.sh --force
 #   bash scripts/deploy/quick-upgrade.sh --no-restart  # 不重启容器
@@ -433,7 +433,7 @@ restart_containers() {
     cd "$docker_dir"
     
     # 检查 docker-compose 文件
-    local compose_file="docker-compose.standalone.yml"
+    local compose_file="docker-compose.yml"
     if [ ! -f "$compose_file" ]; then
         warn "未找到 $compose_file，尝试使用 docker-compose.yml"
         compose_file="docker-compose.yml"
@@ -532,7 +532,7 @@ show_upgrade_info() {
         echo ""
         echo -e "  1. ${CYAN}重新构建并启动容器${NC}"
         echo -e "     cd ${PROJECT_ROOT}/docker"
-        echo -e "     docker compose -f docker-compose.standalone.yml up -d --build"
+        echo -e "     docker compose -f docker-compose.yml up -d --build"
         echo ""
         echo -e "  2. ${CYAN}查看服务状态${NC}"
         echo -e "     cd ${PROJECT_ROOT}/docker"

@@ -3,17 +3,17 @@
 > Private Instant photo Sharing - 专为摄影师打造的私有化照片交付工具
 
 <p align="center">
-  <a href="https://github.com/JunyuZhan/pis-standalone/stargazers">
-    <img src="https://img.shields.io/github/stars/JunyuZhan/pis-standalone?style=social" alt="GitHub stars" />
+  <a href="https://github.com/JunyuZhan/pis/stargazers">
+    <img src="https://img.shields.io/github/stars/JunyuZhan/pis?style=social" alt="GitHub stars" />
   </a>
 </p>
 
 <p align="center">
-  <a href="https://star-history.com/#JunyuZhan/pis-standalone&Date">
+  <a href="https://star-history.com/#JunyuZhan/pis&Date">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=JunyuZhan/pis-standalone&type=Date&theme=dark" />
-      <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=JunyuZhan/pis-standalone&type=Date" />
-      <img src="https://api.star-history.com/svg?repos=JunyuZhan/pis-standalone&type=Date" alt="Star History Chart" />
+      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=JunyuZhan/pis&type=Date&theme=dark" />
+      <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=JunyuZhan/pis&type=Date" />
+      <img src="https://api.star-history.com/svg?repos=JunyuZhan/pis&type=Date" alt="Star History Chart" />
     </picture>
   </a>
 </p>
@@ -34,7 +34,7 @@
 <p align="center">
   <strong>📦 部署版本：</strong>
   <a href="https://github.com/JunyuZhan/pis-cloud">☁️ 云端版本</a> |
-  <a href="https://github.com/JunyuZhan/pis-standalone">🏠 自托管版本</a> (当前)
+  <a href="https://github.com/JunyuZhan/pis">🏠 自托管版本</a> (当前)
 </p>
 
 ---
@@ -106,10 +106,10 @@
 
 ```bash
 # 一条命令完成所有部署（无需任何交互）
-curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/scripts/deploy/one-click-deploy.sh | bash
+curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/deploy/one-click-deploy.sh | bash
 
 # 国内用户（使用代理加速）
-curl -sSL https://ghproxy.com/https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/scripts/deploy/one-click-deploy.sh | bash
+curl -sSL https://ghproxy.com/https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/deploy/one-click-deploy.sh | bash
 ```
 
 此脚本会自动完成：
@@ -123,16 +123,16 @@ curl -sSL https://ghproxy.com/https://raw.githubusercontent.com/JunyuZhan/pis-st
 
 ```bash
 # 克隆代码并运行交互式配置向导
-git clone https://github.com/JunyuZhan/pis-standalone.git
-cd pis-standalone/docker
+git clone https://github.com/JunyuZhan/pis.git
+cd pis/docker
 bash deploy.sh
 ```
 
 或者手动安装：
 
 ```bash
-git clone https://github.com/JunyuZhan/pis-standalone.git
-cd pis-standalone/docker
+git clone https://github.com/JunyuZhan/pis.git
+cd pis/docker
 bash deploy.sh
 ```
 
@@ -249,8 +249,8 @@ pnpm dev
 
 ```bash
 # 克隆项目
-git clone https://github.com/JunyuZhan/pis-standalone.git
-cd pis-standalone
+git clone https://github.com/JunyuZhan/pis.git
+cd pis
 
 # 运行引导式部署（交互式）
 bash docker/deploy.sh

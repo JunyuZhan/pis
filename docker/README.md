@@ -27,7 +27,7 @@
 
 ```bash
 # 一键部署，无需任何配置
-curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/scripts/deploy/one-click-deploy.sh | bash
+curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/deploy/one-click-deploy.sh | bash
 ```
 
 此脚本会自动完成：
@@ -41,8 +41,8 @@ curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/script
 
 ```bash
 # 克隆代码并运行交互式配置向导
-git clone https://github.com/JunyuZhan/pis-standalone.git
-cd pis-standalone/docker
+git clone https://github.com/JunyuZhan/pis.git
+cd pis/docker
 bash deploy.sh
 ```
 
@@ -59,11 +59,11 @@ bash deploy.sh
 
 #### 方式一：使用 Docker Compose（推荐）
 
-使用 `docker-compose.standalone.yml` 自动启动 PostgreSQL：
+使用 `docker-compose.yml` 自动启动 PostgreSQL：
 
 ```bash
 cd docker
-docker-compose -f docker-compose.standalone.yml up -d postgres
+docker-compose -f docker-compose.yml up -d postgres
 ```
 
 #### 方式二：使用外部 PostgreSQL
@@ -129,7 +129,7 @@ pnpm exec tsx scripts/utils/create-admin.ts
 
 ```bash
 cd docker
-docker-compose -f docker-compose.standalone.yml up -d
+docker-compose -f docker-compose.yml up -d
 ```
 
 这将启动所有服务：PostgreSQL、MinIO、Redis、Worker、Web、Nginx。

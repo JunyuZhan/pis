@@ -136,17 +136,17 @@ sudo cat /var/lib/docker/containers/<container-id>/<container-id>-json.log | jq
 
 ```bash
 # 查看所有容器日志
-docker compose -f docker/docker-compose.standalone.yml logs
+docker compose -f docker/docker-compose.yml logs
 
 # 查看特定服务日志
-docker compose -f docker/docker-compose.standalone.yml logs web
-docker compose -f docker/docker-compose.standalone.yml logs worker
+docker compose -f docker/docker-compose.yml logs web
+docker compose -f docker/docker-compose.yml logs worker
 
 # 实时查看所有日志
-docker compose -f docker/docker-compose.standalone.yml logs -f
+docker compose -f docker/docker-compose.yml logs -f
 
 # 查看最近 100 行
-docker compose -f docker/docker-compose.standalone.yml logs --tail 100
+docker compose -f docker/docker-compose.yml logs --tail 100
 ```
 
 ### 过滤和搜索
@@ -250,7 +250,7 @@ docker volume rm pis_web_logs pis_worker_logs
 
 **使用 Docker 日志驱动**（推荐）:
 
-在 `docker-compose.standalone.yml` 中添加：
+在 `docker-compose.yml` 中添加：
 
 ```yaml
 services:
@@ -313,7 +313,7 @@ ENABLE_PRETTY_LOG=false
 
 ```bash
 # 修改环境变量后重启
-docker compose -f docker/docker-compose.standalone.yml restart web worker
+docker compose -f docker/docker-compose.yml restart web worker
 ```
 
 ## 🔍 常见日志查看场景
@@ -361,7 +361,7 @@ docker logs pis-worker 2>&1 | grep -i "failed\|error" | grep -i photo
 
 ```bash
 # 实时查看所有服务日志
-docker compose -f docker/docker-compose.standalone.yml logs -f
+docker compose -f docker/docker-compose.yml logs -f
 
 # 实时查看特定服务
 docker logs -f pis-web

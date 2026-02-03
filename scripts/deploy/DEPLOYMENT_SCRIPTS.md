@@ -54,7 +54,7 @@ bash scripts/deploy/setup.sh
 **用法：**
 ```bash
 # 在服务器上直接运行
-curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/scripts/deploy/deploy.sh | bash
+curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/deploy/deploy.sh | bash
 
 # 在本地运行，远程部署
 bash scripts/deploy/deploy.sh <服务器IP> [用户名]
@@ -118,7 +118,7 @@ bash deploy.sh
 **用法：**
 ```bash
 # 从 GitHub 直接运行
-curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/scripts/deploy/one-click-deploy.sh | bash
+curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/deploy/one-click-deploy.sh | bash
 
 # 或在项目目录中运行
 bash scripts/deploy/one-click-deploy.sh
@@ -307,7 +307,7 @@ bash scripts/deploy/verify-deployment.sh [SSH_HOST]
 
 ---
 
-### 4. `docker/docker-compose.standalone.yml` - 完全自托管版本
+### 4. `docker/docker-compose.yml` - 完全自托管版本
 
 **包含服务：**
 - PostgreSQL（数据库）
@@ -355,14 +355,14 @@ docker-compose up -d
 
 ```bash
 cd docker
-docker-compose -f docker-compose.standalone.yml up -d
+docker-compose -f docker-compose.yml up -d
 ```
 
 ### 停止所有服务
 
 ```bash
 cd docker
-docker-compose -f docker-compose.standalone.yml down
+docker-compose -f docker-compose.yml down
 # 或使用默认文件（docker-compose.yml）
 docker-compose down
 ```
@@ -404,7 +404,7 @@ docker-compose logs -f [服务名]
 
 | 数据库类型 | docker-compose 文件 | 说明 |
 |-----------|-------------------|------|
-| PostgreSQL（推荐） | `docker-compose.standalone.yml` | 完全自托管，包含所有服务 |
+| PostgreSQL（推荐） | `docker-compose.yml` | 完全自托管，包含所有服务 |
 | Supabase（向后兼容） | `docker-compose.yml` | 混合部署：前端部署到 Vercel，数据库使用 Supabase |
 
 ---

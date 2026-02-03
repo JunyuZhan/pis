@@ -13,8 +13,8 @@
 ### 1. 停止并删除所有容器
 
 ```bash
-cd /opt/pis-standalone/docker
-docker compose -f docker-compose.standalone.yml down
+cd /opt/pis/docker
+docker compose -f docker-compose.yml down
 ```
 
 ### 2. 删除所有持久化卷
@@ -45,14 +45,14 @@ docker images | grep pis- | awk '{print $3}' | xargs docker rmi 2>/dev/null || t
 ### 1. 确保代码是最新的
 
 ```bash
-cd /opt/pis-standalone
+cd /opt/pis
 git pull origin main
 ```
 
 ### 2. 使用一键部署脚本
 
 ```bash
-cd /opt/pis-standalone
+cd /opt/pis
 bash scripts/deploy/quick-deploy.sh
 ```
 
@@ -66,7 +66,7 @@ bash scripts/deploy/quick-deploy.sh
 ### 3. 等待服务启动
 
 ```bash
-cd /opt/pis-standalone/docker
+cd /opt/pis/docker
 docker compose ps
 ```
 
@@ -180,17 +180,17 @@ PostgreSQL 的初始化脚本只在**首次启动**时执行（数据目录为�
 
 ```bash
 # 完全清理
-cd /opt/pis-standalone/docker
-docker compose -f docker-compose.standalone.yml down -v
+cd /opt/pis/docker
+docker compose -f docker-compose.yml down -v
 docker volume ls | grep pis_ | awk '{print $2}' | xargs docker volume rm 2>/dev/null || true
 
 # 重新部署
-cd /opt/pis-standalone
+cd /opt/pis
 git pull origin main
 bash scripts/deploy/quick-deploy.sh
 
 # 验证
-cd /opt/pis-standalone/docker
+cd /opt/pis/docker
 docker compose ps
 docker compose logs postgres | grep -i "管理员\|admin"
 ```

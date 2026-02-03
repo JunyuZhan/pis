@@ -26,13 +26,13 @@ psql -U pis -d pis
 
 ```bash
 # 停止服务
-docker-compose -f docker/docker-compose.standalone.yml down
+docker-compose -f docker/docker-compose.yml down
 
 # 删除数据库卷（⚠️ 这会删除所有数据）
 docker volume rm pis_postgres_data
 
 # 重新启动服务（会自动初始化数据库）
-docker-compose -f docker/docker-compose.standalone.yml up -d postgres
+docker-compose -f docker/docker-compose.yml up -d postgres
 ```
 
 ### 方法三：手动删除表

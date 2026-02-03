@@ -119,7 +119,7 @@ Error: Cannot find module './fonts/Inter-Regular.woff2'
 2. **上传字体文件到服务器**：
    ```bash
    # 使用 scp 上传
-   scp -r apps/web/src/app/fonts/ user@server:/path/to/pis-standalone/apps/web/src/app/
+   scp -r apps/web/src/app/fonts/ user@server:/path/to/pis/apps/web/src/app/
    ```
 
 3. **或使用系统字体**（临时方案）：
@@ -168,8 +168,8 @@ pnpm build
 
 # Docker 部署
 cd docker
-docker compose -f docker-compose.standalone.yml build --no-cache web
-docker compose -f docker-compose.standalone.yml up -d web
+docker compose -f docker-compose.dev.yml build --no-cache web
+docker compose -f docker-compose.dev.yml up -d web
 ```
 
 ## 💡 其他提示

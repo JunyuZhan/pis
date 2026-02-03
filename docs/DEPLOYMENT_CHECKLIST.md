@@ -33,8 +33,8 @@
 ssh user@your-server-ip
 
 # 2. 克隆代码（或上传代码）
-git clone <your-repo-url> pis-standalone
-cd pis-standalone
+git clone <your-repo-url> pis
+cd pis
 
 # 3. 运行部署脚本
 bash docker/deploy.sh
@@ -79,8 +79,8 @@ bash docker/deploy.sh
 3. **在服务器上部署**：
    ```bash
    ssh user@your-server-ip
-   git clone <your-repo-url> pis-standalone
-   cd pis-standalone
+   git clone <your-repo-url> pis
+   cd pis
    bash docker/deploy.sh
    ```
 
@@ -137,7 +137,7 @@ RUN bash scripts/utils/setup-fonts.sh || echo "Font download failed, using fallb
 
 ```bash
 # 在服务器上
-cd pis-standalone
+cd pis
 bash scripts/utils/setup-fonts.sh
 # 或手动下载（见 [字体配置指南](./FONTS.md)）
 ```
@@ -156,8 +156,8 @@ bash scripts/utils/setup-fonts.sh
 
 ```bash
 # 在服务器上
-git clone <your-repo-url> pis-standalone
-cd pis-standalone
+git clone <your-repo-url> pis
+cd pis
 bash docker/deploy.sh
 ```
 
@@ -165,8 +165,8 @@ bash docker/deploy.sh
 
 ```bash
 # 在本地机器
-git clone <your-repo-url> pis-standalone
-cd pis-standalone
+git clone <your-repo-url> pis
+cd pis
 bash docker/deploy.sh <服务器IP> <SSH用户>
 # 示例: bash docker/deploy.sh 192.168.1.100 root
 ```
@@ -194,7 +194,7 @@ bash docker/deploy.sh <服务器IP> <SSH用户>
    ```bash
    # 本地检查
    curl http://localhost:8080/health
-   
+
    # 公网检查（通过内网穿透）
    curl https://your-domain.com/health
    ```

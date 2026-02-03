@@ -150,6 +150,6 @@ docs/
 
 ## 🔗 相关链接
 
-- [GitHub 仓库](https://github.com/JunyuZhan/pis-standalone)
-- [问题反馈](https://github.com/JunyuZhan/pis-standalone/issues)
-- [功能请求](https://github.com/JunyuZhan/pis-standalone/issues/new)
+- [GitHub 仓库](https://github.com/JunyuZhan/pis)
+- [问题反馈](https://github.com/JunyuZhan/pis/issues)
+- [功能请求](https://github.com/JunyuZhan/pis/issues/new)

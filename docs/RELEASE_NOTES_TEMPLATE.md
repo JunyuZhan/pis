@@ -101,7 +101,7 @@
 
 ```bash
 # 一键部署
-curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/scripts/one-click-deploy.sh | bash
+curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/one-click-deploy.sh | bash
 ```
 
 ### 从 vX.X.X 升级
@@ -166,15 +166,15 @@ docker-compose up -d --build
 - [完整变更日志](CHANGELOG.md)
 - [部署文档](docs/i18n/en/DEPLOYMENT.md)
 - [升级指南](docs/UPGRADE.md)
-- [问题反馈](https://github.com/JunyuZhan/pis-standalone/issues)
+- [问题反馈](https://github.com/JunyuZhan/pis/issues)
 
 ---
 
 ## 🔗 下载
 
-- **Docker Image**: `docker pull pis/pis-standalone:vX.X.X`
-- **Source Code**: [下载 ZIP](https://github.com/JunyuZhan/pis-standalone/archive/vX.X.X.zip)
-- **Release Page**: [GitHub Release](https://github.com/JunyuZhan/pis-standalone/releases/tag/vX.X.X)
+- **Docker Image**: `docker pull pis/pis:vX.X.X`
+- **Source Code**: [下载 ZIP](https://github.com/JunyuZhan/pis/archive/vX.X.X.zip)
+- **Release Page**: [GitHub Release](https://github.com/JunyuZhan/pis/releases/tag/vX.X.X)
 
 ---
 
@@ -245,7 +245,7 @@ PIS (Private Instant Photo Sharing) 的第一个稳定版本发布！这是一�
 
 ```bash
 # 一键部署
-curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/scripts/one-click-deploy.sh | bash
+curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/one-click-deploy.sh | bash
 ```
 
 ---
@@ -269,7 +269,7 @@ curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis-standalone/main/script
 
 - [完整变更日志](CHANGELOG.md)
 - [部署文档](docs/i18n/en/DEPLOYMENT.md)
-- [问题反馈](https://github.com/JunyuZhan/pis-standalone/issues)
+- [问题反馈](https://github.com/JunyuZhan/pis/issues)
 ```
 
 ---

@@ -9,13 +9,14 @@ import { GET } from './route'
 import { createMockRequest } from '@/test/test-utils'
 
 // Mock dependencies
-vi.mock('@/lib/supabase/server', () => {
+vi.mock('@/lib/database', () => {
   const mockAdminClient = {
     from: vi.fn(),
   }
 
   return {
     createAdminClient: vi.fn().mockReturnValue(mockAdminClient),
+    createClient: vi.fn().mockReturnValue(mockAdminClient), // In case it uses createClient too
   }
 })
 
@@ -33,8 +34,8 @@ describe('GET /api/public/albums/[slug]/download-selected', () => {
     mockFetch = vi.fn()
     global.fetch = mockFetch as any
     
-    const { createAdminClient } = await import('@/lib/supabase/server')
-    mockAdminClient = createAdminClient()
+    const { createAdminClient } = await import('@/lib/database')
+    mockAdminClient = await createAdminClient()
   })
 
   afterEach(() => {

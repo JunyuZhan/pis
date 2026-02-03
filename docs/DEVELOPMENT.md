@@ -30,8 +30,8 @@
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/JunyuZhan/pis-standalone.git
-cd pis-standalone
+git clone https://github.com/JunyuZhan/pis.git
+cd pis
 
 # 2. 安装依赖
 pnpm install

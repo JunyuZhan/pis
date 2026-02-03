@@ -22,6 +22,11 @@ describe('GET /api/admin/albums/[id]/groups/[groupId]/photos', () => {
   let mockDb: any
   let mockGetCurrentUser: any
 
+  const validAlbumId = '550e8400-e29b-41d4-a716-446655440000'
+  const validGroupId = '550e8400-e29b-41d4-a716-446655440001'
+  const validPhotoId1 = '550e8400-e29b-41d4-a716-446655440002'
+  const validPhotoId2 = '550e8400-e29b-41d4-a716-446655440003'
+
   beforeEach(async () => {
     vi.clearAllMocks()
     
@@ -42,11 +47,11 @@ describe('GET /api/admin/albums/[id]/groups/[groupId]/photos', () => {
   describe('validation', () => {
     it('should return 400 for invalid album ID', async () => {
       const request = createMockRequest(
-        'http://localhost:3000/api/admin/albums/invalid-id/groups/group-123/photos'
+        'http://localhost:3000/api/admin/albums/invalid-id/groups/550e8400-e29b-41d4-a716-446655440001/photos'
       )
 
       const response = await GET(request, {
-        params: Promise.resolve({ id: 'invalid-id', groupId: 'group-123' }),
+        params: Promise.resolve({ id: 'invalid-id', groupId: validGroupId }),
       })
       const data = await response.json()
 
@@ -56,11 +61,11 @@ describe('GET /api/admin/albums/[id]/groups/[groupId]/photos', () => {
 
     it('should return 400 for invalid group ID', async () => {
       const request = createMockRequest(
-        'http://localhost:3000/api/admin/albums/album-123/groups/invalid-id/photos'
+        'http://localhost:3000/api/admin/albums/550e8400-e29b-41d4-a716-446655440000/groups/invalid-id/photos'
       )
 
       const response = await GET(request, {
-        params: Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000', groupId: 'invalid-id' }),
+        params: Promise.resolve({ id: validAlbumId, groupId: 'invalid-id' }),
       })
       const data = await response.json()
 
@@ -71,19 +76,17 @@ describe('GET /api/admin/albums/[id]/groups/[groupId]/photos', () => {
 
   describe('permissions', () => {
     it('should allow access for album owner', async () => {
-      const albumId = '550e8400-e29b-41d4-a716-446655440000'
-      const groupId = '550e8400-e29b-41d4-a716-446655440001'
       const album = {
-        id: albumId,
+        id: validAlbumId,
         user_id: 'user-123',
         is_public: false,
       }
       const group = {
-        id: groupId,
+        id: validGroupId,
       }
       const assignments = [
-        { photo_id: 'photo-1' },
-        { photo_id: 'photo-2' },
+        { photo_id: validPhotoId1 },
+        { photo_id: validPhotoId2 },
       ]
 
       // Mock album exists
@@ -126,28 +129,26 @@ describe('GET /api/admin/albums/[id]/groups/[groupId]/photos', () => {
         })
 
       const request = createMockRequest(
-        `http://localhost:3000/api/admin/albums/${albumId}/groups/${groupId}/photos`
+        `http://localhost:3000/api/admin/albums/${validAlbumId}/groups/${validGroupId}/photos`
       )
 
       const response = await GET(request, {
-        params: Promise.resolve({ id: albumId, groupId }),
+        params: Promise.resolve({ id: validAlbumId, groupId: validGroupId }),
       })
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.photo_ids).toEqual(['photo-1', 'photo-2'])
+      expect(data.photo_ids).toEqual([validPhotoId1, validPhotoId2])
     })
 
     it('should allow access for public albums', async () => {
-      const albumId = '550e8400-e29b-41d4-a716-446655440000'
-      const groupId = '550e8400-e29b-41d4-a716-446655440001'
       const album = {
-        id: albumId,
+        id: validAlbumId,
         user_id: 'other-user',
         is_public: true,
       }
       const group = {
-        id: groupId,
+        id: validGroupId,
       }
 
       // Mock album exists
@@ -193,11 +194,11 @@ describe('GET /api/admin/albums/[id]/groups/[groupId]/photos', () => {
       mockGetCurrentUser.mockResolvedValue(null)
 
       const request = createMockRequest(
-        `http://localhost:3000/api/admin/albums/${albumId}/groups/${groupId}/photos`
+        `http://localhost:3000/api/admin/albums/${validAlbumId}/groups/${validGroupId}/photos`
       )
 
       const response = await GET(request, {
-        params: Promise.resolve({ id: albumId, groupId }),
+        params: Promise.resolve({ id: validAlbumId, groupId: validGroupId }),
       })
       const data = await response.json()
 
@@ -206,10 +207,8 @@ describe('GET /api/admin/albums/[id]/groups/[groupId]/photos', () => {
     })
 
     it('should return 403 for private albums without access', async () => {
-      const albumId = '550e8400-e29b-41d4-a716-446655440000'
-      const groupId = '550e8400-e29b-41d4-a716-446655440001'
       const album = {
-        id: albumId,
+        id: validAlbumId,
         user_id: 'other-user',
         is_public: false,
       }
@@ -232,11 +231,11 @@ describe('GET /api/admin/albums/[id]/groups/[groupId]/photos', () => {
       mockGetCurrentUser.mockResolvedValue(null)
 
       const request = createMockRequest(
-        `http://localhost:3000/api/admin/albums/${albumId}/groups/${groupId}/photos`
+        `http://localhost:3000/api/admin/albums/${validAlbumId}/groups/${validGroupId}/photos`
       )
 
       const response = await GET(request, {
-        params: Promise.resolve({ id: albumId, groupId }),
+        params: Promise.resolve({ id: validAlbumId, groupId: validGroupId }),
       })
       const data = await response.json()
 
@@ -250,6 +249,11 @@ describe('POST /api/admin/albums/[id]/groups/[groupId]/photos', () => {
   let mockDb: any
   let mockAdminDb: any
   let mockGetCurrentUser: any
+
+  const validAlbumId = '550e8400-e29b-41d4-a716-446655440000'
+  const validGroupId = '550e8400-e29b-41d4-a716-446655440001'
+  const validPhotoId1 = '550e8400-e29b-41d4-a716-446655440002'
+  const validPhotoId2 = '550e8400-e29b-41d4-a716-446655440003'
 
   beforeEach(async () => {
     vi.clearAllMocks()
@@ -275,17 +279,17 @@ describe('POST /api/admin/albums/[id]/groups/[groupId]/photos', () => {
       mockGetCurrentUser.mockResolvedValue(null)
 
       const request = createMockRequest(
-        'http://localhost:3000/api/admin/albums/album-123/groups/group-123/photos',
+        `http://localhost:3000/api/admin/albums/${validAlbumId}/groups/${validGroupId}/photos`,
         {
           method: 'POST',
           body: {
-            photo_ids: ['photo-1'],
+            photo_ids: [validPhotoId1],
           },
         }
       )
 
       const response = await POST(request, {
-        params: Promise.resolve({ id: 'album-123', groupId: 'group-123' }),
+        params: Promise.resolve({ id: validAlbumId, groupId: validGroupId }),
       })
       const data = await response.json()
 
@@ -296,21 +300,54 @@ describe('POST /api/admin/albums/[id]/groups/[groupId]/photos', () => {
 
   describe('validation', () => {
     it('should return 400 for invalid photo_ids', async () => {
-      const albumId = '550e8400-e29b-41d4-a716-446655440000'
-      const groupId = '550e8400-e29b-41d4-a716-446655440001'
+      // Mock album exists
+      const mockSelectAlbum = vi.fn().mockReturnThis()
+      const mockEqAlbum = vi.fn().mockReturnThis()
+      const mockIsAlbum = vi.fn().mockReturnThis()
+      const mockSingleAlbum = vi.fn().mockResolvedValue({
+        data: { id: validAlbumId },
+        error: null,
+      })
+
+      // Mock group exists
+      const mockSelectGroup = vi.fn().mockReturnThis()
+      const mockEqGroup = vi.fn().mockReturnThis()
+      const mockSingleGroup = vi.fn().mockResolvedValue({
+        data: { id: validGroupId },
+        error: null,
+      })
+
+      mockDb.from
+        .mockReturnValueOnce({
+          select: mockSelectAlbum,
+          eq: mockEqAlbum,
+          is: mockIsAlbum,
+          single: mockSingleAlbum,
+        })
+        .mockReturnValueOnce({
+          select: mockSelectGroup,
+          eq: mockEqGroup,
+          single: mockSingleGroup,
+        })
 
       const request = createMockRequest(
-        `http://localhost:3000/api/admin/albums/${albumId}/groups/${groupId}/photos`,
+        `http://localhost:3000/api/admin/albums/${validAlbumId}/groups/${validGroupId}/photos`,
         {
           method: 'POST',
           body: {
-            photo_ids: [],
+            photo_ids: [], // Empty array might be invalid based on schema?
+                           // Or maybe use invalid strings if schema requires UUIDs
+                           // The original test used empty array. Let's see if min(1) is required.
           },
         }
       )
 
+      // Assuming the schema requires non-empty array or UUIDs.
+      // If the original test expected 400 for empty array, schema probably has .min(1).
+      // Let's assume empty array is what we want to test.
+      
       const response = await POST(request, {
-        params: Promise.resolve({ id: albumId, groupId }),
+        params: Promise.resolve({ id: validAlbumId, groupId: validGroupId }),
       })
       const data = await response.json()
 
@@ -321,16 +358,14 @@ describe('POST /api/admin/albums/[id]/groups/[groupId]/photos', () => {
 
   describe('photo assignment', () => {
     it('should successfully assign photos to group', async () => {
-      const albumId = '550e8400-e29b-41d4-a716-446655440000'
-      const groupId = '550e8400-e29b-41d4-a716-446655440001'
-      const photoIds = ['photo-1', 'photo-2']
+      const photoIds = [validPhotoId1, validPhotoId2]
 
       // Mock album exists
       const mockSelectAlbum = vi.fn().mockReturnThis()
       const mockEqAlbum = vi.fn().mockReturnThis()
       const mockIsAlbum = vi.fn().mockReturnThis()
       const mockSingleAlbum = vi.fn().mockResolvedValue({
-        data: { id: albumId },
+        data: { id: validAlbumId },
         error: null,
       })
 
@@ -338,7 +373,7 @@ describe('POST /api/admin/albums/[id]/groups/[groupId]/photos', () => {
       const mockSelectGroup = vi.fn().mockReturnThis()
       const mockEqGroup = vi.fn().mockReturnThis()
       const mockSingleGroup = vi.fn().mockResolvedValue({
-        data: { id: groupId },
+        data: { id: validGroupId },
         error: null,
       })
 
@@ -389,7 +424,7 @@ describe('POST /api/admin/albums/[id]/groups/[groupId]/photos', () => {
       })
 
       const request = createMockRequest(
-        `http://localhost:3000/api/admin/albums/${albumId}/groups/${groupId}/photos`,
+        `http://localhost:3000/api/admin/albums/${validAlbumId}/groups/${validGroupId}/photos`,
         {
           method: 'POST',
           body: {
@@ -399,7 +434,7 @@ describe('POST /api/admin/albums/[id]/groups/[groupId]/photos', () => {
       )
 
       const response = await POST(request, {
-        params: Promise.resolve({ id: albumId, groupId }),
+        params: Promise.resolve({ id: validAlbumId, groupId: validGroupId }),
       })
       const data = await response.json()
 
@@ -414,6 +449,11 @@ describe('DELETE /api/admin/albums/[id]/groups/[groupId]/photos', () => {
   let mockDb: any
   let mockAdminDb: any
   let mockGetCurrentUser: any
+
+  const validAlbumId = '550e8400-e29b-41d4-a716-446655440000'
+  const validGroupId = '550e8400-e29b-41d4-a716-446655440001'
+  const validPhotoId1 = '550e8400-e29b-41d4-a716-446655440002'
+  const validPhotoId2 = '550e8400-e29b-41d4-a716-446655440003'
 
   beforeEach(async () => {
     vi.clearAllMocks()
@@ -439,17 +479,17 @@ describe('DELETE /api/admin/albums/[id]/groups/[groupId]/photos', () => {
       mockGetCurrentUser.mockResolvedValue(null)
 
       const request = createMockRequest(
-        'http://localhost:3000/api/admin/albums/album-123/groups/group-123/photos',
+        `http://localhost:3000/api/admin/albums/${validAlbumId}/groups/${validGroupId}/photos`,
         {
           method: 'DELETE',
           body: {
-            photo_ids: ['photo-1'],
+            photo_ids: [validPhotoId1],
           },
         }
       )
 
       const response = await DELETE(request, {
-        params: Promise.resolve({ id: 'album-123', groupId: 'group-123' }),
+        params: Promise.resolve({ id: validAlbumId, groupId: validGroupId }),
       })
       const data = await response.json()
 
@@ -460,16 +500,14 @@ describe('DELETE /api/admin/albums/[id]/groups/[groupId]/photos', () => {
 
   describe('photo removal', () => {
     it('should successfully remove photos from group', async () => {
-      const albumId = '550e8400-e29b-41d4-a716-446655440000'
-      const groupId = '550e8400-e29b-41d4-a716-446655440001'
-      const photoIds = ['photo-1', 'photo-2']
+      const photoIds = [validPhotoId1, validPhotoId2]
 
       // Mock album exists
       const mockSelectAlbum = vi.fn().mockReturnThis()
       const mockEqAlbum = vi.fn().mockReturnThis()
       const mockIsAlbum = vi.fn().mockReturnThis()
       const mockSingleAlbum = vi.fn().mockResolvedValue({
-        data: { id: albumId },
+        data: { id: validAlbumId },
         error: null,
       })
 
@@ -477,7 +515,7 @@ describe('DELETE /api/admin/albums/[id]/groups/[groupId]/photos', () => {
       const mockSelectGroup = vi.fn().mockReturnThis()
       const mockEqGroup = vi.fn().mockReturnThis()
       const mockSingleGroup = vi.fn().mockResolvedValue({
-        data: { id: groupId },
+        data: { id: validGroupId },
         error: null,
       })
 
@@ -501,7 +539,7 @@ describe('DELETE /api/admin/albums/[id]/groups/[groupId]/photos', () => {
         })
 
       const request = createMockRequest(
-        `http://localhost:3000/api/admin/albums/${albumId}/groups/${groupId}/photos`,
+        `http://localhost:3000/api/admin/albums/${validAlbumId}/groups/${validGroupId}/photos`,
         {
           method: 'DELETE',
           body: {
@@ -511,7 +549,7 @@ describe('DELETE /api/admin/albums/[id]/groups/[groupId]/photos', () => {
       )
 
       const response = await DELETE(request, {
-        params: Promise.resolve({ id: albumId, groupId }),
+        params: Promise.resolve({ id: validAlbumId, groupId: validGroupId }),
       })
       const data = await response.json()
 

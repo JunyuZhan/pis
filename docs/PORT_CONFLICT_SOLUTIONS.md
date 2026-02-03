@@ -45,7 +45,7 @@ sudo fuser 443/tcp
 
 **步骤**：
 
-#### 1.1 修改 docker-compose.standalone.yml
+#### 1.1 修改 docker-compose.yml
 
 ```yaml
 nginx:
@@ -101,7 +101,7 @@ Internet
 #### 2.1 修改 PIS 端口
 
 ```yaml
-# docker-compose.standalone.yml
+# docker-compose.yml
 nginx:
   ports:
     - "127.0.0.1:8080:80"    # 仅本地访问
@@ -111,7 +111,7 @@ nginx:
 或者**完全移除 Nginx 容器**，直接暴露 Web 容器：
 
 ```yaml
-# docker-compose.standalone.yml
+# docker-compose.yml
 web:
   ports:
     - "127.0.0.1:3000:3000"  # 仅本地访问
@@ -276,7 +276,7 @@ Internet
 #### 3.1 配置示例（阿里云 SLB）
 
 ```yaml
-# docker-compose.standalone.yml
+# docker-compose.yml
 nginx:
   ports:
     - "127.0.0.1:8080:80"    # 仅本地
@@ -348,9 +348,9 @@ nginx:
 ### 快速方案（方案 1）
 
 ```bash
-# 1. 修改 docker-compose.standalone.yml
+# 1. 修改 docker-compose.yml
 cd docker
-vim docker-compose.standalone.yml
+vim docker-compose.yml
 
 # 修改 nginx 端口
 # ports:
@@ -362,7 +362,7 @@ vim ../.env
 # NEXT_PUBLIC_APP_URL=https://yourdomain.com:8443
 
 # 3. 重启服务
-docker compose -f docker-compose.standalone.yml up -d
+docker compose -f docker-compose.yml up -d
 ```
 
 ### 生产方案（方案 2）
@@ -370,7 +370,7 @@ docker compose -f docker-compose.standalone.yml up -d
 ```bash
 # 1. 修改 PIS 端口为仅本地
 cd docker
-vim docker-compose.standalone.yml
+vim docker-compose.yml
 # nginx:
 #   ports:
 #     - "127.0.0.1:8080:80"
@@ -387,7 +387,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 
 # 4. 重启 PIS
-docker compose -f docker-compose.standalone.yml up -d
+docker compose -f docker-compose.yml up -d
 ```
 
 ## 📝 注意事项
