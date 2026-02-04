@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Save, Eye, EyeOff, Lock, Calendar, Download, Radio, Share2 } from 'lucide-react'
+import { Loader2, Save, Eye, EyeOff, Lock, Calendar, Download, Radio, Share2, Brush } from 'lucide-react'
 import type { Database } from '@/types/database'
 import { MultiWatermarkManager, type WatermarkItem } from './multi-watermark-manager'
 import { StylePresetSelector } from './style-preset-selector'
@@ -120,6 +120,7 @@ export function AlbumSettingsForm({ album, coverOriginalKey }: AlbumSettingsForm
     allow_batch_download: album.allow_batch_download ?? false,
     show_exif: album.show_exif ?? true,
     allow_share: album.allow_share ?? true,
+    enable_human_retouch: album.enable_human_retouch ?? false, // 开启人工修图
     // 水印设置
     watermark_enabled: album.watermark_enabled ?? false,
     watermark_config: initialWatermarkConfig,
@@ -546,6 +547,30 @@ export function AlbumSettingsForm({ album, coverOriginalKey }: AlbumSettingsForm
           >
             <div className={`absolute top-[2px] left-[2px] w-6 h-6 md:w-5 md:h-5 bg-white rounded-full transition-transform ${
               formData.allow_share ? 'translate-x-5 md:translate-x-5' : 'translate-x-0'
+            }`} />
+          </button>
+        </div>
+
+        {/* 开启人工修图 */}
+        <div className="flex items-center justify-between">
+          <div className="flex-1 pr-4">
+            <p className="font-medium flex items-center gap-2">
+              <Brush className="w-4 h-4" />
+              开启人工修图
+            </p>
+            <p className="text-sm text-text-secondary">
+              开启后，新上传的照片状态将默认为"待修图" (Pending Retouch)，需要修图师处理后才能发布
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleChange('enable_human_retouch', !formData.enable_human_retouch)}
+            className={`relative rounded-full transition-colors shrink-0 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center ${
+              formData.enable_human_retouch ? 'bg-accent' : 'bg-surface-elevated'
+            } w-12 h-7 md:w-11 md:h-6`}
+          >
+            <div className={`absolute top-[2px] left-[2px] w-6 h-6 md:w-5 md:h-5 bg-white rounded-full transition-transform ${
+              formData.enable_human_retouch ? 'translate-x-5 md:translate-x-5' : 'translate-x-0'
             }`} />
           </button>
         </div>

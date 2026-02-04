@@ -248,6 +248,7 @@ export const processPhotoSchema = z.object({
   photoId: uuidSchema,
   albumId: uuidSchema,
   originalKey: z.string().min(1, '原图key不能为空'),
+  isRetouch: z.boolean().optional(),
 });
 
 // ============================================

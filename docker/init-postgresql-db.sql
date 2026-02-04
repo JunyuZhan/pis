@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS albums (
     cover_photo_id UUID,
     photo_count INTEGER DEFAULT 0,
     password VARCHAR(255),  -- 相册访问密码（可选）
+    upload_token VARCHAR(255), -- 上传令牌（用于 FTP/API 上传验证）
     expires_at TIMESTAMP WITH TIME ZONE,  -- 相册过期时间
     is_public BOOLEAN DEFAULT false,
     layout VARCHAR(50) DEFAULT 'masonry',
@@ -49,6 +50,7 @@ CREATE TABLE IF NOT EXISTS albums (
     watermark_type VARCHAR(50) DEFAULT 'text',
     watermark_config JSONB DEFAULT '{}',
     color_grading JSONB DEFAULT '{}',
+    enable_human_retouch BOOLEAN DEFAULT false, -- 开启人工修图
     -- 分享配置
     share_title VARCHAR(255),
     share_description TEXT,
@@ -93,7 +95,8 @@ CREATE TABLE IF NOT EXISTS photos (
     exif JSONB DEFAULT '{}',
     rotation INTEGER DEFAULT 0,           -- 旋转角度
     sort_order INTEGER DEFAULT 0,         -- 手动排序顺序
-    status VARCHAR(50) DEFAULT 'pending', -- pending, processing, completed, failed
+    status VARCHAR(50) DEFAULT 'pending', -- pending, pending_retouch, retouching, processing, completed, failed
+    retoucher_id UUID,                    -- 负责修图的用户ID
     is_selected BOOLEAN DEFAULT false,    -- 访客是否选中此照片
     captured_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

@@ -13,23 +13,23 @@
 **目标**：支持相机（Sony/Canon）通过 FTP 协议直接上传照片，无需手机 APP。
 
 ### 1.1 服务搭建 (`services/worker`)
-- [ ] **依赖安装**: 在 `services/worker` 中安装 `ftp-srv`。
-- [ ] **架构设计**: 创建 `services/worker/src/ftp-server.ts` 处理 FTP 生命周期。
-- [ ] **Docker 配置**: 在 `docker-compose.yml` 中暴露 FTP 命令端口 (21) 和被动模式端口 (如 30000-30009)。
+- [x] **依赖安装**: 在 `services/worker` 中安装 `ftp-srv`。
+- [x] **架构设计**: 创建 `services/worker/src/ftp-server.ts` 处理 FTP 生命周期。
+- [x] **Docker 配置**: 在 `docker-compose.yml` 中暴露 FTP 命令端口 (21) 和被动模式端口 (如 30000-30009)。
 
 ### 1.2 认证与路由
-- [ ] **认证策略**:
+- [x] **认证策略**:
   - 用户名: `album_id` (UUID) 或 `short_code` (短码)。
   - 密码: `upload_token` (在相册设置中定义)。
-- [ ] **验证逻辑**: 通过数据库适配器验证相册是否存在且令牌匹配。
+- [x] **验证逻辑**: 通过数据库适配器验证相册是否存在且令牌匹配。
 
 ### 1.3 文件处理流程
-- [ ] **接收**: 将传入的 FTP 文件流写入本地临时存储。
-- [ ] **存储**: 上传到 MinIO (`raw/{album_id}/{photo_id}.jpg`)。
-- [ ] **入库**:
+- [x] **接收**: 将传入的 FTP 文件流写入本地临时存储。
+- [x] **存储**: 上传到 MinIO (`raw/{album_id}/{photo_id}.jpg`)。
+- [x] **入库**:
   - 插入数据库记录，状态为 `pending`。
   - 触发 BullMQ 中的 `process-photo` 任务（复用现有逻辑）。
-- [ ] **清理**: MinIO 上传成功后删除本地临时文件。
+- [x] **清理**: MinIO 上传成功后删除本地临时文件。
 
 ---
 
@@ -37,7 +37,7 @@
 **目标**：引入“人工介入”流程，支持发布前的专业修图。
 
 ### 2.1 数据库架构 (`apps/web`)
-- [ ] **迁移**:
+- [x] **迁移**:
   - `users` 表添加 `role` 枚举: `['admin', 'photographer', 'retoucher', 'guest']`。
   - `photos` 表添加 `status` 枚举: `['pending_retouch', 'retouching']`。
   - `photos` 表添加 `retoucher_id` (关联到 users 表)。
@@ -53,7 +53,7 @@
   - 触发 Worker 重新生成缩略图/水印。
 
 ### 2.3 管理配置
-- [ ] **相册设置**: 增加“开启人工修图”模式开关。
+- [x] **相册设置**: 增加“开启人工修图”模式开关。
   - 开启后，上传的照片状态默认为 `pending_retouch` 而非 `processing`。
 
 ---
@@ -98,6 +98,3 @@
 ---
 
 ## 🛠 系统优化（已完成/进行中）
-- [x] **上传并发**: 已增加到 5 个并发上传。
-- [x] **速率限制**: 管理端 API 已提升至 300 请求/分钟。
-- [x] **N+1 问题修复**: 已优化管理端 API 的批量操作。

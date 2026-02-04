@@ -186,6 +186,13 @@ services:
       # 告警配置
       - ALERT_ENABLED=${ALERT_ENABLED:-true}
       - ALERT_TYPE=${ALERT_TYPE:-log}
+      # FTP 配置
+      - FTP_USER=${FTP_USER:-pis}
+      - FTP_PASSWORD=${FTP_PASSWORD:-pis}
+      - FTP_PORT=21
+      - FTP_PASV_START=30000
+      - FTP_PASV_END=30009
+      - FTP_PASV_URL=${FTP_PASV_URL} # 留空则自动检测
     depends_on:
       postgres:
         condition: service_healthy
@@ -193,8 +200,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    # ports:
-    #   - "3001:3001"  # Worker API 端口 (仅内部访问)
+    ports:
+      - "21:21"             # FTP 命令端口
+      - "30000-30009:30000-30009" # FTP 被动模式端口范围
     restart: unless-stopped
     networks:
       - pis-network

@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       return handleError(validation.error, '输入验证失败')
     }
 
-    const { photoId, albumId, originalKey } = validation.data
+    const { photoId, albumId, originalKey, isRetouch } = validation.data
 
     // 使用代理路由调用 Worker API 触发处理
     // 代理路由会自动处理 Worker URL 配置和认证
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       const processRes = await fetch(proxyUrl, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ photoId, albumId, originalKey }),
+        body: JSON.stringify({ photoId, albumId, originalKey, isRetouch }),
       })
 
       if (!processRes.ok) {

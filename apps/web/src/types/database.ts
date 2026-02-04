@@ -46,6 +46,8 @@ export interface Database {
           watermark_config: Json
           // 调色配置
           color_grading: Json | null
+          // 人工修图
+          enable_human_retouch: boolean
           // 分享配置
           share_title: string | null
           share_description: string | null
@@ -87,6 +89,7 @@ export interface Database {
           watermark_type?: 'text' | 'logo' | null
           watermark_config?: Json
           color_grading?: Json | null
+          enable_human_retouch?: boolean
           share_title?: string | null
           share_description?: string | null
           share_image_url?: string | null
@@ -121,6 +124,7 @@ export interface Database {
           watermark_type?: 'text' | 'logo' | null
           watermark_config?: Json
           color_grading?: Json | null
+          enable_human_retouch?: boolean
           share_title?: string | null
           share_description?: string | null
           share_image_url?: string | null
@@ -152,7 +156,8 @@ export interface Database {
           blur_data: string | null
           exif: Json
           captured_at: string | null
-          status: 'pending' | 'processing' | 'completed' | 'failed'
+          status: 'pending' | 'pending_retouch' | 'retouching' | 'processing' | 'completed' | 'failed'
+          retoucher_id: string | null
           is_selected: boolean
           sort_order: number
           rotation: number | null
@@ -174,7 +179,8 @@ export interface Database {
           blur_data?: string | null
           exif?: Json
           captured_at?: string | null
-          status?: 'pending' | 'processing' | 'completed' | 'failed'
+          status?: 'pending' | 'pending_retouch' | 'retouching' | 'processing' | 'completed' | 'failed'
+          retoucher_id?: string | null
           is_selected?: boolean
           sort_order?: number
           rotation?: number | null
@@ -196,7 +202,8 @@ export interface Database {
           blur_data?: string | null
           exif?: Json
           captured_at?: string | null
-          status?: 'pending' | 'processing' | 'completed' | 'failed'
+          status?: 'pending' | 'pending_retouch' | 'retouching' | 'processing' | 'completed' | 'failed'
+          retoucher_id?: string | null
           is_selected?: boolean
           sort_order?: number
           rotation?: number | null

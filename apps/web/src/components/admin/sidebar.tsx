@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Camera, Images, Settings, LogOut, Home } from 'lucide-react'
+import { Camera, Images, Settings, LogOut, Home, Brush } from 'lucide-react'
 import { LanguageSwitcher } from '@/components/ui/language-switcher'
 import { cn } from '@/lib/utils'
 import type { AuthUser } from '@/lib/auth'
@@ -13,6 +13,7 @@ interface AdminSidebarProps {
 
 const navItems = [
   { href: '/admin', label: '相册管理', icon: Images },
+  { href: '/admin/retouch', label: '修图工作台', icon: Brush },
   { href: '/admin/settings', label: '系统设置', icon: Settings },
 ]
 

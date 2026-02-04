@@ -98,43 +98,18 @@ import { PackageCreator } from './package-creator.js';
 import { getAlbumCache, destroyAlbumCache } from './lib/album-cache.js';
 import { purgePhotoCache } from './lib/cloudflare-purge.js';
 import { alertService } from './lib/alert.js';
-import { createSupabaseCompatClient, SupabaseCompatClient } from './lib/database/supabase-compat.js';
-import { createPostgreSQLCompatClient, PostgreSQLCompatClient } from './lib/database/postgresql-compat.js';
+import { db as supabase } from './lib/database/client.js';
+import { ftpServerService } from './ftp-server.js';
 // logger 已在上面通过动态导入初始化
 
-// 初始化数据库客户端
-// PIS Standalone 版本支持 Supabase（云端）和 PostgreSQL（自托管）两种数据库后端
-const dbType = (process.env.DATABASE_TYPE || 'postgresql').toLowerCase();
-let supabase: SupabaseCompatClient | PostgreSQLCompatClient;
-
-if (dbType === 'postgresql') {
-  // PostgreSQL 模式：使用 PostgreSQL 适配器
-  logger.info('📊 Database mode: PostgreSQL (standalone)');
-  try {
-    supabase = createPostgreSQLCompatClient();
-    logger.info('✅ Database client initialized', { mode: 'postgresql' });
-  } catch (err: any) {
-    logger.fatal({ err }, '❌ Failed to initialize PostgreSQL database client');
-    logger.error('   Please set DATABASE_HOST, DATABASE_NAME, DATABASE_USER, DATABASE_PASSWORD');
-    process.exit(1);
-  }
-} else {
-  // Supabase 模式：使用 Supabase 客户端
-  logger.info('📊 Database mode: Supabase (cloud)');
-  try {
-    supabase = createSupabaseCompatClient();
-    logger.info('✅ Database client initialized', { mode: 'supabase' });
-  } catch (err: any) {
-    logger.fatal({ err }, '❌ Failed to initialize Supabase database client');
-    logger.error('   Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
-    process.exit(1);
-  }
-}
+// 移除原有的数据库初始化代码
+// const dbType = ...
 
 interface PhotoJobData {
   photoId: string;
   albumId: string;
   originalKey: string;
+  isRetouch?: boolean;
 }
 
 interface PackageJobData {
@@ -538,7 +513,7 @@ const worker = new Worker<PhotoJobData>(
             ? Promise.resolve({ data: cachedAlbum, error: null })
             : supabase
                 .from('albums')
-                .select('id, watermark_enabled, watermark_type, watermark_config, color_grading')
+                .select('id, watermark_enabled, watermark_type, watermark_config, color_grading, enable_human_retouch')
                 .eq('id', albumId)
                 .single()
         ]);
@@ -685,11 +660,15 @@ const worker = new Worker<PhotoJobData>(
       const exifDateTime = (result.exif as any)?.exif?.DateTimeOriginal;
       const capturedAt = parseExifDateTime(exifDateTime) || new Date().toISOString();
 
+      // 决定最终状态：如果开启了人工修图且不是精修图上传，则状态为 pending_retouch，否则为 completed
+      const isRetouch = job.data.isRetouch;
+      const finalStatus = (album.enable_human_retouch && !isRetouch) ? 'pending_retouch' : 'completed';
+
       // 7. 更新数据库
       const { error } = await supabase
         .from('photos')
         .update({
-          status: 'completed',
+          status: finalStatus,
           thumb_key: thumbKey,
           preview_key: previewKey,
           width: result.metadata.width,
@@ -2483,6 +2462,7 @@ async function gracefulShutdown(signal: string) {
     packageWorker.close(),
     photoQueue.close(),
     packageQueue.close(),
+    ftpServerService.stop(),
   ]);
   
   try {
@@ -2540,6 +2520,13 @@ server.listen(HTTP_PORT, async () => {
     // 不阻止服务启动，但记录错误
   }
   
+  // 启动 FTP 服务
+  try {
+    await ftpServerService.start();
+  } catch (err: any) {
+    console.error('❌ Failed to start FTP server:', err.message);
+  }
+
   // 启动后延迟5秒执行恢复（等待服务完全启动）
   recoveryTimeout = setTimeout(() => {
     recoverStuckProcessingPhotos();
