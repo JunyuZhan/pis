@@ -241,20 +241,51 @@
   - [ ] 模板编辑器
   - [ ] 模板导入/导出
 
-### 6. 客户管理
+### 6. 客户管理 ✅ 已完成
 > 管理客户信息和相册关联
 
 **功能点：**
-- [ ] 客户信息
-  - [ ] 姓名、电话、邮箱
-  - [ ] 备注信息
-  - [ ] 标签分类
-- [ ] 相册关联
-  - [ ] 一个客户多个相册
-  - [ ] 快速筛选客户相册
-- [ ] 通知功能
+- [x] 客户信息
+  - [x] 姓名、电话、邮箱、微信
+  - [x] 公司/单位、地址
+  - [x] 备注信息
+  - [x] 标签分类（支持多标签）
+  - [x] 客户来源（转介绍/网站/社交媒体/其他）
+  - [x] 客户状态（活跃/非活跃/已归档）
+- [x] 相册关联
+  - [x] 一个客户多个相册
+  - [x] 客户-相册关联 API
+  - [ ] 相册页面关联客户选择器（待优化）
+- [ ] 通知功能（待实现）
   - [ ] 相册就绪通知
-  - [ ] 短信/邮件通知（可选）
+  - [ ] 短信/邮件通知
+
+**已完成的技术实现：**
+```
+1. 数据库表
+   - customers: 客户信息表
+   - customer_albums: 客户-相册关联表
+
+2. API 接口
+   - GET /api/admin/customers: 获取客户列表（支持搜索、筛选、分页）
+   - POST /api/admin/customers: 创建客户
+   - GET /api/admin/customers/[id]: 获取客户详情及关联相册
+   - PATCH /api/admin/customers/[id]: 更新客户
+   - DELETE /api/admin/customers/[id]: 删除客户（软删除）
+   - POST /api/admin/customers/[id]/albums: 关联相册
+   - DELETE /api/admin/customers/[id]/albums: 取消关联
+
+3. 前端组件
+   - components/admin/customer-list.tsx: 客户列表页
+   - components/admin/customer-dialog.tsx: 客户编辑对话框
+   - app/admin/(dashboard)/customers/page.tsx: 客户管理页面
+
+4. 功能特点
+   - 支持姓名、电话、邮箱、公司搜索
+   - 按状态、标签筛选
+   - 显示关联相册数量
+   - 标签管理（添加/删除）
+```
 
 ### 7. 数据统计 ✅ 已完成
 > 相册访问和下载统计

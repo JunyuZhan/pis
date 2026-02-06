@@ -543,6 +543,57 @@ CREATE TRIGGER update_daily_stats_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
+-- 客户管理表
+-- ============================================
+
+-- 客户表
+CREATE TABLE IF NOT EXISTS customers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL,                  -- 客户姓名
+    phone VARCHAR(20),                           -- 电话号码
+    email VARCHAR(255),                          -- 邮箱
+    wechat VARCHAR(100),                         -- 微信号
+    company VARCHAR(200),                        -- 公司/单位
+    address TEXT,                                -- 地址
+    notes TEXT,                                  -- 备注信息
+    tags TEXT[],                                 -- 标签（数组）
+    source VARCHAR(50),                          -- 客户来源
+    status VARCHAR(20) DEFAULT 'active',         -- 状态
+    created_by UUID REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name);
+CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone);
+CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email);
+CREATE INDEX IF NOT EXISTS idx_customers_status ON customers(status);
+CREATE INDEX IF NOT EXISTS idx_customers_tags ON customers USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_customers_deleted_at ON customers(deleted_at) WHERE deleted_at IS NULL;
+
+DROP TRIGGER IF EXISTS update_customers_updated_at ON customers;
+CREATE TRIGGER update_customers_updated_at
+    BEFORE UPDATE ON customers
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- 客户-相册关联表
+CREATE TABLE IF NOT EXISTS customer_albums (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    album_id UUID NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
+    role VARCHAR(50) DEFAULT 'client',
+    notes TEXT,
+    notified_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(customer_id, album_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_customer_albums_customer ON customer_albums(customer_id);
+CREATE INDEX IF NOT EXISTS idx_customer_albums_album ON customer_albums(album_id);
+
+-- ============================================
 -- 初始化完成提示
 -- ============================================
 DO $$
