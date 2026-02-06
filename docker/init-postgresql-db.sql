@@ -597,6 +597,28 @@ CREATE INDEX IF NOT EXISTS idx_customer_albums_customer ON customer_albums(custo
 CREATE INDEX IF NOT EXISTS idx_customer_albums_album ON customer_albums(album_id);
 
 -- ============================================
+-- ============================================
+-- 升级历史表
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS upgrade_history (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    from_version VARCHAR(50) NOT NULL,
+    to_version VARCHAR(50) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    completed_at TIMESTAMP WITH TIME ZONE,
+    executed_by UUID REFERENCES users(id),
+    notes TEXT,
+    error_message TEXT,
+    rebuild_performed BOOLEAN DEFAULT false,
+    rollback_available BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_upgrade_history_status ON upgrade_history(status);
+CREATE INDEX IF NOT EXISTS idx_upgrade_history_started_at ON upgrade_history(started_at DESC);
+
 -- 初始化完成提示
 -- ============================================
 DO $$
@@ -614,6 +636,7 @@ BEGIN
     RAISE NOTICE '   - photo_groups 表: 存储照片分组';
     RAISE NOTICE '   - photo_group_assignments 表: 存储照片分组关联';
     RAISE NOTICE '   - system_settings 表: 存储系统设置';
+    RAISE NOTICE '   - upgrade_history 表: 存储升级历史';
     RAISE NOTICE '';
     RAISE NOTICE '👤 默认用户账户:';
     RAISE NOTICE '   - 管理员: admin@pis.com';

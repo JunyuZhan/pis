@@ -14,6 +14,9 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
+  History,
+  XCircle,
+  RotateCcw,
 } from 'lucide-react'
 import { showSuccess, handleApiError } from '@/lib/toast'
 import { cn } from '@/lib/utils'
@@ -26,7 +29,25 @@ interface UpgradeLog {
   stderr?: string
 }
 
+interface UpgradeHistoryItem {
+  id: string
+  from_version: string
+  to_version: string
+  status: 'pending' | 'running' | 'success' | 'failed' | 'rolled_back'
+  started_at: string
+  completed_at: string | null
+  executor_name: string | null
+  notes: string | null
+  error_message: string | null
+  rebuild_performed: boolean
+  rollback_available: boolean
+  duration: number | null
+}
+
+type TabType = 'status' | 'history'
+
 export function UpgradeManager() {
+  const [activeTab, setActiveTab] = useState<TabType>('status')
   const [checking, setChecking] = useState(false)
   const [upgrading, setUpgrading] = useState(false)
   const [status, setStatus] = useState<VersionCheckResult | null>(null)
@@ -35,11 +56,43 @@ export function UpgradeManager() {
   const [rebuildImages, setRebuildImages] = useState(false)
   const [showReleaseNotes, setShowReleaseNotes] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // 升级历史状态
+  const [history, setHistory] = useState<UpgradeHistoryItem[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [historyError, setHistoryError] = useState<string | null>(null)
 
   // 组件加载时自动检查
   useEffect(() => {
     checkStatus()
   }, [])
+  
+  // 切换到历史标签时加载历史
+  useEffect(() => {
+    if (activeTab === 'history') {
+      fetchHistory()
+    }
+  }, [activeTab])
+  
+  const fetchHistory = async () => {
+    setLoadingHistory(true)
+    setHistoryError(null)
+    try {
+      const response = await fetch('/api/admin/upgrade/history?limit=20')
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error?.message || '获取历史失败')
+      }
+      
+      setHistory(data.data?.history || [])
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '获取升级历史失败'
+      setHistoryError(message)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
 
   const checkStatus = async () => {
     setChecking(true)
@@ -206,8 +259,59 @@ export function UpgradeManager() {
     return elements
   }
 
+  // 获取状态对应的图标和样式
+  const getStatusDisplay = (status: UpgradeHistoryItem['status']) => {
+    switch (status) {
+      case 'success':
+        return { icon: CheckCircle2, color: 'text-green-500', label: '成功' }
+      case 'failed':
+        return { icon: XCircle, color: 'text-red-500', label: '失败' }
+      case 'running':
+        return { icon: Loader2, color: 'text-blue-500', label: '执行中' }
+      case 'rolled_back':
+        return { icon: RotateCcw, color: 'text-yellow-500', label: '已回滚' }
+      default:
+        return { icon: Clock, color: 'text-gray-500', label: '等待中' }
+    }
+  }
+
   return (
     <div className="space-y-4">
+      {/* 标签页切换 */}
+      <div className="flex border-b border-border">
+        <button
+          onClick={() => setActiveTab('status')}
+          className={cn(
+            'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+            activeTab === 'status'
+              ? 'border-accent text-accent'
+              : 'border-transparent text-text-muted hover:text-text-primary'
+          )}
+        >
+          <span className="flex items-center gap-2">
+            <Server className="w-4 h-4" />
+            版本状态
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('history')}
+          className={cn(
+            'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+            activeTab === 'history'
+              ? 'border-accent text-accent'
+              : 'border-transparent text-text-muted hover:text-text-primary'
+          )}
+        >
+          <span className="flex items-center gap-2">
+            <History className="w-4 h-4" />
+            升级历史
+          </span>
+        </button>
+      </div>
+      
+      {/* 版本状态标签页 */}
+      {activeTab === 'status' && (
+        <>
       {/* 版本状态 */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -438,6 +542,95 @@ export function UpgradeManager() {
           </div>
         </div>
       </div>
+        </>
+      )}
+      
+      {/* 升级历史标签页 */}
+      {activeTab === 'history' && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-semibold">升级历史</h3>
+            <button
+              onClick={fetchHistory}
+              disabled={loadingHistory}
+              className="text-sm text-accent hover:text-accent/80 flex items-center gap-1 disabled:opacity-50"
+            >
+              <RefreshCw className={cn('w-4 h-4', loadingHistory && 'animate-spin')} />
+              刷新
+            </button>
+          </div>
+          
+          {loadingHistory && history.length === 0 ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
+            </div>
+          ) : historyError ? (
+            <div className="p-4 bg-red-500/10 rounded-lg border border-red-500/20">
+              <div className="flex items-center gap-2 text-red-500">
+                <AlertCircle className="w-5 h-5" />
+                <span>{historyError}</span>
+              </div>
+            </div>
+          ) : history.length === 0 ? (
+            <div className="text-center py-8 text-text-muted">
+              <History className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p>暂无升级记录</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {history.map((item) => {
+                const statusDisplay = getStatusDisplay(item.status)
+                const StatusIcon = statusDisplay.icon
+                
+                return (
+                  <div
+                    key={item.id}
+                    className="p-4 bg-surface-elevated rounded-lg border border-border"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <StatusIcon className={cn('w-5 h-5 mt-0.5', statusDisplay.color, item.status === 'running' && 'animate-spin')} />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {item.from_version} → {item.to_version}
+                            </span>
+                            <span className={cn('text-xs px-2 py-0.5 rounded', statusDisplay.color, 'bg-current/10')}>
+                              {statusDisplay.label}
+                            </span>
+                            {item.rebuild_performed && (
+                              <span className="text-xs px-2 py-0.5 rounded bg-purple-500/10 text-purple-500">
+                                重建镜像
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-text-muted mt-1">
+                            <span>{formatDate(item.started_at)}</span>
+                            {item.duration && (
+                              <span className="ml-2">耗时 {item.duration}秒</span>
+                            )}
+                            {item.executor_name && (
+                              <span className="ml-2">执行人: {item.executor_name}</span>
+                            )}
+                          </div>
+                          {item.notes && (
+                            <p className="text-sm text-text-secondary mt-1">{item.notes}</p>
+                          )}
+                          {item.error_message && (
+                            <p className="text-sm text-red-400 mt-1 font-mono text-xs bg-red-500/10 p-2 rounded">
+                              {item.error_message}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
