@@ -285,20 +285,49 @@ export function getAlbumShareUrl(slug: string): string {
 /**
  * 生成唯一的相册 slug
  *
- * @description 使用时间戳和随机字符生成 12 位唯一标识符
- * @returns {string} 生成的 slug（格式：字母数字组合）
+ * @description 生成 8 位全英文的唯一标识符，用于 FTP 用户名
+ * @returns {string} 生成的 slug（格式：8位小写字母）
  *
  * @example
  * ```typescript
  * const slug = generateAlbumSlug()
- * // 返回类似 "a1b2c3d4e5f6" 的字符串
+ * // 返回类似 "abcdefgh" 的 8 位字符串
  * ```
  */
 export function generateAlbumSlug(): string {
-  // 使用 Base36 编码时间戳（更短）+ 随机后缀
-  const timestamp = Date.now().toString(36)
-  const randomPart = Math.random().toString(36).substring(2, 8)
-  return `${timestamp}${randomPart}`
+  // 只使用小写字母（a-z），便于在相机上输入
+  const letters = 'abcdefghijklmnopqrstuvwxyz'
+  let result = ''
+  
+  // 服务端：使用 Node.js crypto 模块
+  if (typeof window === 'undefined' && typeof require !== 'undefined') {
+    try {
+      const crypto = require('crypto')
+      const bytes = crypto.randomBytes(8)
+      for (let i = 0; i < 8; i++) {
+        result += letters[bytes[i] % 26]
+      }
+      return result
+    } catch {
+      // 如果 require 失败，回退到其他方法
+    }
+  }
+
+  // 客户端或服务端回退方案：使用 Web Crypto API
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const array = new Uint8Array(8)
+    crypto.getRandomValues(array)
+    for (let i = 0; i < 8; i++) {
+      result += letters[array[i] % 26]
+    }
+    return result
+  }
+
+  // 最后的回退方案：使用 Math.random
+  for (let i = 0; i < 8; i++) {
+    result += letters[Math.floor(Math.random() * 26)]
+  }
+  return result
 }
 
 /**
@@ -317,33 +346,30 @@ export function truncateText(text: string, maxLength: number): string {
 /**
  * 生成安全的随机令牌（用于 upload_token）
  *
- * @description 使用 crypto.randomBytes 生成安全的随机字符串
- * 为了便于在相机上输入，使用较短的令牌长度（12 字节 = 24 个字符）
- * 使用 Base36 编码（只包含数字和字母），避免特殊字符，更适合相机输入
+ * @description 生成 8 位全数字的随机令牌，用于 FTP 密码
+ * 为了便于在相机上输入，使用纯数字，避免字母和特殊字符
  * 
- * @param {number} [length=12] 令牌长度（字节数，默认 12，生成约 18-20 个字符的 Base36 字符串）
- * @returns {string} 随机令牌字符串（Base36 格式，只包含数字和字母）
+ * @param {number} [length=8] 令牌长度（默认 8 位数字）
+ * @returns {string} 随机令牌字符串（8 位数字）
  *
  * @example
  * ```typescript
  * const token = generateUploadToken()
- * // 返回类似 "k3j9x2m8p5q1r4" 的 18-20 字符字符串
+ * // 返回类似 "12345678" 的 8 位数字字符串
  * ```
  */
-export function generateUploadToken(length: number = 12): string {
-  // Base36 字符集（0-9, a-z）
-  const base36Chars = '0123456789abcdefghijklmnopqrstuvwxyz'
+export function generateUploadToken(length: number = 8): string {
+  // 只使用数字（0-9），便于在相机上输入
+  const digits = '0123456789'
+  let result = ''
   
   // 服务端：使用 Node.js crypto 模块
   if (typeof window === 'undefined' && typeof require !== 'undefined') {
     try {
       const crypto = require('crypto')
       const bytes = crypto.randomBytes(length)
-      // 转换为 Base36（使用数字和字母，避免特殊字符）
-      let result = ''
-      for (let i = 0; i < bytes.length; i++) {
-        // 将每个字节映射到 Base36 字符集
-        result += base36Chars[bytes[i] % 36]
+      for (let i = 0; i < length; i++) {
+        result += digits[bytes[i] % 10]
       }
       return result
     } catch {
@@ -355,18 +381,15 @@ export function generateUploadToken(length: number = 12): string {
   if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
     const array = new Uint8Array(length)
     crypto.getRandomValues(array)
-    // 转换为 Base36
-    let result = ''
-    for (let i = 0; i < array.length; i++) {
-      result += base36Chars[array[i] % 36]
+    for (let i = 0; i < length; i++) {
+      result += digits[array[i] % 10]
     }
     return result
   }
 
-  // 最后的回退方案：使用 Math.random（不够安全，但总比没有好）
-  let result = ''
+  // 最后的回退方案：使用 Math.random
   for (let i = 0; i < length; i++) {
-    result += base36Chars[Math.floor(Math.random() * 36)]
+    result += digits[Math.floor(Math.random() * 10)]
   }
   return result
 }
