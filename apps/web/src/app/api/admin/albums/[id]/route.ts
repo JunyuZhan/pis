@@ -367,21 +367,24 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // 清除 Next.js 路由缓存，确保前端立即看到更新
-    if (album.slug) {
-      try {
-        const { revalidatePath } = await import('next/cache')
-        // 清除相册相关的所有公开API路由缓存
+    try {
+      const { revalidatePath } = await import('next/cache')
+      
+      // 清除管理后台相册列表缓存（最重要）
+      revalidatePath('/admin')
+      revalidatePath('/admin/albums')
+      revalidatePath('/api/admin/albums')
+      
+      // 如果相册有 slug，清除公开路由缓存
+      if (album.slug) {
         revalidatePath(`/api/public/albums/${album.slug}/photos`)
         revalidatePath(`/api/public/albums/${album.slug}/groups`)
         revalidatePath(`/api/public/albums/${album.slug}`)
         revalidatePath(`/album/${album.slug}`)
-        // 清除管理后台相册列表缓存
-        revalidatePath('/api/admin/albums')
-        revalidatePath('/admin/albums')
-      } catch (revalidateError) {
-        // 记录错误但不阻止删除操作
-        console.warn('[Delete Album] Failed to revalidate cache:', revalidateError)
       }
+    } catch (revalidateError) {
+      // 记录错误但不阻止删除操作
+      console.warn('[Delete Album] Failed to revalidate cache:', revalidateError)
     }
 
     return createSuccessResponse({

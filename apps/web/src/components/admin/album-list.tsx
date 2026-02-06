@@ -164,26 +164,31 @@ export function AlbumList({ initialAlbums }: AlbumListProps) {
           const result = await response.json()
           showSuccess(result.message || '删除成功')
 
-          // 更新本地状态（立即从列表中移除）
+          // 更新本地状态（立即从列表中移除，因为相册已移至回收站）
           setAlbums((prev) => prev.filter((a) => a.id !== albumId))
           
-          // 刷新服务器数据，确保数据同步
+          // 强制刷新服务器组件数据（清除缓存并重新获取）
           router.refresh()
           
-          // 延迟重新获取数据，确保删除操作已完全生效
+          // 同时通过 API 重新获取数据，确保数据同步（双重保障）
+          // 注意：删除的相册会移至回收站（deleted_at 不为 null），不会在列表中显示
           setTimeout(async () => {
             try {
-              const refreshResponse = await fetch('/api/admin/albums')
+              const refreshResponse = await fetch('/api/admin/albums?t=' + Date.now(), {
+                cache: 'no-store', // 强制不使用缓存
+              })
               if (refreshResponse.ok) {
                 const refreshData = await refreshResponse.json()
                 if (refreshData.albums) {
-                  setAlbums(refreshData.albums)
+                  // 确保只显示未删除的相册（deleted_at 为 null）
+                  const validAlbums = refreshData.albums.filter((a: any) => !a.deleted_at)
+                  setAlbums(validAlbums)
                 }
               }
             } catch (error) {
               console.error('Failed to refresh album list:', error)
             }
-          }, 500)
+          }, 300)
         } catch (error) {
           console.error(error)
           handleApiError(error, '删除失败，请重试')

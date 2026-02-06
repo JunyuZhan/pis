@@ -6,15 +6,18 @@ import type { Album, Photo } from '@/types/database'
 
 /**
  * 相册列表页 (管理后台首页)
+ * 
+ * 注意：此页面只显示未删除的相册（deleted_at IS NULL）
+ * 已删除的相册会移至回收站，不在此页面显示
  */
 export default async function AdminPage() {
   const db = await createClient()
 
-  // 获取相册列表
+  // 获取相册列表（只获取未删除的相册，已删除的相册在回收站）
   const albumsResult = await db
     .from('albums')
     .select('*')
-    .is('deleted_at', null)
+    .is('deleted_at', null) // 只查询未删除的相册
     .order('created_at', { ascending: false })
 
   const albumsData = (albumsResult.data || []) as Album[]
