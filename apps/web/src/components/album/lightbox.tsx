@@ -355,12 +355,13 @@ export function PhotoLightbox({
         // 用户取消分享
       }
     } else {
-      // 复制链接
-      try {
-        await navigator.clipboard.writeText(shareUrl)
+      // 复制链接（使用兼容方案）
+      const { copyToClipboard } = await import('@/lib/clipboard')
+      const success = await copyToClipboard(shareUrl)
+      if (success) {
         showSuccess(t('linkCopied'))
-      } catch (err) {
-        console.error('Failed to copy:', err)
+      } else {
+        console.error('Failed to copy share link')
       }
     }
   }, [t])

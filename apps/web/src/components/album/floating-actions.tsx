@@ -207,11 +207,15 @@ export function FloatingActions({ album, currentSort, currentLayout }: FloatingA
                           // 用户取消分享，不做处理
                         })
                       } else {
-                        // 复制链接到剪贴板
-                        navigator.clipboard.writeText(shareUrl).then(() => {
-                          showInfo('链接已复制到剪贴板')
-                        }).catch(() => {
-                          showError('复制失败，请手动复制链接')
+                        // 复制链接到剪贴板（使用兼容方案）
+                        import('@/lib/clipboard').then(({ copyToClipboard }) => {
+                          copyToClipboard(shareUrl).then((success) => {
+                            if (success) {
+                              showInfo('链接已复制到剪贴板')
+                            } else {
+                              showError('复制失败，请手动复制链接')
+                            }
+                          })
                         })
                       }
                     } catch (error) {

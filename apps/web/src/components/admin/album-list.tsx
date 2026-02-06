@@ -384,10 +384,15 @@ function AlbumCard({
     if (!shareUrl) return
     
     try {
-      await navigator.clipboard.writeText(shareUrl)
-      setShareUrlCopied(true)
-      showSuccess('分享链接已复制')
-      setTimeout(() => setShareUrlCopied(false), 2000)
+      const { copyToClipboard } = await import('@/lib/clipboard')
+      const success = await copyToClipboard(shareUrl)
+      if (success) {
+        setShareUrlCopied(true)
+        showSuccess('分享链接已复制')
+        setTimeout(() => setShareUrlCopied(false), 2000)
+      } else {
+        showSuccess('复制失败，请手动复制')
+      }
     } catch (error) {
       console.error('Copy failed:', error)
       handleApiError(error, '复制失败，请重试')

@@ -456,10 +456,13 @@ const PhotoCard = memo(function PhotoCard({
         // 用户取消分享
       }
     } else {
-      // 复制链接
-      await navigator.clipboard.writeText(shareUrl)
-      setShowCopied(true)
-      setTimeout(() => setShowCopied(false), 2000)
+      // 复制链接（使用兼容方案）
+      const { copyToClipboard } = await import('@/lib/clipboard')
+      const success = await copyToClipboard(shareUrl)
+      if (success) {
+        setShowCopied(true)
+        setTimeout(() => setShowCopied(false), 2000)
+      }
     }
   }
 

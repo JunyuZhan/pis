@@ -156,9 +156,12 @@ export function CreateAlbumDialog({ open, onOpenChange }: CreateAlbumDialogProps
 
   const handleCopy = async () => {
     if (created?.shareUrl) {
-      await navigator.clipboard.writeText(created.shareUrl)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      const { copyToClipboard } = await import('@/lib/clipboard')
+      const success = await copyToClipboard(created.shareUrl)
+      if (success) {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      }
     }
   }
 
@@ -458,9 +461,10 @@ export function CreateAlbumDialog({ open, onOpenChange }: CreateAlbumDialogProps
                           />
                           <button
                             type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(getFtpServerHost())
-                              showSuccess('服务器地址已复制')
+                            onClick={async () => {
+                              const { copyToClipboard } = await import('@/lib/clipboard')
+                              const success = await copyToClipboard(getFtpServerHost())
+                              if (success) showSuccess('服务器地址已复制')
                             }}
                             className="btn-secondary px-2"
                           >
@@ -494,9 +498,10 @@ export function CreateAlbumDialog({ open, onOpenChange }: CreateAlbumDialogProps
                           />
                           <button
                             type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(created.slug)
-                              showSuccess('相册短码已复制')
+                            onClick={async () => {
+                              const { copyToClipboard } = await import('@/lib/clipboard')
+                              const success = await copyToClipboard(created.slug)
+                              if (success) showSuccess('相册短码已复制')
                             }}
                             className="btn-secondary px-2"
                           >
@@ -518,9 +523,10 @@ export function CreateAlbumDialog({ open, onOpenChange }: CreateAlbumDialogProps
                           />
                           <button
                             type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(created.upload_token!)
-                              showSuccess('上传令牌已复制')
+                            onClick={async () => {
+                              const { copyToClipboard } = await import('@/lib/clipboard')
+                              const success = await copyToClipboard(created.upload_token!)
+                              if (success) showSuccess('上传令牌已复制')
                             }}
                             className="btn-secondary px-2"
                           >
