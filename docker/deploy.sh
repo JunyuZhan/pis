@@ -100,6 +100,48 @@ generate_secret() {
     fi
 }
 
+# 替换 .env.example 中的占位符
+replace_placeholders() {
+    local file="$1"
+    
+    # 重要：必须按顺序替换，先替换更具体的，再替换通用的
+    # 顺序：AUTO_GENERATE_32 -> AUTO_GENERATE_16 -> AUTO_GENERATE
+    # 这样可以避免 AUTO_GENERATE 误匹配 AUTO_GENERATE_32 和 AUTO_GENERATE_16
+    
+    # 替换 AUTO_GENERATE_32 (64 字符十六进制)
+    if grep -q "AUTO_GENERATE_32" "$file" 2>/dev/null; then
+        local secret_32=$(generate_secret)
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS 使用 sed -i '' 格式
+            sed -i '' "s/AUTO_GENERATE_32/$secret_32/g" "$file"
+        else
+            # Linux 使用 sed -i 格式
+            sed -i "s/AUTO_GENERATE_32/$secret_32/g" "$file"
+        fi
+    fi
+    
+    # 替换 AUTO_GENERATE_16 (16 字符随机字符串)
+    if grep -q "AUTO_GENERATE_16" "$file" 2>/dev/null; then
+        local secret_16=$(generate_secret | cut -c1-16)
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s/AUTO_GENERATE_16/$secret_16/g" "$file"
+        else
+            sed -i "s/AUTO_GENERATE_16/$secret_16/g" "$file"
+        fi
+    fi
+    
+    # 替换 AUTO_GENERATE (64 字符十六进制)
+    # 注意：此时 AUTO_GENERATE_32 和 AUTO_GENERATE_16 已经被替换，不会误匹配
+    if grep -q "AUTO_GENERATE" "$file" 2>/dev/null; then
+        local secret=$(generate_secret)
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s/AUTO_GENERATE/$secret/g" "$file"
+        else
+            sed -i "s/AUTO_GENERATE/$secret/g" "$file"
+        fi
+    fi
+}
+
 # 检查 Docker
 check_docker() {
     print_step "1/11" "检查 Docker 环境"
@@ -411,8 +453,9 @@ generate_config() {
         
         # 检查是否使用了默认的 Worker API Key
         worker_key=$(grep '^WORKER_API_KEY=' "$env_target" 2>/dev/null | cut -d'=' -f2 | xargs)
+        auth_jwt_secret=$(grep '^AUTH_JWT_SECRET=' "$env_target" 2>/dev/null | cut -d'=' -f2 | xargs)
         
-        # 检查是否为默认值
+        # 检查是否为默认值或占位符
         use_default=0
         if [ "$minio_user" = "minioadmin" ] || [ "$minio_pass" = "minioadmin" ]; then
             echo -e "${YELLOW}⚠️  检测到使用默认 MinIO 密钥（minioadmin），为了安全，将生成新密钥${NC}"
@@ -424,8 +467,13 @@ generate_config() {
             use_default=1
         fi
         
-        if [ "$worker_key" = "changeme" ]; then
-            echo -e "${YELLOW}⚠️  检测到使用默认 Worker API Key，为了安全，将生成新密钥${NC}"
+        if [ "$worker_key" = "changeme" ] || [ "$worker_key" = "AUTO_GENERATE_32" ] || [ "$worker_key" = "AUTO_GENERATE" ]; then
+            echo -e "${YELLOW}⚠️  检测到使用默认 Worker API Key 或占位符，为了安全，将生成新密钥${NC}"
+            use_default=1
+        fi
+        
+        if [ "$auth_jwt_secret" = "AUTO_GENERATE_32" ] || [ "$auth_jwt_secret" = "AUTO_GENERATE" ]; then
+            echo -e "${YELLOW}⚠️  检测到使用占位符 AUTH_JWT_SECRET，将生成新密钥${NC}"
             use_default=1
         fi
         
@@ -446,8 +494,24 @@ generate_config() {
     echo ""
     echo -e "${CYAN}正在生成配置文件...${NC}"
 
-    # 根据部署模式生成配置
-    if [ "$DEPLOYMENT_MODE" = "standalone" ]; then
+    # 检查是否存在 .env.example，如果存在则基于它生成配置
+    local env_example="$PROJECT_ROOT/.env.example"
+    local use_example=false
+    
+    if [ -f "$env_example" ]; then
+        echo -e "${CYAN}检测到 .env.example 文件，将基于模板生成配置...${NC}"
+        cp "$env_example" "$env_file"
+        use_example=true
+        
+        # 替换占位符
+        replace_placeholders "$env_file"
+        print_success "已替换 AUTO_GENERATE 占位符"
+    fi
+
+    # 根据部署模式生成或更新配置
+    if [ "$use_example" = false ]; then
+        # 如果没有 .env.example，使用原有逻辑生成配置
+        if [ "$DEPLOYMENT_MODE" = "standalone" ]; then
         # 完全自托管配置
         cat > "$env_file" << EOF
 # ============================================
@@ -535,10 +599,162 @@ ALERT_FROM_EMAIL=$ALERT_FROM_EMAIL
 ALERT_TO_EMAIL=$ALERT_TO_EMAIL
 EOF
         fi
+    else
+        # 如果使用了 .env.example，需要更新配置变量
+        echo -e "${CYAN}更新配置变量...${NC}"
+        
+        # 更新域名配置
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s|^DOMAIN=.*|DOMAIN=$DOMAIN|g" "$env_file" 2>/dev/null || true
+            sed -i '' "s|^NEXT_PUBLIC_APP_URL=.*|NEXT_PUBLIC_APP_URL=$APP_URL|g" "$env_file" 2>/dev/null || true
+            sed -i '' "s|^NEXT_PUBLIC_MEDIA_URL=.*|NEXT_PUBLIC_MEDIA_URL=$MEDIA_URL|g" "$env_file" 2>/dev/null || true
+            sed -i '' "s|^NEXT_PUBLIC_WORKER_URL=.*|NEXT_PUBLIC_WORKER_URL=$WORKER_URL|g" "$env_file" 2>/dev/null || true
+            sed -i '' "s|^WORKER_URL=.*|WORKER_URL=$WORKER_URL|g" "$env_file" 2>/dev/null || true
+            sed -i '' "s|^WORKER_API_URL=.*|WORKER_API_URL=$WORKER_URL|g" "$env_file" 2>/dev/null || true
+            
+            # 更新数据库配置（standalone 模式）
+            if [ "$DEPLOYMENT_MODE" = "standalone" ]; then
+                sed -i '' "s|^DATABASE_TYPE=.*|DATABASE_TYPE=postgresql|g" "$env_file" 2>/dev/null || true
+                sed -i '' "s|^DATABASE_HOST=.*|DATABASE_HOST=$DATABASE_HOST|g" "$env_file" 2>/dev/null || true
+                sed -i '' "s|^DATABASE_PORT=.*|DATABASE_PORT=$DATABASE_PORT|g" "$env_file" 2>/dev/null || true
+                sed -i '' "s|^DATABASE_NAME=.*|DATABASE_NAME=$DATABASE_NAME|g" "$env_file" 2>/dev/null || true
+                sed -i '' "s|^DATABASE_USER=.*|DATABASE_USER=$DATABASE_USER|g" "$env_file" 2>/dev/null || true
+                sed -i '' "s|^DATABASE_PASSWORD=.*|DATABASE_PASSWORD=$DATABASE_PASSWORD|g" "$env_file" 2>/dev/null || true
+                sed -i '' "s|^DATABASE_SSL=.*|DATABASE_SSL=false|g" "$env_file" 2>/dev/null || true
+                
+                # 添加认证配置
+                if ! grep -q "^AUTH_MODE=" "$env_file" 2>/dev/null; then
+                    echo "" >> "$env_file"
+                    echo "# ==================== 认证配置 ====================" >> "$env_file"
+                    echo "AUTH_MODE=custom" >> "$env_file"
+                fi
+                sed -i '' "s|^AUTH_JWT_SECRET=.*|AUTH_JWT_SECRET=$AUTH_JWT_SECRET|g" "$env_file" 2>/dev/null || true
+            fi
+            
+            # 更新 MinIO 配置
+            sed -i '' "s|^MINIO_ACCESS_KEY=.*|MINIO_ACCESS_KEY=$MINIO_ACCESS_KEY|g" "$env_file" 2>/dev/null || true
+            sed -i '' "s|^MINIO_SECRET_KEY=.*|MINIO_SECRET_KEY=$MINIO_SECRET_KEY|g" "$env_file" 2>/dev/null || true
+            sed -i '' "s|^STORAGE_ACCESS_KEY=.*|STORAGE_ACCESS_KEY=$MINIO_ACCESS_KEY|g" "$env_file" 2>/dev/null || true
+            sed -i '' "s|^STORAGE_SECRET_KEY=.*|STORAGE_SECRET_KEY=$MINIO_SECRET_KEY|g" "$env_file" 2>/dev/null || true
+            sed -i '' "s|^STORAGE_PUBLIC_URL=.*|STORAGE_PUBLIC_URL=$MEDIA_URL|g" "$env_file" 2>/dev/null || true
+            sed -i '' "s|^MINIO_PUBLIC_URL=.*|MINIO_PUBLIC_URL=$MEDIA_URL|g" "$env_file" 2>/dev/null || true
+            
+            # 更新 Worker 配置
+            sed -i '' "s|^WORKER_API_KEY=.*|WORKER_API_KEY=$WORKER_API_KEY|g" "$env_file" 2>/dev/null || true
+            
+            # 添加安全配置
+            if ! grep -q "^ALBUM_SESSION_SECRET=" "$env_file" 2>/dev/null; then
+                echo "" >> "$env_file"
+                echo "# ==================== 安全配置 ====================" >> "$env_file"
+                echo "ALBUM_SESSION_SECRET=$ALBUM_SESSION_SECRET" >> "$env_file"
+            else
+                sed -i '' "s|^ALBUM_SESSION_SECRET=.*|ALBUM_SESSION_SECRET=$ALBUM_SESSION_SECRET|g" "$env_file" 2>/dev/null || true
+            fi
+            
+            # 更新告警配置
+            if [ "$ALERT_ENABLED" = "true" ]; then
+                if ! grep -q "^ALERT_ENABLED=" "$env_file" 2>/dev/null; then
+                    echo "" >> "$env_file"
+                    echo "# ==================== 告警配置 ====================" >> "$env_file"
+                    echo "ALERT_ENABLED=$ALERT_ENABLED" >> "$env_file"
+                    echo "ALERT_TYPE=$ALERT_TYPE" >> "$env_file"
+                else
+                    sed -i '' "s|^ALERT_ENABLED=.*|ALERT_ENABLED=$ALERT_ENABLED|g" "$env_file" 2>/dev/null || true
+                    sed -i '' "s|^ALERT_TYPE=.*|ALERT_TYPE=$ALERT_TYPE|g" "$env_file" 2>/dev/null || true
+                fi
+                
+                if [ "$ALERT_TYPE" = "telegram" ]; then
+                    sed -i '' "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN|g" "$env_file" 2>/dev/null || true
+                    sed -i '' "s|^TELEGRAM_CHAT_ID=.*|TELEGRAM_CHAT_ID=$TELEGRAM_CHAT_ID|g" "$env_file" 2>/dev/null || true
+                elif [ "$ALERT_TYPE" = "email" ]; then
+                    sed -i '' "s|^ALERT_SMTP_HOST=.*|ALERT_SMTP_HOST=$ALERT_SMTP_HOST|g" "$env_file" 2>/dev/null || true
+                    sed -i '' "s|^ALERT_SMTP_PORT=.*|ALERT_SMTP_PORT=$ALERT_SMTP_PORT|g" "$env_file" 2>/dev/null || true
+                    sed -i '' "s|^ALERT_SMTP_USER=.*|ALERT_SMTP_USER=$ALERT_SMTP_USER|g" "$env_file" 2>/dev/null || true
+                    sed -i '' "s|^ALERT_SMTP_PASS=.*|ALERT_SMTP_PASS=$ALERT_SMTP_PASS|g" "$env_file" 2>/dev/null || true
+                    sed -i '' "s|^ALERT_FROM_EMAIL=.*|ALERT_FROM_EMAIL=$ALERT_FROM_EMAIL|g" "$env_file" 2>/dev/null || true
+                    sed -i '' "s|^ALERT_TO_EMAIL=.*|ALERT_TO_EMAIL=$ALERT_TO_EMAIL|g" "$env_file" 2>/dev/null || true
+                fi
+            fi
+        else
+            # Linux 版本
+            sed -i "s|^DOMAIN=.*|DOMAIN=$DOMAIN|g" "$env_file" 2>/dev/null || true
+            sed -i "s|^NEXT_PUBLIC_APP_URL=.*|NEXT_PUBLIC_APP_URL=$APP_URL|g" "$env_file" 2>/dev/null || true
+            sed -i "s|^NEXT_PUBLIC_MEDIA_URL=.*|NEXT_PUBLIC_MEDIA_URL=$MEDIA_URL|g" "$env_file" 2>/dev/null || true
+            sed -i "s|^NEXT_PUBLIC_WORKER_URL=.*|NEXT_PUBLIC_WORKER_URL=$WORKER_URL|g" "$env_file" 2>/dev/null || true
+            sed -i "s|^WORKER_URL=.*|WORKER_URL=$WORKER_URL|g" "$env_file" 2>/dev/null || true
+            sed -i "s|^WORKER_API_URL=.*|WORKER_API_URL=$WORKER_URL|g" "$env_file" 2>/dev/null || true
+            
+            # 更新数据库配置（standalone 模式）
+            if [ "$DEPLOYMENT_MODE" = "standalone" ]; then
+                sed -i "s|^DATABASE_TYPE=.*|DATABASE_TYPE=postgresql|g" "$env_file" 2>/dev/null || true
+                sed -i "s|^DATABASE_HOST=.*|DATABASE_HOST=$DATABASE_HOST|g" "$env_file" 2>/dev/null || true
+                sed -i "s|^DATABASE_PORT=.*|DATABASE_PORT=$DATABASE_PORT|g" "$env_file" 2>/dev/null || true
+                sed -i "s|^DATABASE_NAME=.*|DATABASE_NAME=$DATABASE_NAME|g" "$env_file" 2>/dev/null || true
+                sed -i "s|^DATABASE_USER=.*|DATABASE_USER=$DATABASE_USER|g" "$env_file" 2>/dev/null || true
+                sed -i "s|^DATABASE_PASSWORD=.*|DATABASE_PASSWORD=$DATABASE_PASSWORD|g" "$env_file" 2>/dev/null || true
+                sed -i "s|^DATABASE_SSL=.*|DATABASE_SSL=false|g" "$env_file" 2>/dev/null || true
+                
+                # 添加认证配置
+                if ! grep -q "^AUTH_MODE=" "$env_file" 2>/dev/null; then
+                    echo "" >> "$env_file"
+                    echo "# ==================== 认证配置 ====================" >> "$env_file"
+                    echo "AUTH_MODE=custom" >> "$env_file"
+                fi
+                sed -i "s|^AUTH_JWT_SECRET=.*|AUTH_JWT_SECRET=$AUTH_JWT_SECRET|g" "$env_file" 2>/dev/null || true
+            fi
+            
+            # 更新 MinIO 配置
+            sed -i "s|^MINIO_ACCESS_KEY=.*|MINIO_ACCESS_KEY=$MINIO_ACCESS_KEY|g" "$env_file" 2>/dev/null || true
+            sed -i "s|^MINIO_SECRET_KEY=.*|MINIO_SECRET_KEY=$MINIO_SECRET_KEY|g" "$env_file" 2>/dev/null || true
+            sed -i "s|^STORAGE_ACCESS_KEY=.*|STORAGE_ACCESS_KEY=$MINIO_ACCESS_KEY|g" "$env_file" 2>/dev/null || true
+            sed -i "s|^STORAGE_SECRET_KEY=.*|STORAGE_SECRET_KEY=$MINIO_SECRET_KEY|g" "$env_file" 2>/dev/null || true
+            sed -i "s|^STORAGE_PUBLIC_URL=.*|STORAGE_PUBLIC_URL=$MEDIA_URL|g" "$env_file" 2>/dev/null || true
+            sed -i "s|^MINIO_PUBLIC_URL=.*|MINIO_PUBLIC_URL=$MEDIA_URL|g" "$env_file" 2>/dev/null || true
+            
+            # 更新 Worker 配置
+            sed -i "s|^WORKER_API_KEY=.*|WORKER_API_KEY=$WORKER_API_KEY|g" "$env_file" 2>/dev/null || true
+            
+            # 添加安全配置
+            if ! grep -q "^ALBUM_SESSION_SECRET=" "$env_file" 2>/dev/null; then
+                echo "" >> "$env_file"
+                echo "# ==================== 安全配置 ====================" >> "$env_file"
+                echo "ALBUM_SESSION_SECRET=$ALBUM_SESSION_SECRET" >> "$env_file"
+            else
+                sed -i "s|^ALBUM_SESSION_SECRET=.*|ALBUM_SESSION_SECRET=$ALBUM_SESSION_SECRET|g" "$env_file" 2>/dev/null || true
+            fi
+            
+            # 更新告警配置
+            if [ "$ALERT_ENABLED" = "true" ]; then
+                if ! grep -q "^ALERT_ENABLED=" "$env_file" 2>/dev/null; then
+                    echo "" >> "$env_file"
+                    echo "# ==================== 告警配置 ====================" >> "$env_file"
+                    echo "ALERT_ENABLED=$ALERT_ENABLED" >> "$env_file"
+                    echo "ALERT_TYPE=$ALERT_TYPE" >> "$env_file"
+                else
+                    sed -i "s|^ALERT_ENABLED=.*|ALERT_ENABLED=$ALERT_ENABLED|g" "$env_file" 2>/dev/null || true
+                    sed -i "s|^ALERT_TYPE=.*|ALERT_TYPE=$ALERT_TYPE|g" "$env_file" 2>/dev/null || true
+                fi
+                
+                if [ "$ALERT_TYPE" = "telegram" ]; then
+                    sed -i "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN|g" "$env_file" 2>/dev/null || true
+                    sed -i "s|^TELEGRAM_CHAT_ID=.*|TELEGRAM_CHAT_ID=$TELEGRAM_CHAT_ID|g" "$env_file" 2>/dev/null || true
+                elif [ "$ALERT_TYPE" = "email" ]; then
+                    sed -i "s|^ALERT_SMTP_HOST=.*|ALERT_SMTP_HOST=$ALERT_SMTP_HOST|g" "$env_file" 2>/dev/null || true
+                    sed -i "s|^ALERT_SMTP_PORT=.*|ALERT_SMTP_PORT=$ALERT_SMTP_PORT|g" "$env_file" 2>/dev/null || true
+                    sed -i "s|^ALERT_SMTP_USER=.*|ALERT_SMTP_USER=$ALERT_SMTP_USER|g" "$env_file" 2>/dev/null || true
+                    sed -i "s|^ALERT_SMTP_PASS=.*|ALERT_SMTP_PASS=$ALERT_SMTP_PASS|g" "$env_file" 2>/dev/null || true
+                    sed -i "s|^ALERT_FROM_EMAIL=.*|ALERT_FROM_EMAIL=$ALERT_FROM_EMAIL|g" "$env_file" 2>/dev/null || true
+                    sed -i "s|^ALERT_TO_EMAIL=.*|ALERT_TO_EMAIL=$ALERT_TO_EMAIL|g" "$env_file" 2>/dev/null || true
+                fi
+            fi
+        fi
+        
+        print_success "已更新配置变量"
+    fi
 
-        # 复制为 .env（在项目根目录）
-        cp "$env_file" "$env_target"
-        print_success "配置已保存到 $env_target"
+    # 复制为 .env（在项目根目录）
+    cp "$env_file" "$env_target"
+    print_success "配置已保存到 $env_target"
 
         echo ""
         echo -e "${CYAN}========================================${NC}"
