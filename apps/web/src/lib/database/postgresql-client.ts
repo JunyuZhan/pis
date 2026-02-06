@@ -981,6 +981,11 @@ export class PostgreSQLClient {
           const escapedKey = `"${columnName.replace(/"/g, '""')}"`;
           whereClauses.push(`${escapedKey} = ANY($${paramIndex++})`);
           values.push(value as QueryParameterValue);
+        } else if (value === null || value === undefined) {
+          // 处理 NULL 值：使用 IS NULL（PostgreSQL 中 = NULL 永远不会匹配）
+          const escapedKey = `"${key.replace(/"/g, '""')}"`;
+          whereClauses.push(`${escapedKey} IS NULL`);
+          // 不添加参数，因为 IS NULL 不需要参数
         } else {
           const escapedKey = `"${key.replace(/"/g, '""')}"`;
           whereClauses.push(`${escapedKey} = $${paramIndex++}`);
