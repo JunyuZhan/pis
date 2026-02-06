@@ -144,6 +144,9 @@ export const userListQuerySchema = z.object({
 // 相册相关
 // ============================================
 
+// 多语言翻译 schema（支持任意语言代码）
+const translationsSchema = z.record(z.string().max(1000)).optional().or(z.null());
+
 const watermarkItemSchema = z
   .object({
     type: z.enum(["text", "logo"], {
@@ -194,6 +197,9 @@ export const createAlbumSchema = z
       .max(1000, "描述最多 1000 个字符")
       .optional()
       .or(z.null()),
+    // 多语言支持
+    title_translations: translationsSchema, // { "zh-CN": "中文标题", "en": "English Title" }
+    description_translations: translationsSchema,
     slug: slugSchema.optional(),
     event_date: z.string().datetime().optional().or(z.null()),
     location: z.string().max(200).optional().or(z.null()),
@@ -283,6 +289,11 @@ export const updateAlbumSchema = z
   .object({
     title: z.string().min(1, "相册标题不能为空").max(200).optional(),
     description: z.string().max(1000).optional().or(z.null()),
+    // 多语言支持
+    title_translations: translationsSchema, // { "zh-CN": "中文标题", "en": "English Title" }
+    description_translations: translationsSchema,
+    share_title_translations: translationsSchema,
+    share_description_translations: translationsSchema,
     cover_photo_id: uuidSchema.optional().or(z.null()),
     is_public: z.boolean().optional(),
     is_live: z.boolean().optional(),

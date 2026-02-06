@@ -404,7 +404,10 @@
   - [x] 语言切换组件（已集成到侧边栏）
   - [x] 后台管理翻译字符串（中/英）
   - [x] 侧边栏菜单国际化
-- [ ] 相册多语言标题/描述
+- [x] 相册多语言标题/描述
+  - [x] 数据库字段支持（title_translations, description_translations 等 JSONB 字段）
+  - [x] API 支持（createAlbumSchema, updateAlbumSchema 添加多语言字段）
+  - [ ] 前端编辑组件（待实现）
 - [ ] 语言包管理界面
 
 **已完成的技术实现：**

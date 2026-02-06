@@ -79,6 +79,11 @@ CREATE TABLE IF NOT EXISTS albums (
     -- 样式模板
     template_id VARCHAR(100) DEFAULT NULL,  -- 模板 ID（如 wedding_classic, event_vibrant）
     template_config JSONB DEFAULT '{}',     -- 自定义模板配置
+    -- 多语言支持
+    title_translations JSONB DEFAULT '{}',           -- 多语言标题
+    description_translations JSONB DEFAULT '{}',     -- 多语言描述
+    share_title_translations JSONB DEFAULT '{}',     -- 多语言分享标题
+    share_description_translations JSONB DEFAULT '{}', -- 多语言分享描述
     -- 统计
     selected_count INTEGER DEFAULT 0,
     view_count INTEGER DEFAULT 0,

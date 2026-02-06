@@ -243,6 +243,19 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if ((validatedData as { template_id?: string | null }).template_id !== undefined) {
       (updateData as { template_id?: string | null }).template_id = (validatedData as { template_id?: string | null }).template_id || null
     }
+    // 多语言字段
+    if ((validatedData as { title_translations?: Record<string, string> | null }).title_translations !== undefined) {
+      (updateData as { title_translations?: Json | null }).title_translations = (validatedData as { title_translations?: Record<string, string> | null }).title_translations as Json || null
+    }
+    if ((validatedData as { description_translations?: Record<string, string> | null }).description_translations !== undefined) {
+      (updateData as { description_translations?: Json | null }).description_translations = (validatedData as { description_translations?: Record<string, string> | null }).description_translations as Json || null
+    }
+    if ((validatedData as { share_title_translations?: Record<string, string> | null }).share_title_translations !== undefined) {
+      (updateData as { share_title_translations?: Json | null }).share_title_translations = (validatedData as { share_title_translations?: Record<string, string> | null }).share_title_translations as Json || null
+    }
+    if ((validatedData as { share_description_translations?: Record<string, string> | null }).share_description_translations !== undefined) {
+      (updateData as { share_description_translations?: Json | null }).share_description_translations = (validatedData as { share_description_translations?: Record<string, string> | null }).share_description_translations as Json || null
+    }
 
     // 先检查相册是否存在（避免 deleted_at: null 在 update 方法中无法正确处理）
     const existingAlbum = await db
