@@ -959,6 +959,84 @@ show_completion_info() {
     echo -e "${GREEN}✓ 服务已启动${NC}"
     echo ""
     
+    # ==================== 账号信息汇总 ====================
+    echo -e "${BOLD}${GREEN}═══════════════════════════════════════════════════════════${NC}"
+    echo -e "${BOLD}${GREEN}  📋 账号信息汇总（请妥善保管）${NC}"
+    echo -e "${BOLD}${GREEN}═══════════════════════════════════════════════════════════${NC}"
+    echo ""
+    
+    # 1. Web 管理后台账号
+    echo -e "${BOLD}1. Web 管理后台账号${NC}"
+    if [ "$DEPLOYMENT_MODE" = "standalone" ]; then
+        if [ -n "$ADMIN_EMAIL" ]; then
+            echo -e "   ${CYAN}邮箱:${NC} $ADMIN_EMAIL"
+            if [ -n "$ADMIN_PASSWORD" ]; then
+                echo -e "   ${CYAN}密码:${NC} $ADMIN_PASSWORD"
+            else
+                echo -e "   ${CYAN}密码:${NC} 首次登录时设置"
+            fi
+        else
+            echo -e "   ${YELLOW}⚠️  请使用 'pnpm create-admin' 创建管理员账号${NC}"
+        fi
+        if [ "$DOMAIN" != "localhost" ]; then
+            echo -e "   ${CYAN}访问地址:${NC} https://$DOMAIN/admin/login"
+        fi
+        echo -e "   ${CYAN}访问地址:${NC} http://localhost:8088/admin/login"
+    else
+        echo -e "   ${YELLOW}⚠️  请在 Supabase Dashboard 中创建管理员账号${NC}"
+        echo -e "   ${CYAN}访问地址:${NC} https://$DOMAIN/admin/login"
+    fi
+    echo ""
+    
+    # 2. MinIO 对象存储账号
+    echo -e "${BOLD}2. MinIO 对象存储账号${NC}"
+    echo -e "   ${CYAN}用户名:${NC} $MINIO_ACCESS_KEY"
+    echo -e "   ${CYAN}密码:${NC} $MINIO_SECRET_KEY"
+    if [ "$DEPLOYMENT_MODE" = "standalone" ]; then
+        if [ "$DOMAIN" != "localhost" ]; then
+            echo -e "   ${CYAN}访问地址:${NC} https://$DOMAIN/minio-console/"
+        fi
+        echo -e "   ${CYAN}访问地址:${NC} http://localhost:8088/minio-console/"
+    else
+        echo -e "   ${CYAN}访问地址:${NC} http://localhost:19001"
+    fi
+    echo ""
+    
+    # 3. PostgreSQL 数据库账号（仅 standalone 模式）
+    if [ "$DEPLOYMENT_MODE" = "standalone" ]; then
+        echo -e "${BOLD}3. PostgreSQL 数据库账号${NC}"
+        echo -e "   ${CYAN}主机:${NC} localhost (宿主机) / postgres (容器内)"
+        echo -e "   ${CYAN}端口:${NC} ${DATABASE_PORT:-5432}"
+        echo -e "   ${CYAN}数据库:${NC} ${DATABASE_NAME:-pis}"
+        echo -e "   ${CYAN}用户:${NC} ${DATABASE_USER:-pis}"
+        echo -e "   ${CYAN}密码:${NC} $DATABASE_PASSWORD"
+        echo ""
+    fi
+    
+    # 4. Worker API 密钥
+    echo -e "${BOLD}$([ "$DEPLOYMENT_MODE" = "standalone" ] && echo "4" || echo "3"). Worker API 密钥${NC}"
+    echo -e "   ${CYAN}API Key:${NC} $WORKER_API_KEY"
+    if [ "$DEPLOYMENT_MODE" = "standalone" ]; then
+        if [ "$DOMAIN" != "localhost" ]; then
+            echo -e "   ${CYAN}访问地址:${NC} https://$DOMAIN/worker-api/"
+        fi
+        echo -e "   ${CYAN}访问地址:${NC} http://localhost:8088/worker-api/"
+    else
+        echo -e "   ${CYAN}访问地址:${NC} http://localhost:3001"
+    fi
+    echo ""
+    
+    # 5. 其他重要密钥
+    echo -e "${BOLD}$([ "$DEPLOYMENT_MODE" = "standalone" ] && echo "5" || echo "4"). 其他重要密钥${NC}"
+    echo -e "   ${CYAN}会话密钥 (ALBUM_SESSION_SECRET):${NC} $ALBUM_SESSION_SECRET"
+    if [ "$DEPLOYMENT_MODE" = "standalone" ]; then
+        echo -e "   ${CYAN}JWT Secret (AUTH_JWT_SECRET):${NC} $AUTH_JWT_SECRET"
+    fi
+    echo ""
+    
+    echo -e "${BOLD}${GREEN}═══════════════════════════════════════════════════════════${NC}"
+    echo ""
+    
     # 显示各服务登录信息
     echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
     echo -e "${CYAN}  服务访问信息${NC}"
