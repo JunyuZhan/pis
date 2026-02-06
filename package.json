@@ -36,6 +36,7 @@
     "cleanup:failed-photos": "cd services/worker && pnpm exec tsx ../../scripts/utils/cleanup-failed-photos.ts",
     "cleanup:failed-photos:execute": "cd services/worker && pnpm exec tsx ../../scripts/utils/cleanup-failed-photos.ts --execute",
     "create-admin": "pnpm exec tsx scripts/utils/create-admin.ts",
+    "init-users": "pnpm exec tsx scripts/utils/init-users.ts",
     "test:components": "bash scripts/test/test-components.sh",
     "test:e2e": "bash scripts/test/test-e2e.sh",
     "test:e2e:ui": "pnpm exec playwright test --ui",

@@ -333,16 +333,56 @@ CREATE TRIGGER update_package_downloads_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
--- 创建默认管理员账户
+-- 创建默认用户账户（各角色）
 -- ============================================
--- 管理员账户在初始化时创建，但 password_hash 为 NULL
+-- 用户账户在初始化时创建，但 password_hash 为 NULL
 -- 部署完成后，首次登录时会提示设置密码
 -- 这是安全的最佳实践：避免在初始化时设置默认密码
+-- 
+-- 注意：如需自定义邮箱或批量创建，请使用 pnpm init-users 脚本
+
+-- 管理员账户
 INSERT INTO users (email, password_hash, role, is_active, created_at, updated_at)
 VALUES (
-    'admin@example.com',
+    'admin@pis.com',
     NULL,  -- 密码未设置，首次登录时需要设置
     'admin',
+    true,
+    NOW(),
+    NOW()
+)
+ON CONFLICT (email) DO NOTHING;
+
+-- 摄影师账户
+INSERT INTO users (email, password_hash, role, is_active, created_at, updated_at)
+VALUES (
+    'photographer@pis.com',
+    NULL,  -- 密码未设置，首次登录时需要设置
+    'photographer',
+    true,
+    NOW(),
+    NOW()
+)
+ON CONFLICT (email) DO NOTHING;
+
+-- 修图师账户
+INSERT INTO users (email, password_hash, role, is_active, created_at, updated_at)
+VALUES (
+    'retoucher@pis.com',
+    NULL,  -- 密码未设置，首次登录时需要设置
+    'retoucher',
+    true,
+    NOW(),
+    NOW()
+)
+ON CONFLICT (email) DO NOTHING;
+
+-- 访客账户
+INSERT INTO users (email, password_hash, role, is_active, created_at, updated_at)
+VALUES (
+    'guest@pis.com',
+    NULL,  -- 密码未设置，首次登录时需要设置
+    'guest',
     true,
     NOW(),
     NOW()
@@ -367,8 +407,13 @@ BEGIN
     RAISE NOTICE '   - photo_groups 表: 存储照片分组';
     RAISE NOTICE '   - photo_group_assignments 表: 存储照片分组关联';
     RAISE NOTICE '';
-    RAISE NOTICE '👤 管理员账户:';
-    RAISE NOTICE '   - 邮箱: admin@example.com';
+    RAISE NOTICE '👤 默认用户账户:';
+    RAISE NOTICE '   - 管理员: admin@pis.com';
+    RAISE NOTICE '   - 摄影师: photographer@pis.com';
+    RAISE NOTICE '   - 修图师: retoucher@pis.com';
+    RAISE NOTICE '   - 访客: guest@pis.com';
     RAISE NOTICE '   - 密码: 未设置（首次登录时需要设置）';
     RAISE NOTICE '   - 活跃管理员数量: %', admin_count;
+    RAISE NOTICE '';
+    RAISE NOTICE '💡 提示: 可以使用 pnpm init-users 脚本批量创建或自定义用户账户';
 END $$;

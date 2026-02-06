@@ -328,15 +328,9 @@ update_deployment_info_email() {
     fi
 }
 
-# 创建管理员账户
-create_admin() {
-    info "正在创建管理员账户..."
-    
-    # 确定管理员邮箱（localhost 使用 example.com 避免邮箱格式问题）
-    ADMIN_EMAIL="admin@${DOMAIN}"
-    if [ "$DOMAIN" = "localhost" ]; then
-        ADMIN_EMAIL="admin@example.com"
-    fi
+# 初始化用户账户（创建各角色的默认账号）
+init_users() {
+    info "正在初始化用户账户（创建各角色账号）..."
     
     # 等待 PostgreSQL 容器健康检查通过
     local max_attempts=30
@@ -353,54 +347,34 @@ create_admin() {
     
     # 检查 PostgreSQL 容器是否运行
     if ! docker ps --format '{{.Names}}' | grep -q "^pis-postgres$"; then
-        warn "PostgreSQL 容器未运行，跳过管理员账户创建"
+        warn "PostgreSQL 容器未运行，跳过用户账户初始化"
         return 1
     fi
     
-    # 转义邮箱中的单引号（SQL 注入防护）
-    ADMIN_EMAIL_ESC=$(echo "$ADMIN_EMAIL" | sed "s/'/''/g")
-    
-    # 直接使用 PostgreSQL 容器创建管理员账户（最简单可靠）
-    local sql_result
-    sql_result=$(docker exec pis-postgres psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -t -c "
-        INSERT INTO users (email, password_hash, role, is_active, created_at, updated_at) 
-        VALUES ('${ADMIN_EMAIL_ESC}', NULL, 'admin', true, NOW(), NOW()) 
-        ON CONFLICT (email) DO NOTHING 
-        RETURNING email;
-    " 2>&1)
-    
-    if [ $? -eq 0 ]; then
-        # 检查是否创建成功（返回了邮箱）
-        if echo "$sql_result" | grep -q "${ADMIN_EMAIL}"; then
-            success "管理员账户创建成功: ${ADMIN_EMAIL}"
-            success "首次登录时请设置密码"
-            # 更新部署信息文件中的管理员邮箱
-            update_deployment_info_email "${ADMIN_EMAIL}"
-            return 0
-        elif echo "$sql_result" | grep -q "0 rows"; then
-            # 用户已存在
-            success "管理员账户已存在: ${ADMIN_EMAIL}"
-            # 更新部署信息文件中的管理员邮箱
-            update_deployment_info_email "${ADMIN_EMAIL}"
-            return 0
-        else
-            # 检查用户是否真的存在
-            local check_result
-            check_result=$(docker exec pis-postgres psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -t -c "SELECT email FROM users WHERE email = '${ADMIN_EMAIL_ESC}';" 2>&1)
-            if echo "$check_result" | grep -q "${ADMIN_EMAIL}"; then
-                success "管理员账户已存在: ${ADMIN_EMAIL}"
-                # 更新部署信息文件中的管理员邮箱
-                update_deployment_info_email "${ADMIN_EMAIL}"
-                return 0
-            fi
-        fi
+    # 检查 Node.js 和 pnpm 是否可用
+    if ! command -v pnpm &> /dev/null; then
+        warn "pnpm 未安装，跳过用户账户初始化"
+        warn "请手动执行: cd ${PROJECT_DIR} && pnpm init-users"
+        return 1
     fi
     
-    # 如果失败，提示手动创建
-    warn "管理员账户创建失败，请手动执行:"
-    warn "  docker exec pis-postgres psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c \"INSERT INTO users (email, password_hash, role, is_active, created_at, updated_at) VALUES ('${ADMIN_EMAIL}', NULL, 'admin', true, NOW(), NOW()) ON CONFLICT (email) DO NOTHING;\""
-    warn "  或: cd ${PROJECT_DIR} && pnpm create-admin ${ADMIN_EMAIL}"
-    return 1
+    # 使用 init-users 脚本创建各角色账号
+    cd "${PROJECT_DIR}" || return 1
+    
+    if pnpm init-users 2>&1; then
+        success "用户账户初始化完成"
+        return 0
+    else
+        warn "用户账户初始化失败，请手动执行:"
+        warn "  cd ${PROJECT_DIR} && pnpm init-users"
+        return 1
+    fi
+}
+
+# 创建管理员账户（保留向后兼容）
+create_admin() {
+    # 直接调用 init_users，它会创建所有角色的账号
+    init_users
 }
 
 # 显示完成信息
@@ -446,8 +420,9 @@ show_completion() {
     echo "  停止服务:"
     echo "    cd ${PROJECT_DIR}/docker && ${COMPOSE_CMD} down"
     echo ""
-    echo "  创建管理员:"
-    echo "    cd ${PROJECT_DIR} && pnpm create-admin"
+    echo "  创建用户账户:"
+    echo "    cd ${PROJECT_DIR} && pnpm init-users    # 创建各角色账号"
+    echo "    cd ${PROJECT_DIR} && pnpm create-admin  # 创建单个账号"
     echo ""
 }
 
