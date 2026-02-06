@@ -94,37 +94,52 @@ const playfairDisplay = localFont({
   fallback: ["Georgia", "Times New Roman", "serif"],
 });
 
-// Metadata will be generated dynamically based on locale
+// Metadata will be generated dynamically based on locale and settings
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   // Messages are loaded but not used in metadata (only used in layout)
   const messages = await getMessages();
+  
+  // 从数据库获取站点设置
+  let siteSettings: Record<string, unknown> = {};
+  try {
+    const { getPublicSettings } = await import("@/lib/settings");
+    siteSettings = (await getPublicSettings()) || {};
+  } catch (e) {
+    console.warn("Failed to load site settings for metadata:", e);
+  }
 
-  // Get translations for metadata
-  const title = (messages as { home?: { title?: string } })?.home?.title || 
+  // Get translations for metadata (优先使用数据库设置)
+  const title = (siteSettings.site_title as string) ||
+    (messages as { home?: { title?: string } })?.home?.title || 
     (locale === "zh-CN" ? "PIS - 专业级摄影分享" : "PIS - Professional Photo Sharing");
-  const description = (messages as { home?: { description?: string } })?.home?.description || 
+  const description = (siteSettings.site_description as string) ||
+    (messages as { home?: { description?: string } })?.home?.description || 
     (locale === "zh-CN" ? "私有化即时摄影分享系统，让每一刻精彩即时呈现" : "Private Instant photo Sharing system");
+  
+  // 获取自定义 favicon
+  const faviconUrl = (siteSettings.favicon_url as string) || (siteSettings.brand_favicon as string) || "/favicon.ico";
+  const siteName = (siteSettings.brand_name as string) || "PIS";
 
   return {
     title,
     description,
     manifest: "/manifest.json",
     icons: {
-      icon: "/favicon.ico",
+      icon: faviconUrl,
       apple: "/icons/icon-192x192.png",
     },
     appleWebApp: {
       capable: true,
       statusBarStyle: "black-translucent",
-      title: "PIS",
+      title: siteName,
     },
     formatDetection: {
       telephone: false,
     },
     openGraph: {
       type: "website",
-      siteName: "PIS",
+      siteName,
       title,
       description,
     },

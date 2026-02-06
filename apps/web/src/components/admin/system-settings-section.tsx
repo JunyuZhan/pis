@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import Image from 'next/image'
 import { 
   Loader2,
   Save,
@@ -12,8 +13,11 @@ import {
   Link2,
   Palette,
   Settings as SettingsIcon,
+  Upload,
+  X,
+  ImageIcon,
 } from 'lucide-react'
-import { showSuccess, handleApiError } from '@/lib/toast'
+import { showSuccess, handleApiError, showError } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/theme-provider'
 
@@ -24,6 +28,8 @@ interface SettingsFormData {
   copyright_text: string
   icp_number: string
   police_number: string
+  logo_url: string
+  favicon_url: string
   // 站点
   site_title: string
   site_description: string
@@ -39,6 +45,7 @@ interface SettingsFormData {
   social_phone: string
   social_weibo: string
   social_instagram: string
+  wechat_qrcode_url: string
   // 主题
   theme_mode: string
   theme_primary_color: string
@@ -50,6 +57,8 @@ const defaultFormData: SettingsFormData = {
   copyright_text: '',
   icp_number: '',
   police_number: '',
+  logo_url: '',
+  favicon_url: '',
   site_title: 'PIS - 即时影像分享',
   site_description: '专业级私有化即时摄影分享系统',
   site_keywords: '摄影,相册,分享,活动摄影',
@@ -62,6 +71,7 @@ const defaultFormData: SettingsFormData = {
   social_phone: '',
   social_weibo: '',
   social_instagram: '',
+  wechat_qrcode_url: '',
   theme_mode: 'system',
   theme_primary_color: '#4F46E5',
 }
@@ -77,6 +87,43 @@ export function SystemSettingsSection() {
   
   // 获取主题控制钩子
   const { setTheme, setPrimaryColor } = useTheme()
+  
+  // 上传状态
+  const [uploading, setUploading] = useState<Record<string, boolean>>({})
+
+  // 处理文件上传
+  const handleFileUpload = async (
+    file: File,
+    type: 'logo' | 'favicon' | 'wechat_qrcode',
+    fieldKey: keyof SettingsFormData
+  ) => {
+    setUploading(prev => ({ ...prev, [type]: true }))
+    
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('type', type)
+      
+      const response = await fetch('/api/admin/settings/upload', {
+        method: 'POST',
+        body: formData,
+      })
+      
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || '上传失败')
+      }
+      
+      // 更新表单数据
+      updateField(fieldKey, data.data.url)
+      showSuccess('上传成功')
+    } catch (error) {
+      handleApiError(error, '上传失败')
+    } finally {
+      setUploading(prev => ({ ...prev, [type]: false }))
+    }
+  }
 
   // 获取设置
   const fetchSettings = useCallback(async () => {
@@ -100,6 +147,8 @@ export function SystemSettingsSection() {
         newFormData.copyright_text = (grouped.brand.copyright_text as string) || ''
         newFormData.icp_number = (grouped.brand.icp_number as string) || ''
         newFormData.police_number = (grouped.brand.police_number as string) || ''
+        newFormData.logo_url = (grouped.brand.logo_url as string) || (grouped.brand.brand_logo as string) || ''
+        newFormData.favicon_url = (grouped.brand.favicon_url as string) || (grouped.brand.brand_favicon as string) || ''
       }
 
       // 站点设置
@@ -124,6 +173,7 @@ export function SystemSettingsSection() {
         newFormData.social_phone = (grouped.social.social_phone as string) || ''
         newFormData.social_weibo = (grouped.social.social_weibo as string) || ''
         newFormData.social_instagram = (grouped.social.social_instagram as string) || ''
+        newFormData.wechat_qrcode_url = (grouped.social.wechat_qrcode_url as string) || (grouped.social.social_wechat_qrcode as string) || ''
       }
 
       // 主题设置
@@ -253,6 +303,35 @@ export function SystemSettingsSection() {
               placeholder="例如：专业活动摄影"
             />
           </div>
+          
+          {/* Logo 上传 */}
+          <div>
+            <label className="block text-sm font-medium mb-1">网站 Logo</label>
+            <ImageUploader
+              value={formData.logo_url}
+              onChange={(url) => updateField('logo_url', url)}
+              onUpload={(file) => handleFileUpload(file, 'logo', 'logo_url')}
+              uploading={uploading.logo}
+              placeholder="上传 Logo（PNG/JPG/SVG，最大 2MB）"
+              accept="image/png,image/jpeg,image/svg+xml,image/webp"
+              previewSize="large"
+            />
+          </div>
+          
+          {/* Favicon 上传 */}
+          <div>
+            <label className="block text-sm font-medium mb-1">网站图标 (Favicon)</label>
+            <ImageUploader
+              value={formData.favicon_url}
+              onChange={(url) => updateField('favicon_url', url)}
+              onUpload={(file) => handleFileUpload(file, 'favicon', 'favicon_url')}
+              uploading={uploading.favicon}
+              placeholder="上传 Favicon（PNG/ICO，最大 512KB）"
+              accept="image/png,image/x-icon,image/svg+xml"
+              previewSize="small"
+            />
+          </div>
+          
           <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-1">版权声明</label>
             <input
@@ -428,6 +507,21 @@ export function SystemSettingsSection() {
               placeholder="https://instagram.com/..."
             />
           </div>
+          
+          {/* 微信二维码上传 */}
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium mb-1">微信二维码</label>
+            <ImageUploader
+              value={formData.wechat_qrcode_url}
+              onChange={(url) => updateField('wechat_qrcode_url', url)}
+              onUpload={(file) => handleFileUpload(file, 'wechat_qrcode', 'wechat_qrcode_url')}
+              uploading={uploading.wechat_qrcode}
+              placeholder="上传微信二维码（PNG/JPG，最大 1MB）"
+              accept="image/png,image/jpeg,image/webp"
+              previewSize="medium"
+            />
+            <p className="text-xs text-text-muted mt-1">用于在页脚或联系方式中显示微信二维码</p>
+          </div>
         </div>
       </Section>
 
@@ -584,5 +678,120 @@ function ToggleItem({
         className="w-5 h-5 rounded accent-accent"
       />
     </label>
+  )
+}
+
+// 图片上传组件
+function ImageUploader({
+  value,
+  onChange,
+  onUpload,
+  uploading,
+  placeholder,
+  accept,
+  previewSize = 'medium',
+}: {
+  value: string
+  onChange: (url: string) => void
+  onUpload: (file: File) => void
+  uploading?: boolean
+  placeholder?: string
+  accept?: string
+  previewSize?: 'small' | 'medium' | 'large'
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const sizeClasses = {
+    small: 'w-12 h-12',
+    medium: 'w-24 h-24',
+    large: 'w-32 h-32',
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      onUpload(file)
+    }
+    // 清空 input 以便可以重新选择同一文件
+    if (inputRef.current) {
+      inputRef.current.value = ''
+    }
+  }
+
+  const handleClear = () => {
+    onChange('')
+    if (inputRef.current) {
+      inputRef.current.value = ''
+    }
+  }
+
+  return (
+    <div className="flex items-start gap-3">
+      {/* 预览区域 */}
+      <div
+        className={cn(
+          'relative border-2 border-dashed border-border rounded-lg overflow-hidden flex items-center justify-center bg-background',
+          sizeClasses[previewSize]
+        )}
+      >
+        {value ? (
+          <>
+            <Image
+              src={value}
+              alt="Preview"
+              fill
+              className="object-contain p-1"
+              unoptimized
+            />
+            <button
+              type="button"
+              onClick={handleClear}
+              className="absolute top-0 right-0 p-0.5 bg-red-500 text-white rounded-bl-md hover:bg-red-600 transition-colors"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </>
+        ) : (
+          <ImageIcon className="w-6 h-6 text-text-muted" />
+        )}
+        
+        {uploading && (
+          <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+            <Loader2 className="w-5 h-5 animate-spin text-accent" />
+          </div>
+        )}
+      </div>
+
+      {/* 上传控制 */}
+      <div className="flex-1 space-y-2">
+        <input
+          ref={inputRef}
+          type="file"
+          accept={accept}
+          onChange={handleFileChange}
+          className="hidden"
+          id={`upload-${placeholder}`}
+        />
+        <label
+          htmlFor={`upload-${placeholder}`}
+          className={cn(
+            'btn-secondary inline-flex items-center gap-2 cursor-pointer text-sm',
+            uploading && 'opacity-50 pointer-events-none'
+          )}
+        >
+          <Upload className="w-4 h-4" />
+          {uploading ? '上传中...' : '选择文件'}
+        </label>
+        
+        {/* URL 输入框 */}
+        <input
+          type="url"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="input w-full text-xs"
+          placeholder={placeholder || '或粘贴图片 URL'}
+        />
+      </div>
+    </div>
   )
 }

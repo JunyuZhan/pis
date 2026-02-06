@@ -6,6 +6,8 @@ export interface PublicSettings {
   brand_tagline: string
   brand_logo: string | null
   brand_favicon: string | null
+  logo_url: string | null       // 新字段
+  favicon_url: string | null    // 新字段
   copyright_text: string
   icp_number: string
   police_number: string
@@ -15,6 +17,7 @@ export interface PublicSettings {
   site_keywords: string
   // 社交
   social_wechat_qrcode: string | null
+  wechat_qrcode_url: string | null  // 新字段
   social_weibo: string
   social_instagram: string
   social_email: string
@@ -29,6 +32,8 @@ const defaultSettings: PublicSettings = {
   brand_tagline: process.env.NEXT_PUBLIC_PHOTOGRAPHER_TAGLINE || '专业活动摄影',
   brand_logo: null,
   brand_favicon: null,
+  logo_url: null,
+  favicon_url: null,
   copyright_text: process.env.NEXT_PUBLIC_COPYRIGHT_TEXT || '',
   icp_number: process.env.NEXT_PUBLIC_ICP_NUMBER || '',
   police_number: process.env.NEXT_PUBLIC_POLICE_NUMBER || '',
@@ -36,6 +41,7 @@ const defaultSettings: PublicSettings = {
   site_description: '专业级私有化即时摄影分享系统',
   site_keywords: '摄影,相册,分享,活动摄影',
   social_wechat_qrcode: null,
+  wechat_qrcode_url: null,
   social_weibo: '',
   social_instagram: '',
   social_email: '',
