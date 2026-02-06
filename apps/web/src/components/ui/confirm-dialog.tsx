@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog'
 import { AlertTriangle } from 'lucide-react'
 import { Button } from './button'
@@ -25,11 +26,14 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   message,
-  confirmText = '确认',
-  cancelText = '取消',
+  confirmText,
+  cancelText,
   variant = 'default',
   onConfirm,
 }: ConfirmDialogProps) {
+  const t = useTranslations('common')
+  const defaultConfirmText = confirmText ?? t('confirm')
+  const defaultCancelText = cancelText ?? t('cancel')
   const [isLoading, setIsLoading] = useState(false)
 
   const handleConfirm = async () => {
@@ -66,14 +70,14 @@ export function ConfirmDialog({
             onClick={() => onOpenChange(false)}
             disabled={isLoading}
           >
-            {cancelText}
+            {defaultCancelText}
           </Button>
           <Button
             variant={variant === 'danger' ? 'danger' : 'primary'}
             onClick={handleConfirm}
             isLoading={isLoading}
           >
-            {confirmText}
+            {defaultConfirmText}
           </Button>
         </DialogFooter>
       </DialogContent>

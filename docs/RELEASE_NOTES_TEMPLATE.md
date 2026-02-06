@@ -163,7 +163,7 @@ docker-compose up -d --build
 
 ## 📖 相关链接
 
-- [完整变更日志](CHANGELOG.md)
+- [完整变更日志](project/CHANGELOG.md)
 - [部署文档](docs/i18n/en/DEPLOYMENT.md)
 - [升级指南](docs/UPGRADE.md)
 - [问题反馈](https://github.com/JunyuZhan/pis/issues)
@@ -267,7 +267,7 @@ curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/one-click
 
 ## 📖 相关链接
 
-- [完整变更日志](CHANGELOG.md)
+- [完整变更日志](project/CHANGELOG.md)
 - [部署文档](docs/i18n/en/DEPLOYMENT.md)
 - [问题反馈](https://github.com/JunyuZhan/pis/issues)
 ```

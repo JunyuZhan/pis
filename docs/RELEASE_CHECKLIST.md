@@ -56,7 +56,7 @@
 
 ### 核心文档
 - [ ] README.md 已更新（英文和中文）
-- [ ] CHANGELOG.md 已更新，包含所有变更
+- [ ] docs/project/CHANGELOG.md 已更新，包含所有变更
 - [ ] 部署文档已更新
 - [ ] API 文档已更新（如有变更）
 
@@ -119,7 +119,7 @@
 
 ### 版本管理
 - [ ] 版本号已更新（遵循语义化版本）
-- [ ] CHANGELOG.md 中的版本号正确
+- [ ] docs/project/CHANGELOG.md 中的版本号正确
 - [ ] package.json 中的版本号正确
 - [ ] Git 标签准备就绪
 
@@ -207,7 +207,7 @@ git log --oneline -10
 ## 📋 发布流程
 
 1. **完成所有检查项** ✅
-2. **更新版本号**：更新 `package.json` 和 `CHANGELOG.md`
+2. **更新版本号**：更新 `package.json` 和 `docs/project/CHANGELOG.md`
 3. **提交更改**：`git commit -m "chore: bump version to x.x.x"`
 4. **创建标签**：`git tag -a vx.x.x -m "Release x.x.x"`
 5. **推送到远程**：`git push origin main --tags`

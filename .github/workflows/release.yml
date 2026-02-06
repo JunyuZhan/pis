@@ -40,10 +40,10 @@ jobs:
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           
-          # Generate changelog from CHANGELOG.md
+          # Generate changelog from docs/project/CHANGELOG.md
           # This is a simple implementation - you can enhance it
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          grep -A 100 "## \[$VERSION\]" CHANGELOG.md || echo "See CHANGELOG.md for details" >> $GITHUB_OUTPUT
+          grep -A 100 "## \[$VERSION\]" docs/project/CHANGELOG.md || echo "See docs/project/CHANGELOG.md for details" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create Release

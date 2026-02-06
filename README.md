@@ -216,7 +216,7 @@ pnpm test       # Run tests
 
 MIT License © 2026 junyuzhan - See [LICENSE](LICENSE) for details
 
-See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
+See [CHANGELOG.md](docs/project/CHANGELOG.md) for version history and release notes.
 
 ---
 
@@ -224,9 +224,9 @@ See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
 
 **junyuzhan** - [GitHub](https://github.com/junyuzhan) - junyuzhan@outlook.com
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) and [AUTHORS.md](AUTHORS.md)
+Contributions are welcome! See [CONTRIBUTING.md](docs/project/CONTRIBUTING.md) and [AUTHORS.md](docs/project/AUTHORS.md)
 
-Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
+Please read our [Code of Conduct](docs/project/CODE_OF_CONDUCT.md) before contributing.
 
 ---
 
@@ -287,12 +287,12 @@ If you find this project helpful, consider supporting the project! Your support 
   <table>
     <tr>
       <td align="center">
-        <img src="./assets/support/WeChat.jpg" alt="WeChat Pay" width="200" />
+        <img src="./docs/assets/support/WeChat.jpg" alt="WeChat Pay" width="200" />
         <br />
         <strong>WeChat Pay</strong>
       </td>
       <td align="center" style="padding-left: 30px;">
-        <img src="./assets/support/Alipay.jpg" alt="Alipay" width="200" />
+        <img src="./docs/assets/support/Alipay.jpg" alt="Alipay" width="200" />
         <br />
         <strong>Alipay</strong>
       </td>

@@ -53,7 +53,7 @@
    ```
 
 2. **完成任务后**
-   - 更新 TODO.md 记录进度
+   - 更新 docs/project/TODO.md 记录进度
    - 提交更改：`git add . && git commit -m "feat: 描述"`
    - **不要推送**，等待用户确认
 

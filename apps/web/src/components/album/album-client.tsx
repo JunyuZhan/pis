@@ -3,10 +3,10 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { MasonryGrid } from './masonry'
 import { Loader2, ImageIcon, RefreshCw, X, ScanFace } from 'lucide-react'
 import { usePhotoRealtime } from '@/hooks/use-photo-realtime'
-import { useLocale } from '@/lib/i18n'
 import type { Album, Photo } from '@/types/database'
 import type { LayoutMode } from './layout-toggle'
 
@@ -26,20 +26,6 @@ interface PhotosResponse {
   }
 }
 
-// 国际化文本
-const messages = {
-  'zh-CN': {
-    newPhotos: '{count} 张新照片',
-    clickToRefresh: '点击刷新',
-    refreshing: '刷新中...',
-  },
-  'en': {
-    newPhotos: '{count} new photo(s)',
-    clickToRefresh: 'Click to refresh',
-    refreshing: 'Refreshing...',
-  },
-}
-
 /**
  * 相册客户端组件
  * 负责：无限滚动加载更多照片 + 实时更新提醒
@@ -52,8 +38,7 @@ export function AlbumClient({ album, initialPhotos, layout = 'masonry' }: AlbumC
   const groupId = searchParams.get('group')
   const searchMode = searchParams.get('search')
   const queryClient = useQueryClient()
-  const locale = useLocale()
-  const t = messages[locale as keyof typeof messages] || messages['zh-CN']
+  const t = useTranslations('album')
   
   // 新照片计数
   const [newPhotoCount, setNewPhotoCount] = useState(0)
@@ -229,7 +214,7 @@ export function AlbumClient({ album, initialPhotos, layout = 'masonry' }: AlbumC
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top-4 fade-in duration-300">
           <div className="flex items-center gap-3 bg-primary text-primary-foreground px-4 py-2.5 rounded-full shadow-lg">
             <span className="text-sm font-medium">
-              {t.newPhotos.replace('{count}', String(newPhotoCount))}
+              {t('newPhotos', { count: newPhotoCount })}
             </span>
             <button
               onClick={handleRefresh}
@@ -239,12 +224,12 @@ export function AlbumClient({ album, initialPhotos, layout = 'masonry' }: AlbumC
               {isRefreshing ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>{t.refreshing}</span>
+                  <span>{t('refreshing')}</span>
                 </>
               ) : (
                 <>
                   <RefreshCw className="w-3.5 h-3.5" />
-                  <span>{t.clickToRefresh}</span>
+                  <span>{t('clickToRefresh')}</span>
                 </>
               )}
             </button>

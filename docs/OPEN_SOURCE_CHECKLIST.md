@@ -9,7 +9,7 @@
 - ✅ **LICENSE 文件存在**: MIT License
 - ✅ **package.json**: `"license": "MIT"`, `"private": false`
 - ✅ **README.md**: 包含 License 部分
-- ✅ **LEGAL.md**: 包含完整的法律信息
+- ✅ **LEGAL.md**: 包含完整的法律信息（位于 docs/project/）
 
 ### 2. 敏感信息检查
 
@@ -36,14 +36,14 @@
 
 - ✅ **README.md**: 包含项目介绍、快速开始、许可证信息
 - ✅ **README.zh-CN.md**: 中文版本
-- ✅ **CONTRIBUTING.md**: 贡献指南
-- ✅ **LEGAL.md**: 法律信息和第三方许可证
+- ✅ **CONTRIBUTING.md**: 贡献指南（位于 docs/project/）
+- ✅ **LEGAL.md**: 法律信息和第三方许可证（位于 docs/project/）
 - ✅ **docs/SECURITY.md**: 安全指南
 
 ### 4. 开源友好性
 
 - ✅ **清晰的许可证**: MIT License（宽松的开源许可证）
-- ✅ **贡献指南**: CONTRIBUTING.md 存在
+- ✅ **贡献指南**: CONTRIBUTING.md 存在（位于 docs/project/）
 - ✅ **代码注释**: 代码中有适当的注释
 - ✅ **文档完整**: 包含部署、开发、架构等文档
 
@@ -125,7 +125,7 @@ AUTH_JWT_SECRET=AUTO_GENERATE_32
 
 - [x] README.md 包含项目介绍
 - [x] README.md 包含许可证信息
-- [x] CONTRIBUTING.md 存在
+- [x] CONTRIBUTING.md 存在（位于 docs/project/）
 - [x] 文档中使用占位符而非真实值
 - [x] 部署文档完整
 
@@ -149,6 +149,6 @@ AUTH_JWT_SECRET=AUTO_GENERATE_32
 ## 📚 相关文档
 
 - [LICENSE](../LICENSE) - MIT 许可证
-- [LEGAL.md](../LEGAL.md) - 法律信息
-- [CONTRIBUTING.md](../CONTRIBUTING.md) - 贡献指南
+- [LEGAL.md](project/LEGAL.md) - 法律信息
+- [CONTRIBUTING.md](project/CONTRIBUTING.md) - 贡献指南
 - [SECURITY.md](./SECURITY.md) - 安全指南

@@ -26,7 +26,7 @@ git status
 ### 2. 更新版本信息（1 分钟）
 
 ```bash
-# 编辑 CHANGELOG.md，确保版本信息正确
+# 编辑 docs/project/CHANGELOG.md，确保版本信息正确
 # 检查 package.json 中的版本号
 ```
 
@@ -140,7 +140,7 @@ Initial stable release of PIS (Private Instant Photo Sharing).
 curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/one-click-deploy.sh | bash
 \`\`\`
 
-See [CHANGELOG.md](CHANGELOG.md) for full details.
+See [CHANGELOG.md](project/CHANGELOG.md) for full details.
 ```
 
 ### 完整版本（重要发布）
@@ -153,7 +153,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full details.
 
 - [ ] 代码已测试通过
 - [ ] 安全检查通过
-- [ ] CHANGELOG.md 已更新
+- [ ] docs/project/CHANGELOG.md 已更新
 - [ ] 版本号已更新
 - [ ] Git 标签已创建
 - [ ] GitHub Release 已创建
@@ -207,7 +207,7 @@ gh release create v1.0.1 --title "Release v1.0.1" --notes "Hotfix release"
 
 - [完整发布检查清单](RELEASE_CHECKLIST.md) - 详细的发布前检查
 - [发布说明模板](RELEASE_NOTES_TEMPLATE.md) - Release Notes 模板
-- [变更日志](CHANGELOG.md) - 版本历史记录
+- [变更日志](project/CHANGELOG.md) - 版本历史记录
 
 ---
 

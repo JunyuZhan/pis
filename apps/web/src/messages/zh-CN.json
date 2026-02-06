@@ -90,6 +90,10 @@
     "processing": "处理中",
     "completed": "已完成",
     "failed": "失败",
+    "newPhotos": "{count} 张新照片",
+    "clickToRefresh": "点击刷新",
+    "refreshing": "刷新中...",
+    "enterAlbum": "点击进入相册",
     "lightbox": {
       "select": "选择",
       "deselect": "取消选择",

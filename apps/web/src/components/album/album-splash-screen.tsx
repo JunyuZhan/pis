@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import { useTranslations, useLocale } from 'next-intl'
 import { ChevronDown, X, Aperture } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Album } from '@/types/database'
@@ -14,12 +15,16 @@ interface AlbumSplashScreenProps {
 export function AlbumSplashScreen({ album, posterImageUrl }: AlbumSplashScreenProps) {
   const [isVisible, setIsVisible] = useState(true)
   const [imageLoaded, setImageLoaded] = useState(false)
+  const locale = useLocale()
+  const tHome = useTranslations('home')
+  const tAlbum = useTranslations('album')
 
   // 获取网站信息
-  const siteName = 'PIS - 专业级摄影分享'
-  const siteDescription = '私有化即时摄影分享系统，让每一刻精彩即时呈现'
+  const siteName = tHome('title')
+  const siteDescription = tHome('description')
   const photographerName = process.env.NEXT_PUBLIC_PHOTOGRAPHER_NAME || 'PIS Photography'
-  const photographerTagline = process.env.NEXT_PUBLIC_PHOTOGRAPHER_TAGLINE || '专业活动摄影'
+  const photographerTagline = process.env.NEXT_PUBLIC_PHOTOGRAPHER_TAGLINE || 
+    (locale === 'zh-CN' ? '专业活动摄影' : 'Professional Event Photography')
 
   // 检查 URL 参数，如果已跳过则直接隐藏
   useEffect(() => {
@@ -194,7 +199,7 @@ export function AlbumSplashScreen({ album, posterImageUrl }: AlbumSplashScreenPr
                 whileTap={{ scale: 0.95 }}
               >
                 <span className="text-sm sm:text-base md:text-lg font-medium tracking-wide flex items-center gap-2">
-                  点击进入相册
+                  {tAlbum('enterAlbum')}
                   <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:translate-y-1" />
                 </span>
               </motion.button>

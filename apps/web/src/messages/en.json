@@ -90,6 +90,10 @@
     "processing": "Processing",
     "completed": "Completed",
     "failed": "Failed",
+    "newPhotos": "{count} new photo(s)",
+    "clickToRefresh": "Click to refresh",
+    "refreshing": "Refreshing...",
+    "enterAlbum": "Enter Album",
     "lightbox": {
       "select": "Select",
       "deselect": "Deselect",

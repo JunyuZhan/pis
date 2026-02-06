@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import { getLocale, getMessages } from 'next-intl/server'
 import { createClient } from '@/lib/database'
 import { AlbumClient } from '@/components/album/album-client'
 import { AlbumHero } from '@/components/album/album-hero'
@@ -27,6 +28,10 @@ interface AlbumPageProps {
  */
 export async function generateMetadata({ params }: AlbumPageProps): Promise<Metadata> {
   const { slug } = await params
+  const locale = await getLocale()
+  const messages = await getMessages()
+  const siteName = (messages as { home?: { title?: string } })?.home?.title || 
+    (locale === 'zh-CN' ? 'PIS - 专业级摄影分享' : 'PIS - Professional Photo Sharing')
   const db = await createClient()
 
   const albumResult = await db
@@ -113,7 +118,7 @@ export async function generateMetadata({ params }: AlbumPageProps): Promise<Meta
       title: shareTitle,
       description: shareDescription,
       url: shareUrl,
-      siteName: 'PIS - 专业级摄影分享',
+      siteName,
       images: [
         {
           url: absoluteShareImage,
@@ -140,7 +145,7 @@ export async function generateMetadata({ params }: AlbumPageProps): Promise<Meta
       'og:image': absoluteShareImage,
       'og:url': shareUrl,
       'og:type': 'website',
-      'og:site_name': 'PIS - 专业级摄影分享',
+      'og:site_name': siteName,
     },
   }
 }

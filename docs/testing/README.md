@@ -52,8 +52,14 @@
 
 - **测试脚本**: `scripts/test/` - 所有测试脚本
 - **测试报告**: `reports/test-reports/` - 测试执行报告
+- **测试分析**: `reports/analysis/` - 代码分析和审查文档
 - **单元测试**: 代码中的 `.test.ts` 和 `.test.tsx` 文件
 - **E2E 测试**: `e2e/` 目录
+
+## 📑 文档索引
+
+- **[TEST_REPORTS_INDEX.md](./TEST_REPORTS_INDEX.md)** - 测试报告索引（所有报告的完整列表）
+- **[CLEANUP_SUMMARY.md](./CLEANUP_SUMMARY.md)** - 文档清理总结
 
 ## 🔗 外部链接
 

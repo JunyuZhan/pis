@@ -336,9 +336,9 @@ MIT License © 2026 junyuzhan
 
 ## 🤝 贡献
 
-欢迎贡献！请阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 了解贡献指南。
+欢迎贡献！请阅读 [CONTRIBUTING.md](docs/project/CONTRIBUTING.md) 了解贡献指南。
 
-查看 [AUTHORS.md](AUTHORS.md) 了解贡献者列表。
+查看 [AUTHORS.md](docs/project/AUTHORS.md) 了解贡献者列表。
 
 ---
 
@@ -420,12 +420,12 @@ MIT License © 2026 junyuzhan
   <table>
     <tr>
       <td align="center">
-        <img src="./assets/support/WeChat.jpg" alt="微信支付" width="200" />
+        <img src="./docs/assets/support/WeChat.jpg" alt="微信支付" width="200" />
         <br />
         <strong>微信支付</strong>
       </td>
       <td align="center" style="padding-left: 30px;">
-        <img src="./assets/support/Alipay.jpg" alt="支付宝" width="200" />
+        <img src="./docs/assets/support/Alipay.jpg" alt="支付宝" width="200" />
         <br />
         <strong>支付宝</strong>
       </td>

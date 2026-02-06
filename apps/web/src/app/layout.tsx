@@ -98,17 +98,13 @@ const playfairDisplay = localFont({
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   // Messages are loaded but not used in metadata (only used in layout)
-  await getMessages();
+  const messages = await getMessages();
 
   // Get translations for metadata
-  const title =
-    locale === "zh-CN"
-      ? "PIS - 专业级摄影分享"
-      : "PIS - Professional Photo Sharing";
-  const description =
-    locale === "zh-CN"
-      ? "私有化即时摄影分享系统，让每一刻精彩即时呈现"
-      : "Private Instant photo Sharing system";
+  const title = (messages as { home?: { title?: string } })?.home?.title || 
+    (locale === "zh-CN" ? "PIS - 专业级摄影分享" : "PIS - Professional Photo Sharing");
+  const description = (messages as { home?: { description?: string } })?.home?.description || 
+    (locale === "zh-CN" ? "私有化即时摄影分享系统，让每一刻精彩即时呈现" : "Private Instant photo Sharing system");
 
   return {
     title,
