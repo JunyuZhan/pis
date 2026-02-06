@@ -117,13 +117,15 @@ class PISFileSystem extends FileSystem {
     }: { append?: boolean; start?: any } = {},
   ) {
     // Call super to handle the actual file writing to local temp dir
-    const stream = super.write(fileName, { append, start });
+    // super.write 返回 { stream, clientPath }
+    const result = super.write(fileName, { append, start });
+    const { stream, clientPath } = result as { stream: any; clientPath: string };
 
     // Get absolute path - 直接使用 root + fileName 构建路径
     const cleanFileName = fileName.startsWith("/") ? fileName.slice(1) : fileName;
     const fsPath = join(this.root, cleanFileName);
 
-    // Listen for finish/close event
+    // Listen for finish/close event on the actual stream
     stream.once("close", async () => {
       try {
         logger.info(
@@ -198,7 +200,8 @@ class PISFileSystem extends FileSystem {
       }
     });
 
-    return stream;
+    // 返回原始的 { stream, clientPath } 结构
+    return result;
   }
 }
 
