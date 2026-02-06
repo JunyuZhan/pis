@@ -1,5 +1,52 @@
 # Docker Compose 文件说明
 
+## 文件列表
+
+| 文件 | 用途 | 说明 |
+|------|------|------|
+| `docker-compose.yml` | 生产环境配置（默认） | 包含所有基础服务，AI 服务已禁用 |
+| `docker-compose.ai.yml` | AI 服务覆盖配置 | 用于启用 AI 服务，需与 `docker-compose.yml` 一起使用 |
+| `docker-compose.dev.yml` | 开发环境配置 | 只包含基础服务（PostgreSQL、MinIO、Redis） |
+| `start-with-ai.sh` | AI 服务启动脚本 | 一键启动包含 AI 服务的完整环境 |
+
+## 使用方法
+
+### 标准启动（不包含 AI 服务）
+
+```bash
+cd docker
+docker compose -f docker-compose.yml up -d
+```
+
+或使用部署脚本：
+
+```bash
+bash docker/deploy.sh
+```
+
+### 启动包含 AI 服务
+
+```bash
+cd docker
+bash start-with-ai.sh
+```
+
+或手动使用 Docker Compose：
+
+```bash
+cd docker
+docker compose -f docker-compose.yml -f docker-compose.ai.yml up -d
+```
+
+### 开发环境启动
+
+```bash
+cd docker
+docker compose -f docker-compose.dev.yml up -d
+```
+
+## 文件说明
+
 > PIS 项目包含多个 Docker Compose 配置文件，用于不同的部署场景
 
 ## 📋 文件列表

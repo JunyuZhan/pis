@@ -46,6 +46,28 @@ cd pis/docker
 bash deploy.sh
 ```
 
+### 方法三：启用 AI 服务启动
+
+如果需要启用人脸识别功能，可以使用专门的启动脚本：
+
+```bash
+# 使用启用 AI 服务的启动脚本
+cd pis/docker
+bash start-with-ai.sh
+```
+
+或者手动使用 Docker Compose：
+
+```bash
+cd pis/docker
+docker compose -f docker-compose.yml -f docker-compose.ai.yml up -d
+```
+
+**注意：**
+- AI 服务首次启动需要下载模型（约 500MB），可能需要几分钟
+- AI 服务会占用较多系统资源（CPU 和内存）
+- 默认配置中 AI 服务已禁用以节省资源
+
 脚本会引导你完成：
 - 配置 PostgreSQL 数据库连接
 - 配置域名和 SSL 证书

@@ -1,0 +1,36 @@
+name: pis
+
+# ============================================
+# PIS 完全自托管部署配置（启用 AI 服务）
+#
+# 此文件基于 docker-compose.yml，但启用了 AI 服务
+# 使用方法：
+#   docker compose -f docker-compose.yml -f docker-compose.ai.yml up -d
+# 或使用提供的启动脚本：
+#   bash docker/start-with-ai.sh
+# ============================================
+
+volumes:
+  pis_ai_models:
+    name: pis_ai_models
+
+services:
+  # ==================== AI 服务 ====================
+  ai:
+    build:
+      context: ../services/ai
+      dockerfile: Dockerfile
+    container_name: pis-ai
+    ports:
+      - "8000:8000"
+    volumes:
+      - pis_ai_models:/root/.insightface/models
+    networks:
+      - pis-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s  # AI 服务首次启动需要下载模型，需要更长时间
