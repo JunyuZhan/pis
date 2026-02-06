@@ -31,38 +31,33 @@ export async function GET(request: NextRequest) {
     }
 
     // 获取项目根目录
-    // 优先级：环境变量 > Docker 容器挂载路径（/opt/pis） > 从当前文件位置推断
+    // 优先级：环境变量 PROJECT_ROOT > 从当前文件位置推断
+    // 注意：不要硬编码容器路径，应该通过环境变量配置
     let projectRoot = process.env.PROJECT_ROOT
     
     if (!projectRoot) {
-      // 尝试常见的 Docker 部署路径
-      const commonPaths = [
-        '/opt/pis',  // Docker 容器挂载路径（docker-compose 中配置）
-        '/app',                  // Docker 容器内 Next.js 应用路径
-      ]
-      
-      // 检查这些路径是否存在且包含 .env.example 或 scripts/deploy/quick-upgrade.sh
-      for (const path of commonPaths) {
-        try {
-          if (existsSync(resolve(path, '.env.example')) || 
-              existsSync(resolve(path, 'scripts/deploy/quick-upgrade.sh'))) {
-            projectRoot = path
-            break
-          }
-        } catch {
-          // 忽略错误，继续尝试下一个路径
-        }
+      // 从当前工作目录推断（适用于开发环境和未配置 PROJECT_ROOT 的情况）
+      const cwd = process.cwd()
+      // 如果当前在 apps/web 目录，向上两级到项目根目录
+      if (cwd.includes('/apps/web')) {
+        projectRoot = resolve(cwd, '../..')
+      } else {
+        // 否则尝试从当前目录向上查找
+        projectRoot = resolve(cwd, '../..')
       }
       
-      // 如果都没找到，从当前工作目录推断
-      if (!projectRoot) {
-        const cwd = process.cwd()
-        // 如果当前在 apps/web 目录，向上两级到项目根目录
-        if (cwd.includes('/apps/web')) {
-          projectRoot = resolve(cwd, '../..')
-        } else {
-          // 否则尝试从当前目录向上查找
-          projectRoot = resolve(cwd, '../..')
+      // 验证推断的路径是否包含 Git 仓库标识
+      if (!existsSync(resolve(projectRoot, '.git'))) {
+        // 如果推断的路径不是 Git 仓库，尝试向上查找
+        let currentPath = projectRoot
+        for (let i = 0; i < 5; i++) {
+          const parentPath = resolve(currentPath, '..')
+          if (parentPath === currentPath) break // 已到达根目录
+          if (existsSync(resolve(parentPath, '.git'))) {
+            projectRoot = parentPath
+            break
+          }
+          currentPath = parentPath
         }
       }
     }
