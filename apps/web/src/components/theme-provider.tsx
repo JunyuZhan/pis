@@ -4,12 +4,16 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 
 type ThemeMode = 'light' | 'dark' | 'system'
 
+type BorderRadius = 'none' | 'sm' | 'md' | 'lg' | 'xl' | 'full'
+
 interface ThemeContextValue {
   theme: ThemeMode
   resolvedTheme: 'light' | 'dark'
   setTheme: (theme: ThemeMode) => void
   primaryColor: string
   setPrimaryColor: (color: string) => void
+  borderRadius: BorderRadius
+  setBorderRadius: (radius: BorderRadius) => void
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
@@ -18,10 +22,23 @@ const ThemeContext = createContext<ThemeContextValue>({
   setTheme: () => {},
   primaryColor: '#4F46E5',
   setPrimaryColor: () => {},
+  borderRadius: 'md',
+  setBorderRadius: () => {},
 })
 
 // 默认主色调
 const DEFAULT_PRIMARY_COLOR = '#4F46E5'
+const DEFAULT_BORDER_RADIUS = 'md'
+
+// 圆角值映射
+const BORDER_RADIUS_VALUES: Record<BorderRadius, string> = {
+  none: '0',
+  sm: '0.25rem',
+  md: '0.5rem',
+  lg: '0.75rem',
+  xl: '1rem',
+  full: '9999px',
+}
 
 /**
  * 获取系统主题偏好
@@ -67,20 +84,41 @@ function applyPrimaryColor(color: string) {
   root.style.setProperty('--color-accent-hover', `${Math.max(0, r - 20)} ${Math.max(0, g - 20)} ${Math.max(0, b - 20)}`)
 }
 
+/**
+ * 应用圆角大小到 CSS 变量
+ */
+function applyBorderRadius(radius: BorderRadius) {
+  const root = document.documentElement
+  const value = BORDER_RADIUS_VALUES[radius] || BORDER_RADIUS_VALUES.md
+  
+  // 设置基础圆角变量
+  root.style.setProperty('--radius-base', value)
+  // 设置不同尺寸的圆角（相对于基础值）
+  root.style.setProperty('--radius-sm', radius === 'none' ? '0' : radius === 'full' ? value : `calc(${value} * 0.5)`)
+  root.style.setProperty('--radius-lg', radius === 'none' ? '0' : radius === 'full' ? value : `calc(${value} * 1.5)`)
+  root.style.setProperty('--radius-xl', radius === 'none' ? '0' : radius === 'full' ? value : `calc(${value} * 2)`)
+  
+  // 添加 data 属性以便 CSS 选择器使用
+  root.dataset.radius = radius
+}
+
 interface ThemeProviderProps {
   children: React.ReactNode
   defaultTheme?: ThemeMode
   defaultPrimaryColor?: string
+  defaultBorderRadius?: BorderRadius
 }
 
 export function ThemeProvider({ 
   children, 
   defaultTheme = 'system',
   defaultPrimaryColor = DEFAULT_PRIMARY_COLOR,
+  defaultBorderRadius = DEFAULT_BORDER_RADIUS as BorderRadius,
 }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<ThemeMode>(defaultTheme)
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark')
   const [primaryColor, setPrimaryColorState] = useState(defaultPrimaryColor)
+  const [borderRadius, setBorderRadiusState] = useState<BorderRadius>(defaultBorderRadius)
   const [mounted, setMounted] = useState(false)
 
   // 设置主题
@@ -100,27 +138,38 @@ export function ThemeProvider({
     applyPrimaryColor(color)
   }, [])
 
+  // 设置圆角
+  const setBorderRadius = useCallback((radius: BorderRadius) => {
+    setBorderRadiusState(radius)
+    localStorage.setItem('pis-border-radius', radius)
+    applyBorderRadius(radius)
+  }, [])
+
   // 初始化
   useEffect(() => {
     // 从 localStorage 读取保存的主题
     const savedTheme = localStorage.getItem('pis-theme') as ThemeMode | null
     const savedColor = localStorage.getItem('pis-primary-color')
+    const savedRadius = localStorage.getItem('pis-border-radius') as BorderRadius | null
     
     // 从服务端设置读取（如果有）
     // 这会在 SettingsProvider 加载后被覆盖
     const initialTheme = savedTheme || defaultTheme
     const initialColor = savedColor || defaultPrimaryColor
+    const initialRadius = savedRadius || defaultBorderRadius
     
     setThemeState(initialTheme)
     setPrimaryColorState(initialColor)
+    setBorderRadiusState(initialRadius)
     
     const resolved = resolveTheme(initialTheme)
     setResolvedTheme(resolved)
     applyTheme(resolved)
     applyPrimaryColor(initialColor)
+    applyBorderRadius(initialRadius)
     
     setMounted(true)
-  }, [defaultTheme, defaultPrimaryColor])
+  }, [defaultTheme, defaultPrimaryColor, defaultBorderRadius])
 
   // 监听系统主题变化
   useEffect(() => {
@@ -149,7 +198,9 @@ export function ThemeProvider({
       resolvedTheme, 
       setTheme, 
       primaryColor, 
-      setPrimaryColor 
+      setPrimaryColor,
+      borderRadius,
+      setBorderRadius,
     }}>
       {children}
     </ThemeContext.Provider>

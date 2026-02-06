@@ -49,6 +49,7 @@ interface SettingsFormData {
   // 主题
   theme_mode: string
   theme_primary_color: string
+  theme_border_radius: string
 }
 
 const defaultFormData: SettingsFormData = {
@@ -74,6 +75,7 @@ const defaultFormData: SettingsFormData = {
   wechat_qrcode_url: '',
   theme_mode: 'system',
   theme_primary_color: '#4F46E5',
+  theme_border_radius: 'md',
 }
 
 type SectionId = 'brand' | 'site' | 'feature' | 'social' | 'theme'
@@ -86,7 +88,7 @@ export function SystemSettingsSection() {
   const [expandedSections, setExpandedSections] = useState<Set<SectionId>>(new Set(['brand']))
   
   // 获取主题控制钩子
-  const { setTheme, setPrimaryColor } = useTheme()
+  const { setTheme, setPrimaryColor, setBorderRadius } = useTheme()
   
   // 上传状态
   const [uploading, setUploading] = useState<Record<string, boolean>>({})
@@ -180,6 +182,7 @@ export function SystemSettingsSection() {
       if (grouped.theme) {
         newFormData.theme_mode = (grouped.theme.theme_mode as string) || 'system'
         newFormData.theme_primary_color = (grouped.theme.theme_primary_color as string) || '#4F46E5'
+        newFormData.theme_border_radius = (grouped.theme.theme_border_radius as string) || 'md'
       }
 
       setFormData(newFormData)
@@ -243,6 +246,9 @@ export function SystemSettingsSection() {
       }
       if ('theme_primary_color' in updates) {
         setPrimaryColor(formData.theme_primary_color)
+      }
+      if ('theme_border_radius' in updates) {
+        setBorderRadius(formData.theme_border_radius as 'none' | 'sm' | 'md' | 'lg' | 'xl' | 'full')
       }
     } catch (error) {
       handleApiError(error, '保存设置失败')
@@ -586,6 +592,43 @@ export function SystemSettingsSection() {
                 ))}
               </div>
             </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-2">圆角大小</label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 'none', label: '无', preview: 'rounded-none' },
+                { value: 'sm', label: '小', preview: 'rounded-sm' },
+                { value: 'md', label: '中', preview: 'rounded-md' },
+                { value: 'lg', label: '大', preview: 'rounded-lg' },
+                { value: 'xl', label: '特大', preview: 'rounded-xl' },
+                { value: 'full', label: '圆形', preview: 'rounded-full' },
+              ].map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => updateField('theme_border_radius', option.value)}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-2 transition-colors',
+                    formData.theme_border_radius === option.value
+                      ? 'bg-accent text-white rounded-lg'
+                      : 'bg-background hover:bg-surface-elevated rounded-lg'
+                  )}
+                >
+                  <div 
+                    className={cn(
+                      'w-4 h-4 bg-current opacity-50',
+                      option.preview
+                    )} 
+                  />
+                  <span className="text-sm">{option.label}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-text-muted mt-2">
+              调整按钮、卡片、输入框等元素的圆角样式
+            </p>
           </div>
         </div>
       </Section>

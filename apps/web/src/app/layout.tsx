@@ -209,6 +209,16 @@ export default async function RootLayout({
                   var g = parseInt(hex.substring(2, 4), 16);
                   var b = parseInt(hex.substring(4, 6), 16);
                   document.documentElement.style.setProperty('--color-accent', r + ' ' + g + ' ' + b);
+                  
+                  // 应用圆角设置
+                  var radiusMap = { none: '0', sm: '0.25rem', md: '0.5rem', lg: '0.75rem', xl: '1rem', full: '9999px' };
+                  var radius = localStorage.getItem('pis-border-radius') || 'md';
+                  var radiusValue = radiusMap[radius] || '0.5rem';
+                  document.documentElement.style.setProperty('--radius-base', radiusValue);
+                  document.documentElement.style.setProperty('--radius-sm', radius === 'none' ? '0' : radius === 'full' ? radiusValue : 'calc(' + radiusValue + ' * 0.5)');
+                  document.documentElement.style.setProperty('--radius-lg', radius === 'none' ? '0' : radius === 'full' ? radiusValue : 'calc(' + radiusValue + ' * 1.5)');
+                  document.documentElement.style.setProperty('--radius-xl', radius === 'none' ? '0' : radius === 'full' ? radiusValue : 'calc(' + radiusValue + ' * 2)');
+                  document.documentElement.dataset.radius = radius;
                 } catch (e) {
                   document.documentElement.classList.add('dark');
                 }
