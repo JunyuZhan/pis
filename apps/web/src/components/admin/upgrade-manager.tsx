@@ -61,6 +61,11 @@ export function UpgradeManager() {
   const [history, setHistory] = useState<UpgradeHistoryItem[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
+  
+  // 回滚状态
+  const [rollingBack, setRollingBack] = useState(false)
+  const [rollbackTarget, setRollbackTarget] = useState<string | null>(null)
+  const [rollbackLogs, setRollbackLogs] = useState<UpgradeLog[]>([])
 
   // 组件加载时自动检查
   useEffect(() => {
@@ -186,6 +191,76 @@ export function UpgradeManager() {
       handleApiError(err, '执行升级失败')
     } finally {
       setUpgrading(false)
+    }
+  }
+
+  // 执行回滚
+  const executeRollback = async (targetVersion: string) => {
+    if (!confirm(`确定要回滚到版本 ${targetVersion} 吗？回滚过程中服务可能会短暂中断。`)) {
+      return
+    }
+
+    setRollingBack(true)
+    setRollbackTarget(targetVersion)
+    setRollbackLogs([])
+
+    try {
+      const response = await fetch('/api/admin/upgrade/rollback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          target_version: targetVersion,
+          rebuild: false,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error?.message || data.error || '回滚失败')
+      }
+
+      // 读取流式响应
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+
+      if (!reader) {
+        throw new Error('无法读取响应流')
+      }
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n')
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              setRollbackLogs((prev) => [...prev, data])
+
+              if (data.type === 'success') {
+                showSuccess(`已成功回滚到版本 ${targetVersion}`)
+                // 刷新历史
+                setTimeout(() => {
+                  fetchHistory()
+                  checkStatus()
+                }, 2000)
+              } else if (data.type === 'error') {
+                handleApiError(new Error(data.message), '回滚失败')
+              }
+            } catch {
+              // 忽略解析错误
+            }
+          }
+        }
+      }
+    } catch (err) {
+      handleApiError(err, '执行回滚失败')
+    } finally {
+      setRollingBack(false)
+      setRollbackTarget(null)
     }
   }
 
@@ -560,6 +635,32 @@ export function UpgradeManager() {
             </button>
           </div>
           
+          {/* 回滚日志 */}
+          {rollbackLogs.length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-sm font-semibold mb-2">回滚日志</h4>
+              <div className="p-4 bg-surface rounded-lg border border-border max-h-64 overflow-y-auto">
+                <div className="space-y-1 font-mono text-sm">
+                  {rollbackLogs.map((log, index) => (
+                    <div
+                      key={index}
+                      className={cn(
+                        'py-1 px-2 rounded',
+                        log.type === 'stderr' || log.type === 'error'
+                          ? 'bg-red-500/10 text-red-400'
+                          : log.type === 'success'
+                          ? 'bg-green-500/10 text-green-400'
+                          : 'text-text-secondary'
+                      )}
+                    >
+                      {log.message}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          
           {loadingHistory && history.length === 0 ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
@@ -623,6 +724,28 @@ export function UpgradeManager() {
                           )}
                         </div>
                       </div>
+                      
+                      {/* 回滚按钮 - 只对成功的升级且非当前版本显示 */}
+                      {item.status === 'success' && item.rollback_available && item.from_version !== status?.currentVersion && (
+                        <button
+                          onClick={() => executeRollback(item.from_version)}
+                          disabled={rollingBack}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs text-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10 rounded transition-colors disabled:opacity-50"
+                          title={`回滚到 ${item.from_version}`}
+                        >
+                          {rollingBack && rollbackTarget === item.from_version ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              回滚中...
+                            </>
+                          ) : (
+                            <>
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              回滚
+                            </>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
                 )

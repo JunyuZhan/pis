@@ -112,7 +112,7 @@
   - [x] 显示升级进度（流式日志）
 - [x] 升级历史
   - [x] 记录每次升级
-  - [ ] 支持回滚到历史版本（计划中）
+  - [x] 支持回滚到历史版本
 
 **已完成的技术实现：**
 ```
@@ -129,18 +129,35 @@
      支持 targetVersion 参数
      执行: git fetch --tags && git checkout <tag>
      可选: --rebuild (无缓存构建)
+     自动记录升级历史
+   
+   - GET /api/admin/upgrade/history
+     获取升级历史记录（分页）
+     包含执行人、状态、耗时等信息
+   
+   - POST /api/admin/upgrade/rollback
+     执行版本回滚
+     支持 target_version 参数
+     流式日志输出
+     自动记录回滚历史
 
 3. 升级脚本
    - scripts/deploy/quick-upgrade.sh
      新增 --tag <version> 参数
      支持切换到指定版本 Tag
 
-4. 前端组件
+4. 数据库表
+   - upgrade_history: 升级/回滚历史记录
+     记录版本变更、状态、执行人、耗时等
+
+5. 前端组件
    - components/admin/upgrade-manager.tsx
      版本信息展示
      更新日志 Markdown 渲染
      一键升级按钮
      流式升级日志显示
+     升级历史列表
+     版本回滚功能
 ```
 
 ### 3. 海报预览图优化 ✅ 已完成
