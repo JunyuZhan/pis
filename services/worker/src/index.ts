@@ -281,6 +281,42 @@ const CONFIG = {
 } as const;
 
 // ============================================
+// URL 处理工具函数
+// ============================================
+
+/**
+ * 将预签名 URL 转换为相对路径
+ * 
+ * @description
+ * 预签名 URL 通常包含配置的主机名（如 localhost:8088），
+ * 但用户可能通过不同的域名/IP 访问。
+ * 通过转换为相对路径，让浏览器自动使用当前域名。
+ * 
+ * S3 签名只涉及 path 和 query string，不涉及 host，
+ * 所以这种转换不会破坏签名。
+ * 
+ * @param url - 完整的预签名 URL
+ * @returns 相对路径（包含 /media 前缀）
+ */
+function toRelativePresignedUrl(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    // 保留 path 和 query string
+    // 将 /pis-photos/ 替换为 /media/（Nginx 会反向代理到 MinIO）
+    let path = urlObj.pathname;
+    if (path.startsWith('/pis-photos/')) {
+      path = '/media/' + path.substring('/pis-photos/'.length);
+    } else if (path.startsWith('/pis-photos')) {
+      path = '/media' + path.substring('/pis-photos'.length);
+    }
+    return path + urlObj.search;
+  } catch {
+    // 如果 URL 解析失败，返回原始 URL
+    return url;
+  }
+}
+
+// ============================================
 // API 认证配置
 // ============================================
 const WORKER_API_KEY = process.env.WORKER_API_KEY;
@@ -1245,6 +1281,8 @@ const packageWorker = new Worker<PackageJobData>(
         zipKey,
         CONFIG.PACKAGE_DOWNLOAD_EXPIRY_DAYS * 24 * 60 * 60,
       );
+      // 转换为相对路径，支持任意域名访问
+      const relativeDownloadUrl = toRelativePresignedUrl(downloadUrl);
 
       // 7. 更新数据库
       await supabase
@@ -1253,7 +1291,7 @@ const packageWorker = new Worker<PackageJobData>(
           status: "completed",
           zip_key: zipKey,
           file_size: zipBuffer.length,
-          download_url: downloadUrl,
+          download_url: relativeDownloadUrl,
           expires_at: expiresAt.toISOString(),
           completed_at: new Date().toISOString(),
         })
@@ -1373,8 +1411,10 @@ const server = http.createServer(async (req, res) => {
       }
 
       const presignedUrl = await getPresignedPutUrl(key);
+      // 转换为相对路径，让浏览器自动使用当前域名
+      const relativeUrl = toRelativePresignedUrl(presignedUrl);
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ url: presignedUrl }));
+      res.end(JSON.stringify({ url: relativeUrl }));
     } catch (err: any) {
       console.error("Presign error:", err);
       const statusCode = err.message?.includes("too large")
@@ -1421,8 +1461,10 @@ const server = http.createServer(async (req, res) => {
         presignedUrl = urlObj.toString();
       }
 
+      // 转换为相对路径，让浏览器自动使用当前域名
+      const relativeUrl = toRelativePresignedUrl(presignedUrl);
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ url: presignedUrl }));
+      res.end(JSON.stringify({ url: relativeUrl }));
     } catch (err: any) {
       console.error("[Presign Get] Error:", err);
       const statusCode =
@@ -1767,8 +1809,10 @@ const server = http.createServer(async (req, res) => {
         expirySeconds,
       );
 
+      // 转换为相对路径，让浏览器自动使用当前域名
+      const relativeUrl = toRelativePresignedUrl(presignedUrl);
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ url: presignedUrl, partNumber }));
+      res.end(JSON.stringify({ url: relativeUrl, partNumber }));
     } catch (err: any) {
       console.error("[Multipart] Presign part error:", err);
       const statusCode = err.message?.includes("too large")
