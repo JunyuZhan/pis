@@ -93,49 +93,54 @@
    - site-footer.tsx / album-footer.tsx 使用数据库设置
 ```
 
-### 2. GitHub Releases 升级系统
+### 2. GitHub Releases 升级系统 ✅ 已完成
 > 基于版本号的自动升级，替代当前的 Git commit 对比
 
 **功能点：**
-- [ ] 版本检查
-  - [ ] 调用 GitHub Releases API 获取最新版本
-  - [ ] 对比当前版本与最新版本
-  - [ ] 显示版本号（如 v1.2.0）
-- [ ] 更新详情
-  - [ ] 显示 Release Notes（更新日志）
-  - [ ] 显示发布时间
-  - [ ] 显示重要更新标记
-- [ ] 一键升级
-  - [ ] 自动备份当前配置
-  - [ ] 拉取指定版本 Tag
-  - [ ] 重新构建镜像（可选）
-  - [ ] 重启服务
-  - [ ] 显示升级进度
-- [ ] 升级历史
+- [x] 版本检查
+  - [x] 调用 GitHub Releases API 获取最新版本
+  - [x] 对比当前版本与最新版本
+  - [x] 显示版本号（如 v1.2.0）
+- [x] 更新详情
+  - [x] 显示 Release Notes（更新日志）
+  - [x] 显示发布时间
+  - [x] 显示预发布版本标记
+- [x] 一键升级
+  - [x] 拉取指定版本 Tag
+  - [x] 重新构建镜像（可选）
+  - [x] 重启服务
+  - [x] 显示升级进度（流式日志）
+- [ ] 升级历史（待实现）
   - [ ] 记录每次升级
   - [ ] 支持回滚到历史版本
 
-**技术实现：**
+**已完成的技术实现：**
 ```
-1. API 接口
-   GET /api/admin/upgrade/check
-   - 调用 https://api.github.com/repos/JunyuZhan/pis/releases/latest
-   - 返回: { currentVersion, latestVersion, hasUpdate, releaseNotes, publishedAt }
+1. 版本管理
+   - lib/version.ts: 版本号常量和比较工具
+   - package.json version: 1.0.0
 
-   POST /api/admin/upgrade/execute
-   - 执行: git fetch --tags && git checkout v1.2.0
-   - 可选: docker compose build --no-cache
-   - 重启: docker compose up -d
+2. API 接口
+   - GET /api/admin/upgrade/check
+     调用 GitHub Releases API
+     返回: currentVersion, latestVersion, hasUpdate, releaseNotes, publishedAt
+   
+   - POST /api/admin/upgrade/execute
+     支持 targetVersion 参数
+     执行: git fetch --tags && git checkout <tag>
+     可选: --rebuild (无缓存构建)
 
-2. 版本管理
-   - 使用 package.json 中的 version 字段
-   - 每次发布时创建 Git Tag 和 GitHub Release
+3. 升级脚本
+   - scripts/deploy/quick-upgrade.sh
+     新增 --tag <version> 参数
+     支持切换到指定版本 Tag
 
-3. 前端界面
-   - 当前版本显示
-   - 新版本提示徽章
-   - 更新日志展示（Markdown 渲染）
-   - 升级按钮和进度条
+4. 前端组件
+   - components/admin/upgrade-manager.tsx
+     版本信息展示
+     更新日志 Markdown 渲染
+     一键升级按钮
+     流式升级日志显示
 ```
 
 ### 3. 海报预览图优化

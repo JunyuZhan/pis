@@ -5,13 +5,21 @@ import { spawn } from 'child_process'
 import { resolve } from 'path'
 import { existsSync } from 'fs'
 
+interface UpgradeRequestBody {
+  skipRestart?: boolean      // 是否跳过容器重启
+  rebuildImages?: boolean    // 是否重新构建镜像
+  targetVersion?: string     // 目标版本（Git Tag，如 v1.1.0）
+}
+
 /**
  * 执行升级 API
  * POST /api/admin/upgrade/execute
  * 
  * 请求体：
  * {
- *   skipRestart?: boolean  // 是否跳过容器重启（使用 --no-restart）
+ *   skipRestart?: boolean,    // 是否跳过容器重启（使用 --no-restart）
+ *   rebuildImages?: boolean,  // 是否重新构建镜像（使用 --rebuild）
+ *   targetVersion?: string    // 目标版本 Tag（如 v1.1.0）
  * }
  * 
  * 返回流式输出（Server-Sent Events）
@@ -25,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 解析请求体
-    let body: { skipRestart?: boolean; rebuildImages?: boolean } = {}
+    let body: UpgradeRequestBody = {}
     try {
       const bodyText = await request.text()
       if (bodyText) {
@@ -33,6 +41,23 @@ export async function POST(request: NextRequest) {
       }
     } catch {
       // 忽略解析错误，使用默认值
+    }
+
+    // 验证目标版本格式（如果指定）
+    if (body.targetVersion) {
+      const versionPattern = /^v?\d+\.\d+\.\d+(-[\w.]+)?$/
+      if (!versionPattern.test(body.targetVersion)) {
+        return NextResponse.json(
+          {
+            error: {
+              code: 'INVALID_VERSION',
+              message: '无效的版本号格式',
+              details: `版本号应为 v1.0.0 格式，收到: ${body.targetVersion}`,
+            },
+          },
+          { status: 400 }
+        )
+      }
     }
 
     // 获取项目根目录
@@ -85,6 +110,13 @@ export async function POST(request: NextRequest) {
 
     // 构建命令参数
     const args: string[] = []
+    if (body.targetVersion) {
+      // 确保版本号有 v 前缀
+      const tag = body.targetVersion.startsWith('v') 
+        ? body.targetVersion 
+        : `v${body.targetVersion}`
+      args.push('--tag', tag)
+    }
     if (body.skipRestart) {
       args.push('--no-restart')
     }

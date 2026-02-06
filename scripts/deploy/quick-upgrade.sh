@@ -33,6 +33,7 @@ FORCE_UPDATE=false
 REGENERATE_SECRETS=false
 RESTART_CONTAINERS=true
 REBUILD_IMAGES=false
+TARGET_TAG=""
 COMPOSE_CMD=""
 
 # 检测项目根目录
@@ -156,8 +157,8 @@ show_rebuild_info() {
 }
 
 # 解析参数
-for arg in "$@"; do
-    case $arg in
+while [[ $# -gt 0 ]]; do
+    case $1 in
         --force)
             FORCE_UPDATE=true
             shift
@@ -170,6 +171,15 @@ for arg in "$@"; do
             REBUILD_IMAGES=true
             shift
             ;;
+        --tag)
+            if [[ -n "$2" && ! "$2" =~ ^-- ]]; then
+                TARGET_TAG="$2"
+                shift 2
+            else
+                error "--tag 需要指定版本号，如 --tag v1.1.0"
+                exit 1
+            fi
+            ;;
         --help|-h)
             echo "用法: $0 [选项]"
             echo ""
@@ -177,13 +187,14 @@ for arg in "$@"; do
             echo "  --force          强制更新，自动暂存未提交的更改"
             echo "  --no-restart     不重启 Docker 容器"
             echo "  --rebuild        重新构建镜像（无缓存），适用于依赖或 Dockerfile 变更"
+            echo "  --tag <version>  升级到指定版本（如 --tag v1.1.0）"
             echo "  --help, -h       显示此帮助信息"
             echo ""
             show_rebuild_info
             exit 0
             ;;
         *)
-            warn "未知参数: $arg"
+            warn "未知参数: $1"
             warn "使用 --help 查看帮助信息"
             shift
             ;;
@@ -265,11 +276,41 @@ pull_latest_code() {
         
         info "当前分支: $CURRENT_BRANCH"
         
-        # 拉取最新代码
-        if git fetch origin && git pull origin $CURRENT_BRANCH; then
-            success "代码更新完成"
+        # 如果指定了目标版本
+        if [ -n "$TARGET_TAG" ]; then
+            info "目标版本: $TARGET_TAG"
+            
+            # 拉取所有 tags
+            if git fetch --tags origin; then
+                success "Tags 拉取完成"
+            else
+                error "无法拉取 Tags"
+                return 1
+            fi
+            
+            # 检查 Tag 是否存在
+            if ! git rev-parse "refs/tags/$TARGET_TAG" &>/dev/null; then
+                error "版本 $TARGET_TAG 不存在"
+                error "可用版本:"
+                git tag -l 'v*' | tail -10
+                return 1
+            fi
+            
+            # 切换到指定 Tag
+            info "切换到版本 $TARGET_TAG..."
+            if git checkout "tags/$TARGET_TAG" -B "release-$TARGET_TAG"; then
+                success "已切换到版本 $TARGET_TAG"
+            else
+                error "无法切换到版本 $TARGET_TAG"
+                return 1
+            fi
         else
-            warn "git pull 失败或没有更新"
+            # 拉取最新代码
+            if git fetch origin && git pull origin $CURRENT_BRANCH; then
+                success "代码更新完成"
+            else
+                warn "git pull 失败或没有更新"
+            fi
         fi
     else
         warn "未找到 .git 目录，跳过代码更新"
