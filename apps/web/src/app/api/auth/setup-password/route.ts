@@ -9,11 +9,15 @@ import { safeValidate, handleError, createSuccessResponse } from '@/lib/validati
 import { z } from 'zod'
 
 // 初始化认证数据库（如果尚未初始化）
+// 注意：这里只是尝试初始化，如果失败会在实际使用时重试
 try {
   initAuthDatabase()
 } catch (error) {
-  // 可能已经初始化，忽略错误
-  console.log('Auth database initialization check:', error instanceof Error ? error.message : 'Already initialized')
+  // 可能已经初始化，或者数据库配置未准备好（这在首次部署时是正常的）
+  // 在实际使用时会重新尝试初始化
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Auth database initialization check:', error instanceof Error ? error.message : 'Already initialized')
+  }
 }
 
 /**
@@ -131,11 +135,57 @@ export async function POST(request: NextRequest) {
 
     // 执行密码设置
     try {
-      // 获取数据库实例（如果未初始化会抛出错误，由外层 catch 处理）
-      const authDb = getAuthDatabase()
+      // 确保数据库已初始化
+      let authDb: ReturnType<typeof getAuthDatabase>
+      try {
+        authDb = getAuthDatabase()
+      } catch (initError) {
+        // 如果数据库未初始化，尝试初始化
+        console.log('Auth database not initialized, attempting initialization...')
+        try {
+          initAuthDatabase()
+          authDb = getAuthDatabase()
+        } catch (reinitError) {
+          const errorMsg = reinitError instanceof Error ? reinitError.message : String(reinitError)
+          console.error('Failed to initialize auth database:', reinitError)
+          
+          // 检查是否是数据库配置错误
+          if (errorMsg.includes('DATABASE_PASSWORD') || errorMsg.includes('POSTGRES_PASSWORD')) {
+            throw new Error(
+              '数据库配置错误：DATABASE_PASSWORD 或 POSTGRES_PASSWORD 环境变量未设置。请检查服务器配置。'
+            )
+          }
+          
+          throw new Error(
+            `数据库连接失败：${errorMsg}`
+          )
+        }
+      }
       
-      // 查找用户
-      const user = await authDb.findUserByEmail(normalizedEmail)
+      // 查找用户（这里可能会抛出数据库连接错误）
+      let user: Awaited<ReturnType<typeof authDb.findUserByEmail>>
+      try {
+        user = await authDb.findUserByEmail(normalizedEmail)
+      } catch (dbError) {
+        const errorMsg = dbError instanceof Error ? dbError.message : String(dbError)
+        console.error('Database query error:', dbError)
+        
+        // 检查是否是数据库连接错误
+        if (
+          errorMsg.includes('DATABASE_PASSWORD') ||
+          errorMsg.includes('POSTGRES_PASSWORD') ||
+          errorMsg.includes('connection') ||
+          errorMsg.includes('ECONNREFUSED') ||
+          errorMsg.includes('timeout')
+        ) {
+          throw new Error(
+            '数据库连接失败。请检查数据库服务是否运行，以及环境变量配置是否正确。'
+          )
+        }
+        
+        // 其他数据库错误
+        throw dbError
+      }
       
       if (!user) {
         // 如果用户不存在，检查是否系统处于未初始化状态（没有任何管理员）
@@ -280,14 +330,25 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString(),
       }))
 
+      // 检查是否是数据库连接错误
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      const isDatabaseError = 
+        errorMessage.includes('DATABASE_PASSWORD') ||
+        errorMessage.includes('POSTGRES_PASSWORD') ||
+        errorMessage.includes('数据库连接失败') ||
+        errorMessage.includes('database') ||
+        errorMessage.includes('connection')
+
       return NextResponse.json(
         {
           error: {
             code: 'INTERNAL_ERROR',
-            message: '密码设置失败，请重试',
+            message: isDatabaseError 
+              ? '数据库连接失败，请检查服务器配置'
+              : '密码设置失败，请重试',
             // 仅在开发环境返回详细错误信息
             ...(process.env.NODE_ENV === 'development' && {
-              details: error instanceof Error ? error.message : String(error),
+              details: errorMessage,
             }),
           },
         },
