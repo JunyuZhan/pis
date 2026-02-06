@@ -253,6 +253,7 @@ export function PhotoLightbox({
     if (!currentPhotoId) return
 
     try {
+      // 获取下载链接
       const res = await fetch(`/api/public/download/${currentPhotoId}`)
       if (!res.ok) {
         const error = await res.json()
@@ -262,13 +263,25 @@ export function PhotoLightbox({
 
       const { downloadUrl, filename } = await res.json()
 
-      // 触发下载
+      // 使用 fetch 获取文件数据，然后用 Blob 创建下载
+      // 这样可以确保强制下载而不是预览
+      const fileRes = await fetch(downloadUrl)
+      if (!fileRes.ok) {
+        throw new Error('文件下载失败')
+      }
+      
+      const blob = await fileRes.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      
       const a = document.createElement('a')
-      a.href = downloadUrl
+      a.href = blobUrl
       a.download = filename
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
+      
+      // 释放 Blob URL
+      URL.revokeObjectURL(blobUrl)
     } catch (error) {
       handleApiError(error, '下载失败，请重试')
     }

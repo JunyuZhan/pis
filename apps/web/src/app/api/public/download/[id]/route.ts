@@ -77,39 +77,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return ApiError.forbidden('该相册不允许下载原图')
     }
 
-    // 通过 Worker API 生成 Presigned URL（Vercel 无法直接连接内网 MinIO）
-    const workerUrl = process.env.WORKER_API_URL || process.env.WORKER_URL || process.env.NEXT_PUBLIC_WORKER_URL || 'http://localhost:3001'
-    const workerApiKey = process.env.WORKER_API_KEY
-    
-    if (!workerApiKey) {
-      return handleError(new Error('WORKER_API_KEY not configured'), '服务器配置错误')
-    }
-
-    // 调用 Worker API 生成 presigned URL
-    const workerResponse = await fetch(`${workerUrl}/api/presign/get`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': workerApiKey,
-      },
-      body: JSON.stringify({
-        key: photo.original_key || '',
-        expirySeconds: 5 * 60, // 5 分钟有效期
-        responseContentDisposition: `attachment; filename="${encodeURIComponent(photo.filename || 'photo')}"`,
-      }),
-    })
-
-    if (!workerResponse.ok) {
-      const errorText = await workerResponse.text()
-      return handleError(new Error(`Worker API error: ${errorText}`), '生成下载链接失败')
-    }
-
-    const { url: downloadUrl } = await workerResponse.json()
+    // 直接构建公开访问 URL（不使用签名）
+    // MinIO bucket 已设置为公开可读，签名反而会导致验证失败
+    const originalKey = photo.original_key || ''
+    const downloadUrl = `/media/${originalKey}`
 
     return createSuccessResponse({
       downloadUrl,
       filename: photo.filename || 'photo',
-      expiresIn: 300, // 5 分钟
     })
   } catch (error: unknown) {
     return handleError(error, '获取下载链接失败')
