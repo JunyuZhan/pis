@@ -180,7 +180,8 @@ const watermarkItemSchema = z
 
 const watermarkConfigSchema = z.object(
   {
-    watermarks: z.array(watermarkItemSchema).max(6, "最多支持6个水印"),
+    // watermarks 可选，默认为空数组
+    watermarks: z.array(watermarkItemSchema).max(6, "最多支持6个水印").optional().default([]),
   },
   { invalid_type_error: "水印配置格式错误" },
 );
