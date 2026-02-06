@@ -52,7 +52,13 @@ export async function getUserFromRequest(request: NextRequest): Promise<AuthUser
       }
     } else {
       if (process.env.NODE_ENV === 'development') {
-        console.log('[Auth getUserFromRequest] Access token invalid or expired')
+        // 添加更详细的错误信息用于调试
+        console.log('[Auth getUserFromRequest] Access token invalid or expired', {
+          tokenLength: token.length,
+          tokenPreview: token.substring(0, 20) + '...',
+          payloadExists: !!payload,
+          payloadType: payload?.type || 'null',
+        })
       }
     }
   } else {
@@ -160,8 +166,12 @@ export async function updateSessionMiddleware(request: NextRequest): Promise<{ r
   }
 
   // 如果 token 有效，返回当前用户；否则返回 null
+  // ⚠️ 重要：即使 token 有效，也要返回 currentUser，不能返回 null
+  // 这样可以确保中间件正确识别已登录的用户
   if (process.env.NODE_ENV === 'development' && currentUser) {
     console.log('[Auth] Access token valid for user:', currentUser.email)
+  } else if (process.env.NODE_ENV === 'development' && !currentUser && !refreshToken) {
+    console.log('[Auth] No valid token found, user not authenticated')
   }
   return { response, refreshedUser: currentUser }
 }

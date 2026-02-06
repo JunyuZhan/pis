@@ -55,7 +55,12 @@ export function formatDate(date: string | Date): string {
   const month = d.getMonth() + 1
   const day = d.getDate()
   if (month < 1 || month > 12) return ''
-  return `${year}年${month}月${day}日`
+  
+  // 中文月份名称
+  const monthNames = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二']
+  const monthName = monthNames[month - 1]
+  
+  return `${year}年${monthName}月${day}日`
 }
 
 /**

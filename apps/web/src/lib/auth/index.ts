@@ -53,6 +53,8 @@ export interface AuthUser {
   email: string
   /** 账号创建时间（ISO 8601 格式） */
   created_at?: string
+  /** 用户角色（可选，前端使用时可能包含） */
+  role?: 'admin' | 'photographer' | 'retoucher' | 'guest' | null
 }
 
 /**

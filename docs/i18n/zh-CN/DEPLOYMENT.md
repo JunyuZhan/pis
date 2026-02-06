@@ -1,6 +1,6 @@
 # PIS 部署指南
 
-> 作者: junyuzhan (junyuzhan@outlook.com)
+> 作者: junyuzhan
 > 许可证: MIT
 
 ## 目录
@@ -52,10 +52,10 @@ bash docker/deploy.sh <服务器IP> <SSH用户>
 
 脚本将引导您选择两种部署模式之一：
 
-| 模式 | 描述 | 适用场景 |
-|------|------|----------|
+| 模式                 | 描述                                                                | 适用场景             |
+| -------------------- | ------------------------------------------------------------------- | -------------------- |
 | **完全独立**（推荐） | 全部服务容器化（PostgreSQL + MinIO + Redis + Web + Worker + Nginx） | 完全自托管，数据隐私 |
-| **混合模式**（可选） | Vercel（前端）+ Supabase（数据库）+ 您的服务器（存储/Worker） | 快速搭建，云端前端 |
+| **混合模式**（可选） | Vercel（前端）+ Supabase（数据库）+ 您的服务器（存储/Worker）       | 快速搭建，云端前端   |
 
 ### 部署流程
 
@@ -73,6 +73,7 @@ bash docker/deploy.sh <服务器IP> <SSH用户>
 ### 自动生成的密钥
 
 部署脚本会自动生成以下安全随机值：
+
 - `STORAGE_ACCESS_KEY`、`STORAGE_SECRET_KEY`（MinIO 凭证）
 - `WORKER_API_KEY`（Worker API 认证）
 - `ALBUM_SESSION_SECRET`（JWT 会话签名）
@@ -81,11 +82,11 @@ bash docker/deploy.sh <服务器IP> <SSH用户>
 
 ### 数据库选项
 
-| 类型 | 推荐用于 | 特性 |
-|------|---------|------|
-| **PostgreSQL**（推荐） | 独立部署 | 自托管，本地 Docker，完全控制 |
-| **Supabase**（可选） | 混合部署 | 云端托管，包含认证，需要网络连接 |
-| **MySQL** | 独立部署 | 自托管，本地 Docker |
+| 类型                   | 推荐用于 | 特性                             |
+| ---------------------- | -------- | -------------------------------- |
+| **PostgreSQL**（推荐） | 独立部署 | 自托管，本地 Docker，完全控制    |
+| **Supabase**（可选）   | 混合部署 | 云端托管，包含认证，需要网络连接 |
+| **MySQL**              | 独立部署 | 自托管，本地 Docker              |
 
 ### PostgreSQL 配置（推荐）
 
@@ -123,6 +124,7 @@ DATABASE_PASSWORD=AUTO_GENERATE # 由部署脚本自动生成
 #### 独立模式
 
 所有服务通过您的域名访问：
+
 ```
 https://yourdomain.com          # 主应用
 https://yourdomain.com/media    # 媒体文件
@@ -131,6 +133,7 @@ https://yourdomain.com/media    # 媒体文件
 #### 混合模式
 
 1. **访问 MinIO 控制台**（如果使用 MinIO）：
+
    ```
    http://your-server-ip:9001
    ```
@@ -197,15 +200,15 @@ ss -tuln | grep -E ":(80|443|9000|9001|3001)"
         └────────────────────┴────────────┴───────────────────────────────┘
 ```
 
-| 组件 | 部署位置 | 用途 |
-|------|---------|------|
-| Next.js 前端 | Vercel | 用户界面、API 路由 |
-| PostgreSQL | Supabase | 元数据存储 |
-| Auth | Supabase | 用户认证 |
-| Realtime | Supabase | 实时推送 |
-| MinIO | 内网 Docker | 照片存储 |
-| Worker | 内网 Docker | 图片处理 |
-| Redis | 内网 Docker | 任务队列 |
+| 组件         | 部署位置    | 用途               |
+| ------------ | ----------- | ------------------ |
+| Next.js 前端 | Vercel      | 用户界面、API 路由 |
+| PostgreSQL   | Supabase    | 元数据存储         |
+| Auth         | Supabase    | 用户认证           |
+| Realtime     | Supabase    | 实时推送           |
+| MinIO        | 内网 Docker | 照片存储           |
+| Worker       | 内网 Docker | 图片处理           |
+| Redis        | 内网 Docker | 任务队列           |
 
 ---
 
@@ -244,10 +247,10 @@ ss -tuln | grep -E ":(80|443|9000|9001|3001)"
 
 进入项目 → **Settings** → **API**，复制以下信息:
 
-| 名称 | 用途 | 示例 |
-|------|------|------|
-| Project URL | 所有客户端 | `https://xxxxx.supabase.co` |
-| anon public | 前端浏览器 | `eyJhbGciOiJIUzI1NiIs...` |
+| 名称         | 用途        | 示例                                 |
+| ------------ | ----------- | ------------------------------------ |
+| Project URL  | 所有客户端  | `https://xxxxx.supabase.co`          |
+| anon public  | 前端浏览器  | `eyJhbGciOiJIUzI1NiIs...`            |
 | service_role | Worker 后端 | `eyJhbGciOiJIUzI1NiIs...` (⚠️ 保密!) |
 
 ### 3. 执行数据库架构
@@ -259,6 +262,7 @@ ss -tuln | grep -E ":(80|443|9000|9001|3001)"
 5. ✅ 完成！
 
 **或者使用命令行**：
+
 ```bash
 # 使用 Supabase CLI 或其他迁移工具执行数据库架构
 ```
@@ -279,6 +283,7 @@ ss -tuln | grep -E ":(80|443|9000|9001|3001)"
 5. ✅ 完成！现在可以使用这个邮箱和密码在 `/admin/login` 登录
 
 **注意**：
+
 - 这里创建的邮箱和密码将用于登录管理后台
 - 确保勾选 "Auto Confirm User"，这样你可以立即登录
 - 如果需要，可以创建多个管理员账号
@@ -288,11 +293,11 @@ ss -tuln | grep -E ":(80|443|9000|9001|3001)"
 1. 进入 **Authentication** → **URL Configuration**
 2. 设置:
 
-| 配置项 | 值 |
-|--------|-----|
-| Site URL | `https://yourdomain.com` |
+| 配置项        | 值                                     |
+| ------------- | -------------------------------------- |
+| Site URL      | `https://yourdomain.com`               |
 | Redirect URLs | `https://yourdomain.com/auth/callback` |
-| | `http://localhost:3000/auth/callback` |
+|               | `http://localhost:3000/auth/callback`  |
 
 ### 6. 启用 Realtime (可选但推荐)
 
@@ -320,6 +325,7 @@ docker-compose up -d minio redis minio-init
 ```
 
 验证服务启动:
+
 ```bash
 docker-compose ps
 # 应该看到 pis-minio 和 pis-redis 状态为 Up (healthy)
@@ -374,11 +380,11 @@ pnpm dev
 
 ### 5. 访问应用
 
-| 地址 | 说明 |
-|------|------|
-| http://localhost:3000 | 前端首页 |
-| http://localhost:3000/admin/login | 管理后台登录 |
-| http://localhost:9001 | MinIO 控制台 (minioadmin/minioadmin) |
+| 地址                              | 说明                                 |
+| --------------------------------- | ------------------------------------ |
+| http://localhost:3000             | 前端首页                             |
+| http://localhost:3000/admin/login | 管理后台登录                         |
+| http://localhost:9001             | MinIO 控制台 (minioadmin/minioadmin) |
 
 ---
 
@@ -491,6 +497,7 @@ server {
 ```
 
 启用配置:
+
 ```bash
 sudo ln -s /etc/nginx/sites-available/media.yourdomain.com /etc/nginx/sites-enabled/
 sudo certbot --nginx -d media.yourdomain.com
@@ -503,28 +510,28 @@ sudo nginx -t && sudo nginx -s reload
 
 ### 前端 (Docker / apps/web/.env)
 
-| 变量 | 说明 | 示例 |
-|------|------|------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase 项目 URL | `https://xxx.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 公开密钥 | `eyJ...` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase 服务端密钥 | `eyJ...` |
-| `NEXT_PUBLIC_APP_URL` | 应用访问地址 | `https://yourdomain.com` |
-| `NEXT_PUBLIC_MEDIA_URL` | 媒体 CDN 地址 | `https://media.yourdomain.com/pis-photos` |
+| 变量                            | 说明                | 示例                                      |
+| ------------------------------- | ------------------- | ----------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase 项目 URL   | `https://xxx.supabase.co`                 |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 公开密钥   | `eyJ...`                                  |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Supabase 服务端密钥 | `eyJ...`                                  |
+| `NEXT_PUBLIC_APP_URL`           | 应用访问地址        | `https://yourdomain.com`                  |
+| `NEXT_PUBLIC_MEDIA_URL`         | 媒体 CDN 地址       | `https://media.yourdomain.com/pis-photos` |
 
 ### Worker (Docker / .env)
 
-| 变量 | 说明 | 示例 |
-|------|------|------|
-| `SUPABASE_URL` | Supabase 项目 URL | `https://xxx.supabase.co` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase 服务端密钥 | `eyJ...` |
-| `MINIO_ENDPOINT_HOST` | MinIO 主机 | `minio` (Docker) / `localhost` |
-| `MINIO_ENDPOINT_PORT` | MinIO 端口 | `9000` |
-| `MINIO_USE_SSL` | 是否使用 SSL | `false` |
-| `MINIO_ACCESS_KEY` | MinIO 访问密钥 | 自定义强密码 |
-| `MINIO_SECRET_KEY` | MinIO 密钥 | 自定义强密码 (≥8字符) |
-| `MINIO_BUCKET` | 存储桶名称 | `pis-photos` |
-| `REDIS_HOST` | Redis 主机 | `redis` (Docker) / `localhost` |
-| `REDIS_PORT` | Redis 端口 | `6379` |
+| 变量                        | 说明                | 示例                           |
+| --------------------------- | ------------------- | ------------------------------ |
+| `SUPABASE_URL`              | Supabase 项目 URL   | `https://xxx.supabase.co`      |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase 服务端密钥 | `eyJ...`                       |
+| `MINIO_ENDPOINT_HOST`       | MinIO 主机          | `minio` (Docker) / `localhost` |
+| `MINIO_ENDPOINT_PORT`       | MinIO 端口          | `9000`                         |
+| `MINIO_USE_SSL`             | 是否使用 SSL        | `false`                        |
+| `MINIO_ACCESS_KEY`          | MinIO 访问密钥      | 自定义强密码                   |
+| `MINIO_SECRET_KEY`          | MinIO 密钥          | 自定义强密码 (≥8字符)          |
+| `MINIO_BUCKET`              | 存储桶名称          | `pis-photos`                   |
+| `REDIS_HOST`                | Redis 主机          | `redis` (Docker) / `localhost` |
+| `REDIS_PORT`                | Redis 端口          | `6379`                         |
 
 ---
 

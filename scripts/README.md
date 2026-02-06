@@ -37,10 +37,13 @@ bash scripts/deploy/deploy.sh <服务器IP> [用户名]
 **快速开始**：
 ```bash
 # 运行所有测试
-bash scripts/test/run-tests.sh
+bash scripts/test/core/test-all.sh
 
 # 运行完整测试套件
-bash scripts/test/comprehensive-test.sh
+bash scripts/test/core/comprehensive-test.sh
+
+# 快速验证
+bash scripts/test/core/quick-verify.sh
 ```
 
 详细说明请参考：[测试脚本文档](./test/README.md)
@@ -92,7 +95,14 @@ bash scripts/deploy/start-internal-services.sh
 
 ### 运行测试
 ```bash
-bash scripts/test/run-tests.sh
+# 快速验证
+bash scripts/test/core/quick-verify.sh
+
+# 运行所有测试
+bash scripts/test/core/test-all.sh
+
+# 完整测试套件
+bash scripts/test/core/comprehensive-test.sh
 ```
 
 ### 创建管理员

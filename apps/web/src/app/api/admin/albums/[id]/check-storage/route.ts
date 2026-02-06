@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/database'
-import { getCurrentUser } from '@/lib/auth/api-helpers'
+import { requireAdmin } from '@/lib/auth/role-helpers'
 import { albumIdSchema } from '@/lib/validation/schemas'
 import { safeValidate, handleError, ApiError } from '@/lib/validation/error-handler'
 import { getInternalApiUrl } from '@/lib/utils'
@@ -34,11 +34,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const albumId = idValidation.data.id
     const db = await createClient()
 
-    // 验证登录状态
+    // 先检查用户是否已登录
+    const { getCurrentUser } = await import('@/lib/auth/api-helpers')
     const user = await getCurrentUser(request)
-
     if (!user) {
-      return ApiError.unauthorized('请先登录')
+      return ApiError.unauthorized('需要登录才能执行此操作')
+    }
+
+    // 再检查用户是否为管理员
+    const admin = await requireAdmin(request)
+    if (!admin) {
+      return ApiError.forbidden('需要管理员权限才能执行此操作')
     }
 
     // 验证相册存在

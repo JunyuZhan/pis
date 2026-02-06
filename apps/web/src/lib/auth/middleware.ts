@@ -3,7 +3,7 @@
  *
  * 用于完全自托管模式，不依赖 Supabase
  *
- * @author PIS Contributors
+ * @author junyuzhan
  * @license MIT
  *
  * @description
@@ -22,8 +22,8 @@
  * }
  * ```
  */
-import { NextResponse, type NextRequest } from 'next/server'
-import { getUserFromRequest, updateSessionMiddleware } from './jwt-helpers'
+import { NextResponse, type NextRequest } from "next/server";
+import { getUserFromRequest, updateSessionMiddleware } from "./jwt-helpers";
 
 /**
  * 更新会话中间件
@@ -61,42 +61,65 @@ import { getUserFromRequest, updateSessionMiddleware } from './jwt-helpers'
  * ```
  */
 export async function updateSession(request: NextRequest) {
+  // 开发环境：输出环境变量状态（用于调试）
+  if (
+    process.env.NODE_ENV === "development" &&
+    request.nextUrl.pathname.startsWith("/admin")
+  ) {
+    console.log("[Middleware] Environment check:", {
+      pathname: request.nextUrl.pathname,
+      hasAuthJwtSecret: !!process.env.AUTH_JWT_SECRET,
+      authJwtSecretLength: process.env.AUTH_JWT_SECRET?.length || 0,
+    });
+  }
+
   // 更新会话（刷新令牌）
-  const { response, refreshedUser } = await updateSessionMiddleware(request)
+  const { response, refreshedUser } = await updateSessionMiddleware(request);
 
   // 检查用户认证状态
-  // 如果 token 被刷新了，使用刷新后的用户信息；否则从 request 中读取
-  const user = refreshedUser || await getUserFromRequest(request)
-  
+  // 优先使用刷新后的用户信息
+  let user = refreshedUser;
+
+  // 如果 token 没有被刷新，从 request 中读取
+  // 但如果 refresh token 有效但 access token 无效，getUserFromRequest 会返回用户
+  // 此时中间件已经刷新了 token，所以应该优先使用 refreshedUser
+  if (!user) {
+    // 如果 refreshedUser 为 null，说明 token 有效，不需要刷新
+    // 从原始 request 中读取用户信息
+    user = await getUserFromRequest(request);
+  }
+
   // 调试日志
-  if (process.env.NODE_ENV === 'development') {
-    const pathname = request.nextUrl.pathname
-    if (pathname.startsWith('/admin')) {
-      console.log(`[Auth Middleware] Path: ${pathname}, User: ${user ? user.email : 'null'}`)
+  if (process.env.NODE_ENV === "development") {
+    const pathname = request.nextUrl.pathname;
+    if (pathname.startsWith("/admin")) {
+      console.log(
+        `[Auth Middleware] Path: ${pathname}, User: ${user ? user.email : "null"}`,
+      );
     }
   }
 
-  if (request.nextUrl.pathname.startsWith('/admin')) {
+  if (request.nextUrl.pathname.startsWith("/admin")) {
     // 登录页面逻辑
-    if (request.nextUrl.pathname === '/admin/login') {
+    if (request.nextUrl.pathname === "/admin/login") {
       if (user) {
         // 已登录，重定向到管理后台首页
-        const url = request.nextUrl.clone()
-        url.pathname = '/admin'
-        return NextResponse.redirect(url)
+        const url = request.nextUrl.clone();
+        url.pathname = "/admin";
+        return NextResponse.redirect(url);
       }
       // 未登录，允许访问登录页
-      return response
+      return response;
     }
 
     // 其他管理后台页面逻辑
     if (!user) {
       // 未登录，重定向到登录页
-      const url = request.nextUrl.clone()
-      url.pathname = '/admin/login'
-      return NextResponse.redirect(url)
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/login";
+      return NextResponse.redirect(url);
     }
   }
 
-  return response
+  return response;
 }

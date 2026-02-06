@@ -2,20 +2,20 @@
  * PIS Worker - 结构化日志工具
  *
  * @description 使用 pino 提供高性能的结构化日志
- * @author junyuzhan <junyuzhan@outlook.com>
+ * @author junyuzhan
  * @license MIT
  */
 
-import pino from 'pino';
-import { existsSync, mkdirSync } from 'fs';
-import { join } from 'path';
+import pino from "pino";
+import { existsSync, mkdirSync } from "fs";
+import { join } from "path";
 
 // 日志级别（从环境变量读取，默认 info）
-const LOG_LEVEL = (process.env.LOG_LEVEL || 'info').toLowerCase() as pino.Level;
+const LOG_LEVEL = (process.env.LOG_LEVEL || "info").toLowerCase() as pino.Level;
 
 // 日志目录（从环境变量读取，默认 logs）
 // 支持绝对路径和相对路径
-const LOG_DIR = process.env.LOG_DIR || join(process.cwd(), 'logs');
+const LOG_DIR = process.env.LOG_DIR || join(process.cwd(), "logs");
 
 // 确保日志目录存在
 if (!existsSync(LOG_DIR)) {
@@ -27,14 +27,16 @@ if (!existsSync(LOG_DIR)) {
 }
 
 // 日志文件路径
-const LOG_FILE = join(LOG_DIR, 'worker.log');
-const ERROR_LOG_FILE = join(LOG_DIR, 'worker-error.log');
+const LOG_FILE = join(LOG_DIR, "worker.log");
+const ERROR_LOG_FILE = join(LOG_DIR, "worker-error.log");
 
 // 是否启用文件日志（默认启用）
-const ENABLE_FILE_LOG = process.env.ENABLE_FILE_LOG !== 'false';
+const ENABLE_FILE_LOG = process.env.ENABLE_FILE_LOG !== "false";
 
 // 是否启用美化输出（开发环境默认启用）
-const ENABLE_PRETTY = process.env.NODE_ENV === 'development' || process.env.ENABLE_PRETTY_LOG === 'true';
+const ENABLE_PRETTY =
+  process.env.NODE_ENV === "development" ||
+  process.env.ENABLE_PRETTY_LOG === "true";
 
 // 创建日志流
 const streams: Array<{ level: pino.Level; stream: pino.DestinationStream }> = [
@@ -68,7 +70,7 @@ if (ENABLE_FILE_LOG) {
 
     // 错误日志（独立文件）
     streams.push({
-      level: 'error',
+      level: "error",
       stream: pino.destination({
         dest: ERROR_LOG_FILE,
         sync: false,
@@ -76,7 +78,7 @@ if (ENABLE_FILE_LOG) {
       }),
     });
   } catch (err) {
-    console.warn('Failed to create log file streams:', err);
+    console.warn("Failed to create log file streams:", err);
   }
 }
 
@@ -86,7 +88,7 @@ const logger = pino(
     level: LOG_LEVEL,
     // 基础配置
     base: {
-      service: 'pis-worker',
+      service: "pis-worker",
       pid: process.pid,
     },
     // 时间戳格式
@@ -100,17 +102,17 @@ const logger = pino(
     // 格式化配置（开发环境）
     ...(ENABLE_PRETTY && {
       transport: {
-        target: 'pino-pretty',
+        target: "pino-pretty",
         options: {
           colorize: true,
-          translateTime: 'SYS:standard',
-          ignore: 'pid,hostname',
+          translateTime: "SYS:standard",
+          ignore: "pid,hostname",
           singleLine: false,
         },
       },
     }),
   },
-  pino.multistream(streams)
+  pino.multistream(streams),
 );
 
 // 导出 logger

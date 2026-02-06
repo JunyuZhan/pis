@@ -35,6 +35,34 @@ describe('GET /api/admin/albums/[id]/check-storage', () => {
     
     mockDb = createMockDatabaseClient()
     mockAdminDb = createMockDatabaseClient()
+    
+    // Mock admin role query for requireAdmin
+    const mockRoleSelect = vi.fn().mockReturnThis()
+    const mockRoleEq = vi.fn().mockReturnThis()
+    const mockRoleSingle = vi.fn().mockResolvedValue({
+      data: { role: 'admin' },
+      error: null,
+    })
+    mockAdminDb.from.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: mockRoleSelect,
+          eq: mockRoleEq,
+          single: mockRoleSingle,
+        }
+      }
+      // For other tables, return default chain
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: null,
+          error: null,
+        }),
+      }
+    })
+    
     vi.mocked(createClient).mockResolvedValue(mockDb)
     vi.mocked(createAdminClient).mockResolvedValue(mockAdminDb)
     mockGetCurrentUser = vi.mocked(getCurrentUser)
@@ -174,10 +202,19 @@ describe('GET /api/admin/albums/[id]/check-storage', () => {
         single: mockSingleAlbum,
       })
 
-      mockAdminDb.from.mockReturnValue({
-        select: mockSelectPhotos,
-        eq: mockEqPhotos,
-        is: mockIsPhotos,
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminDb.from.getMockImplementation()
+      mockAdminDb.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For photos table, return the new mock
+        return {
+          select: mockSelectPhotos,
+          eq: mockEqPhotos,
+          is: mockIsPhotos,
+        }
       })
 
       // Mock worker API calls
@@ -241,10 +278,19 @@ describe('GET /api/admin/albums/[id]/check-storage', () => {
         single: mockSingleAlbum,
       })
 
-      mockAdminDb.from.mockReturnValue({
-        select: mockSelectPhotos,
-        eq: mockEqPhotos,
-        is: mockIsPhotos,
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminDb.from.getMockImplementation()
+      mockAdminDb.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For photos table, return the new mock
+        return {
+          select: mockSelectPhotos,
+          eq: mockEqPhotos,
+          is: mockIsPhotos,
+        }
       })
 
       // Mock worker API errors
@@ -301,10 +347,19 @@ describe('GET /api/admin/albums/[id]/check-storage', () => {
         single: mockSingleAlbum,
       })
 
-      mockAdminDb.from.mockReturnValue({
-        select: mockSelectPhotos,
-        eq: mockEqPhotos,
-        is: mockIsPhotos,
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminDb.from.getMockImplementation()
+      mockAdminDb.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For photos table, return the new mock
+        return {
+          select: mockSelectPhotos,
+          eq: mockEqPhotos,
+          is: mockIsPhotos,
+        }
       })
 
       const request = createMockRequest(

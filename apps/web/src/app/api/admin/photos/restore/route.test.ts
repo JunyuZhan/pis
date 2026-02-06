@@ -33,6 +33,34 @@ describe('POST /api/admin/photos/restore', () => {
       from: vi.fn(),
       update: vi.fn(),
     }
+    
+    // Mock admin role query for requireAdmin
+    const mockRoleSelect = vi.fn().mockReturnThis()
+    const mockRoleEq = vi.fn().mockReturnThis()
+    const mockRoleSingle = vi.fn().mockResolvedValue({
+      data: { role: 'admin' },
+      error: null,
+    })
+    mockAdminClient.from.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: mockRoleSelect,
+          eq: mockRoleEq,
+          single: mockRoleSingle,
+        }
+      }
+      // For other tables, return default chain
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: null,
+          error: null,
+        }),
+      }
+    })
+    
     const { createAdminClient } = await import('@/lib/database')
     vi.mocked(createAdminClient).mockResolvedValue(mockAdminClient)
 
@@ -130,10 +158,19 @@ describe('POST /api/admin/photos/restore', () => {
         error: null,
       })
 
-      mockAdminClient.from.mockReturnValue({
-        select: mockSelect,
-        in: mockIn,
-        not: mockNot,
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For other tables, return the new mock
+        return {
+          select: mockSelect,
+          in: mockIn,
+          not: mockNot,
+        }
       })
 
       const request = createMockRequest('http://localhost:3000/api/admin/photos/restore', {
@@ -157,10 +194,19 @@ describe('POST /api/admin/photos/restore', () => {
         error: { message: 'Database error' },
       })
 
-      mockAdminClient.from.mockReturnValue({
-        select: mockSelect,
-        in: mockIn,
-        not: mockNot,
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For other tables, return the new mock
+        return {
+          select: mockSelect,
+          in: mockIn,
+          not: mockNot,
+        }
       })
 
       const request = createMockRequest('http://localhost:3000/api/admin/photos/restore', {
@@ -215,22 +261,51 @@ describe('POST /api/admin/photos/restore', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({ // Check photos
-          select: mockSelect,
-          in: mockIn,
-          not: mockNot,
-        })
-        .mockReturnValueOnce({ // Get albums
-          select: mockAlbumSelect,
-          in: mockAlbumIn,
-        })
-        .mockReturnValueOnce({ // Count photos
-          select: mockCountSelect,
-          eq: mockCountEq,
-          in: mockCountIn,
-          is: mockCountIs,
-        })
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      let photosCallCount = 0
+      let albumsCallCount = 0
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        } else if (table === 'photos') {
+          photosCallCount++
+          if (photosCallCount === 1) {
+            // First call: Check deleted photos
+            return {
+              select: mockSelect,
+              in: mockIn,
+              not: mockNot,
+            }
+          } else {
+            // Second call: Count photos
+            return {
+              select: mockCountSelect,
+              eq: mockCountEq,
+              in: mockCountIn,
+              is: mockCountIs,
+            }
+          }
+        } else if (table === 'albums') {
+          albumsCallCount++
+          // Get albums
+          return {
+            select: mockAlbumSelect,
+            in: mockAlbumIn,
+          }
+        }
+        // Default fallback
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          is: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({
+            data: null,
+            error: null,
+          }),
+        }
+      })
 
       // Mock update album count
       mockAdminClient.update.mockResolvedValue({
@@ -294,22 +369,51 @@ describe('POST /api/admin/photos/restore', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({ // Check photos
-          select: mockSelect,
-          in: mockIn,
-          not: mockNot,
-        })
-        .mockReturnValueOnce({ // Get albums
-          select: mockAlbumSelect,
-          in: mockAlbumIn,
-        })
-        .mockReturnValueOnce({ // Count photos
-          select: mockCountSelect,
-          eq: mockCountEq,
-          in: mockCountIn,
-          is: mockCountIs,
-        })
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      let photosCallCount = 0
+      let albumsCallCount = 0
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        } else if (table === 'photos') {
+          photosCallCount++
+          if (photosCallCount === 1) {
+            // First call: Check deleted photos
+            return {
+              select: mockSelect,
+              in: mockIn,
+              not: mockNot,
+            }
+          } else {
+            // Second call: Count photos
+            return {
+              select: mockCountSelect,
+              eq: mockCountEq,
+              in: mockCountIn,
+              is: mockCountIs,
+            }
+          }
+        } else if (table === 'albums') {
+          albumsCallCount++
+          // Get albums
+          return {
+            select: mockAlbumSelect,
+            in: mockAlbumIn,
+          }
+        }
+        // Default fallback
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          is: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({
+            data: null,
+            error: null,
+          }),
+        }
+      })
 
       const request = createMockRequest('http://localhost:3000/api/admin/photos/restore', {
         method: 'POST',
@@ -351,10 +455,19 @@ describe('POST /api/admin/photos/restore', () => {
         error: { message: 'Update failed' },
       })
 
-      mockAdminClient.from.mockReturnValue({
-        select: mockSelect,
-        in: mockIn,
-        not: mockNot,
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For other tables, return the new mock
+        return {
+          select: mockSelect,
+          in: mockIn,
+          not: mockNot,
+        }
       })
 
       const request = createMockRequest('http://localhost:3000/api/admin/photos/restore', {

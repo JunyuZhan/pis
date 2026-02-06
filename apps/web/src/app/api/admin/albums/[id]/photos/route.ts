@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { getInternalApiUrl } from '@/lib/utils'
 import { createClient } from '@/lib/database'
-import { getCurrentUser } from '@/lib/auth/api-helpers'
+import { requireAdmin } from '@/lib/auth/role-helpers'
 import { purgePhotoCache } from '@/lib/cloudflare-purge'
 import { albumIdSchema } from '@/lib/validation/schemas'
 import { safeValidate, handleError, createSuccessResponse, ApiError } from '@/lib/validation/error-handler'
@@ -51,15 +51,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
     
     const { id } = idValidation.data
+    
+    // 先检查用户是否已登录
+    const { getCurrentUser } = await import('@/lib/auth/api-helpers')
+    const user = await getCurrentUser(request)
+    if (!user) {
+      return ApiError.unauthorized('需要登录才能执行此操作')
+    }
+
+    // 再检查用户是否为管理员
+    const admin = await requireAdmin(request)
+    if (!admin) {
+      return ApiError.forbidden('需要管理员权限才能访问照片列表')
+    }
+
     const { searchParams } = new URL(request.url)
     const db = await createClient()
-
-    // 验证登录状态
-    const user = await getCurrentUser(request)
-
-    if (!user) {
-      return ApiError.unauthorized('请先登录')
-    }
 
     // 分页参数
     const pageRaw = searchParams.get('page') || '1'
@@ -194,18 +201,30 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // DELETE /api/admin/albums/[id]/photos - 批量删除照片
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = await params
-    const db = await createClient()
-
-    // 验证登录状态
-    const user = await getCurrentUser(request)
-
-    if (!user) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: '请先登录' } },
-        { status: 401 }
-      )
+    const paramsData = await params
+    
+    // 验证路径参数
+    const idValidation = safeValidate(albumIdSchema, paramsData)
+    if (!idValidation.success) {
+      return handleError(idValidation.error, '无效的相册ID')
     }
+    
+    const { id } = idValidation.data
+
+    // 先检查用户是否已登录
+    const { getCurrentUser } = await import('@/lib/auth/api-helpers')
+    const user = await getCurrentUser(request)
+    if (!user) {
+      return ApiError.unauthorized('需要登录才能执行此操作')
+    }
+
+    // 再检查用户是否为管理员
+    const admin = await requireAdmin(request)
+    if (!admin) {
+      return ApiError.forbidden('需要管理员权限才能删除照片')
+    }
+
+    const db = await createClient()
 
     // 解析请求体
     interface DeletePhotosRequestBody {

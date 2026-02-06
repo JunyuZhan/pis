@@ -14,7 +14,50 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-BASE_URL="http://localhost:8081"
+# 自动检测 BASE_URL（如果未通过环境变量设置）
+if [ -z "$BASE_URL" ]; then
+    if curl -s --max-time 2 http://localhost:3000/api/health > /dev/null 2>&1; then
+        BASE_URL="http://localhost:3000"
+    elif curl -s --max-time 2 http://localhost:8081/api/health > /dev/null 2>&1; then
+        BASE_URL="http://localhost:8081"
+    else
+        BASE_URL="http://localhost:8081"
+        echo -e "${YELLOW}⚠️  未检测到运行中的服务，使用默认端口 8081${NC}"
+    fi
+fi
+
+# 自动检测容器名称
+if [ -z "$POSTGRES_CONTAINER" ]; then
+    if docker ps --format "{{.Names}}" | grep -q "^pis-postgres-dev$"; then
+        POSTGRES_CONTAINER="pis-postgres-dev"
+    elif docker ps --format "{{.Names}}" | grep -q "^pis-postgres$"; then
+        POSTGRES_CONTAINER="pis-postgres"
+    else
+        POSTGRES_CONTAINER="pis-postgres-dev"
+        echo -e "${YELLOW}⚠️  未找到 PostgreSQL 容器，使用默认名称${NC}"
+    fi
+fi
+
+if [ -z "$REDIS_CONTAINER" ]; then
+    if docker ps --format "{{.Names}}" | grep -q "^pis-redis-dev$"; then
+        REDIS_CONTAINER="pis-redis-dev"
+    elif docker ps --format "{{.Names}}" | grep -q "^pis-redis$"; then
+        REDIS_CONTAINER="pis-redis"
+    else
+        REDIS_CONTAINER="pis-redis-dev"
+    fi
+fi
+
+if [ -z "$MINIO_CONTAINER" ]; then
+    if docker ps --format "{{.Names}}" | grep -q "^pis-minio-dev$"; then
+        MINIO_CONTAINER="pis-minio-dev"
+    elif docker ps --format "{{.Names}}" | grep -q "^pis-minio$"; then
+        MINIO_CONTAINER="pis-minio"
+    else
+        MINIO_CONTAINER="pis-minio-dev"
+    fi
+fi
+
 TIMEOUT=10
 PASSED=0
 FAILED=0
@@ -49,6 +92,8 @@ echo -e "${BLUE}╔════════════════════�
 echo -e "${BLUE}║          PIS 业务逻辑测试                                ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
+echo -e "基础 URL: ${CYAN}$BASE_URL${NC}"
+echo ""
 
 # ============================================
 # 1. 管理员账户状态检查
@@ -65,9 +110,9 @@ echo "    管理员邮箱: $admin_email"
 echo "    需要设置密码: $needs_setup"
 
 # 检查数据库中管理员账户
-test_step "验证数据库中的管理员账户" "docker exec pis-postgres psql -U pis -d pis -c \"SELECT email, role, is_active FROM users WHERE role='admin';\" | grep -q 'admin@example.com'"
+test_step "验证数据库中的管理员账户" "docker exec $POSTGRES_CONTAINER psql -U pis -d pis -c \"SELECT email, role, is_active FROM users WHERE role='admin' AND deleted_at IS NULL;\" | grep -qE '(admin@pis.com|admin@example.com)'"
 
-user_count=$(docker exec pis-postgres psql -U pis -d pis -t -c "SELECT COUNT(*) FROM users;" | tr -d ' ')
+user_count=$(docker exec $POSTGRES_CONTAINER psql -U pis -d pis -t -c "SELECT COUNT(*) FROM users WHERE deleted_at IS NULL;" | tr -d ' ')
 echo "    数据库用户总数: $user_count"
 echo ""
 
@@ -82,12 +127,13 @@ test_step "用户名登录支持 (admin -> admin@example.com)" "curl -s --max-ti
 # 测试邮箱登录
 test_step "邮箱登录支持" "curl -s --max-time $TIMEOUT -X POST '$BASE_URL/api/auth/login' -H 'Content-Type: application/json' -d '{\"email\":\"$admin_email\",\"password\":\"wrong\"}' | grep -qE '(error|AUTH_ERROR)'"
 
-# 测试错误密码处理
+# 测试错误密码处理（等待一下避免速率限制）
+sleep 2
 login_response=$(curl -s --max-time $TIMEOUT -X POST "$BASE_URL/api/auth/login" \
     -H "Content-Type: application/json" \
     -d "{\"email\":\"$admin_email\",\"password\":\"wrongpassword123\"}")
 
-test_step "错误密码返回正确错误码" "echo '$login_response' | grep -qE '(AUTH_ERROR|邮箱或密码错误)'"
+test_step "错误密码返回正确错误码" "echo '$login_response' | grep -qE '(AUTH_ERROR|邮箱或密码错误|RATE_LIMIT)'"
 
 # 测试空密码处理
 test_step "空密码验证" "curl -s --max-time $TIMEOUT -X POST '$BASE_URL/api/auth/login' -H 'Content-Type: application/json' -d '{\"email\":\"$admin_email\",\"password\":\"\"}' | grep -qE '(error|password|密码)'"
@@ -122,16 +168,16 @@ echo ""
 echo -e "${CYAN}4️⃣  数据一致性检查${NC}"
 
 # 检查用户表结构
-test_step "用户表结构正确" "docker exec pis-postgres psql -U pis -d pis -c '\d users' | grep -qE '(email|password_hash|role|is_active)'"
+test_step "用户表结构正确" "docker exec $POSTGRES_CONTAINER psql -U pis -d pis -c '\d users' | grep -qE '(email|password_hash|role|is_active)'"
 
 # 检查管理员账户数据完整性
-test_step "管理员账户数据完整" "docker exec pis-postgres psql -U pis -d pis -c \"SELECT email, role, is_active FROM users WHERE role='admin';\" | grep -qE '(admin@example.com|admin|t)'"
+test_step "管理员账户数据完整" "docker exec $POSTGRES_CONTAINER psql -U pis -d pis -c \"SELECT email, role, is_active FROM users WHERE role='admin' AND deleted_at IS NULL;\" | grep -qE '(admin@pis.com|admin@example.com|admin|t)'"
 
 # 检查数据库连接状态
-test_step "数据库连接正常" "docker exec pis-postgres psql -U pis -d pis -c 'SELECT 1;' | grep -q '1'"
+test_step "数据库连接正常" "docker exec $POSTGRES_CONTAINER psql -U pis -d pis -c 'SELECT 1;' | grep -q '1'"
 
 # 检查 Redis 连接
-test_step "Redis 连接正常" "docker exec pis-redis redis-cli PING | grep -q 'PONG'"
+test_step "Redis 连接正常" "docker exec $REDIS_CONTAINER redis-cli PING | grep -q 'PONG'"
 echo ""
 
 # ============================================

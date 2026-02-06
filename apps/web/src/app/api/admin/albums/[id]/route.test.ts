@@ -18,6 +18,7 @@ vi.mock('@/lib/auth/api-helpers', () => ({
 // Mock database
 vi.mock('@/lib/database', () => ({
   createClient: vi.fn(),
+  createAdminClient: vi.fn(),
 }))
 
 // Mock global fetch
@@ -29,7 +30,7 @@ describe('GET /api/admin/albums/[id]', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     
-    const { createClient } = await import('@/lib/database')
+    const { createClient, createAdminClient } = await import('@/lib/database')
     
     // Initialize mockSupabaseClient with default mocks
     mockSupabaseClient = {
@@ -45,7 +46,39 @@ describe('GET /api/admin/albums/[id]', () => {
       },
     }
     
+    // Mock admin client for role queries
+    const mockAdminClient = {
+      from: vi.fn(),
+    }
+    // Mock admin role query for requireAdmin
+    const mockRoleSelect = vi.fn().mockReturnThis()
+    const mockRoleEq = vi.fn().mockReturnThis()
+    const mockRoleSingle = vi.fn().mockResolvedValue({
+      data: { role: 'admin' },
+      error: null,
+    })
+    mockAdminClient.from.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: mockRoleSelect,
+          eq: mockRoleEq,
+          single: mockRoleSingle,
+        }
+      }
+      // For other tables, return default chain
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: null,
+          error: null,
+        }),
+      }
+    })
+    
     vi.mocked(createClient).mockResolvedValue(mockSupabaseClient)
+    vi.mocked(createAdminClient).mockResolvedValue(mockAdminClient)
     
     // 默认用户已登录
     vi.mocked(getCurrentUser).mockResolvedValue({
@@ -163,7 +196,8 @@ describe('PATCH /api/admin/albums/[id]', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     
-    const { createClient } = await import('@/lib/database')
+    const { createClient, createAdminClient } = await import('@/lib/database')
+    const { getCurrentUser } = await import('@/lib/auth/api-helpers')
     
     // Initialize mockSupabaseClient with default mocks
     mockSupabaseClient = {
@@ -179,7 +213,39 @@ describe('PATCH /api/admin/albums/[id]', () => {
       },
     }
     
+    // Mock admin client for role queries
+    const mockAdminClient = {
+      from: vi.fn(),
+    }
+    // Mock admin role query for requireAdmin
+    const mockRoleSelect = vi.fn().mockReturnThis()
+    const mockRoleEq = vi.fn().mockReturnThis()
+    const mockRoleSingle = vi.fn().mockResolvedValue({
+      data: { role: 'admin' },
+      error: null,
+    })
+    mockAdminClient.from.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: mockRoleSelect,
+          eq: mockRoleEq,
+          single: mockRoleSingle,
+        }
+      }
+      // For other tables, return default chain
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: null,
+          error: null,
+        }),
+      }
+    })
+    
     vi.mocked(createClient).mockResolvedValue(mockSupabaseClient)
+    vi.mocked(createAdminClient).mockResolvedValue(mockAdminClient)
     
     // 默认用户已登录
     vi.mocked(getCurrentUser).mockResolvedValue({
@@ -666,7 +732,8 @@ describe('DELETE /api/admin/albums/[id]', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     
-    const { createClient } = await import('@/lib/database')
+    const { createClient, createAdminClient } = await import('@/lib/database')
+    const { getCurrentUser } = await import('@/lib/auth/api-helpers')
     
     // Initialize mockSupabaseClient with default mocks
     mockSupabaseClient = {
@@ -682,7 +749,39 @@ describe('DELETE /api/admin/albums/[id]', () => {
       },
     }
     
+    // Mock admin client for role queries
+    const mockAdminClient = {
+      from: vi.fn(),
+    }
+    // Mock admin role query for requireAdmin
+    const mockRoleSelect = vi.fn().mockReturnThis()
+    const mockRoleEq = vi.fn().mockReturnThis()
+    const mockRoleSingle = vi.fn().mockResolvedValue({
+      data: { role: 'admin' },
+      error: null,
+    })
+    mockAdminClient.from.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: mockRoleSelect,
+          eq: mockRoleEq,
+          single: mockRoleSingle,
+        }
+      }
+      // For other tables, return default chain
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: null,
+          error: null,
+        }),
+      }
+    })
+    
     vi.mocked(createClient).mockResolvedValue(mockSupabaseClient)
+    vi.mocked(createAdminClient).mockResolvedValue(mockAdminClient)
     
     // 默认用户已登录
     vi.mocked(getCurrentUser).mockResolvedValue({

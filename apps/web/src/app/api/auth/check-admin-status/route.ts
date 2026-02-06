@@ -53,22 +53,22 @@ function isValidPasswordHash(hash: string | null | undefined): boolean {
 
 export async function GET() {
   try {
-    // 固定管理员邮箱为 admin@example.com（不允许自定义）
-    const ADMIN_EMAIL = 'admin@example.com'
-    
-    // 直接查询数据库，确保能获取到 password_hash
+    // 查询第一个管理员账户（按创建时间排序）
     const db = await createAdminClient()
     const queryResult = await db
       .from('users')
       .select('id, email, password_hash')
-      .eq('email', ADMIN_EMAIL.toLowerCase())
-      .single()
+      .eq('role', 'admin')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
     
     if (queryResult.error || !queryResult.data) {
-      // 如果查询失败或账户不存在，返回需要设置密码
+      // 如果没有管理员账户，返回需要设置密码
       return NextResponse.json({
         needsPasswordSetup: true,
-        email: ADMIN_EMAIL,
+        email: 'admin@pis.com', // 默认邮箱
       })
     }
     
@@ -82,14 +82,14 @@ export async function GET() {
     
     return NextResponse.json({
       needsPasswordSetup,
-      email: ADMIN_EMAIL,
+      email: adminUser.email, // 返回实际的管理员邮箱
     })
   } catch (error) {
     // 出错时默认返回需要设置密码（更安全）
     console.error('Error checking admin status:', error)
     return NextResponse.json({
       needsPasswordSetup: true,
-      email: 'admin@example.com',
+      email: 'admin@pis.com', // 默认邮箱
     })
   }
 }

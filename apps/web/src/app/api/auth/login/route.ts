@@ -9,6 +9,7 @@ import { verifyPassword } from '@/lib/auth/password'
 import { initAuthDatabase } from '@/lib/auth/database'
 import { loginSchema } from '@/lib/validation/schemas'
 import { safeValidate, handleError } from '@/lib/validation/error-handler'
+import { createAdminClient } from '@/lib/database'
 
 // 初始化认证数据库（如果尚未初始化）
 try {
@@ -126,10 +127,52 @@ export async function POST(request: NextRequest) {
     const { password } = validation.data
     const turnstileToken = (body as { turnstileToken?: string }).turnstileToken
     
-    // 支持用户名登录：如果输入的是 "admin"，转换为 admin@example.com
+    // 支持用户名登录：如果输入的是 "admin"，查找第一个管理员账户
     // 注意：这里只处理 "admin" 用户名，其他用户名需要是有效的邮箱格式
     if (email.toLowerCase() === 'admin') {
-      email = 'admin@example.com'
+      // 查找第一个管理员账户的邮箱
+      const authDb = getAuthDatabase()
+      if (authDb.hasAnyAdmin && typeof authDb.hasAnyAdmin === 'function') {
+        const hasAdmin = await authDb.hasAnyAdmin()
+        if (hasAdmin) {
+          // 查询第一个管理员账户
+          try {
+            const db = await createAdminClient()
+            const adminResult = await db
+              .from('users')
+              .select('email')
+              .eq('role', 'admin')
+              .is('deleted_at', null)
+              .order('created_at', { ascending: true })
+              .limit(1)
+              .maybeSingle()
+            
+            if (adminResult.error) {
+              console.error('[Login] Error querying admin user:', adminResult.error)
+              email = 'admin@pis.com'
+            } else if (adminResult.data) {
+              const adminData = adminResult.data as { email?: string }
+              if (adminData.email) {
+                email = adminData.email
+              } else {
+                // 回退到默认邮箱
+                email = 'admin@pis.com'
+              }
+            } else {
+              // 回退到默认邮箱
+              email = 'admin@pis.com'
+            }
+          } catch (error) {
+            console.error('[Login] Error creating admin client or querying admin user:', error)
+            email = 'admin@pis.com'
+          }
+        } else {
+          email = 'admin@pis.com'
+        }
+      } else {
+        // 回退到默认邮箱
+        email = 'admin@pis.com'
+      }
     }
 
     // 如果配置了 Turnstile，验证 token
@@ -278,7 +321,27 @@ export async function POST(request: NextRequest) {
       }
 
       // 验证密码
+      // 开发环境添加调试日志
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Login] Verifying password:', {
+          email: normalizedEmail,
+          passwordLength: password.length,
+          passwordHashExists: !!user.password_hash,
+          passwordHashLength: user.password_hash?.length || 0,
+          passwordHashFormat: user.password_hash ? (user.password_hash.includes(':') ? 'valid' : 'invalid') : 'null',
+          passwordHashPreview: user.password_hash ? `${user.password_hash.substring(0, 20)}...` : 'null',
+          passwordHashFull: user.password_hash, // 完整哈希用于调试
+        })
+      }
+      
       const isValidPassword = await verifyPassword(password, user.password_hash)
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Login] Password verification result:', {
+          email: normalizedEmail,
+          isValid: isValidPassword,
+        })
+      }
       
       if (!isValidPassword) {
         // 密码错误，返回统一错误消息

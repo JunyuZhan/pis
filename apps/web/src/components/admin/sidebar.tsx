@@ -7,6 +7,8 @@ import { Camera, Images, Settings, LogOut, Home, Brush, Users } from 'lucide-rea
 import { cn } from '@/lib/utils'
 import type { AuthUser } from '@/lib/auth'
 
+type UserRole = 'admin' | 'photographer' | 'retoucher' | 'guest'
+
 // 动态导入 LanguageSwitcher，禁用 SSR 以避免 hydration 错误
 const LanguageSwitcher = dynamic(
   () => import('@/components/ui/language-switcher').then(mod => ({ default: mod.LanguageSwitcher })),
@@ -17,11 +19,16 @@ interface AdminSidebarProps {
   user: AuthUser
 }
 
-const navItems = [
-  { href: '/admin', label: '相册管理', icon: Images },
-  { href: '/admin/retouch', label: '修图工作台', icon: Brush },
-  { href: '/admin/users', label: '用户管理', icon: Users },
-  { href: '/admin/settings', label: '系统设置', icon: Settings },
+const navItems: Array<{
+  href: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  roles?: UserRole[] // 允许访问的角色，如果未指定则所有角色都可以访问
+}> = [
+  { href: '/admin', label: '相册管理', icon: Images }, // 所有角色都可以访问
+  { href: '/admin/retouch', label: '修图工作台', icon: Brush, roles: ['admin', 'retoucher'] }, // 仅管理员和修图师
+  { href: '/admin/users', label: '用户管理', icon: Users, roles: ['admin'] }, // 仅管理员
+  { href: '/admin/settings', label: '系统设置', icon: Settings, roles: ['admin'] }, // 仅管理员
 ]
 
 export function SidebarContent({ user }: { user: AuthUser }) {
@@ -72,30 +79,39 @@ export function SidebarContent({ user }: { user: AuthUser }) {
 
       {/* 导航菜单 */}
       <nav className="flex-1 p-4 space-y-1">
-        {navItems.map((item) => {
-          const isActive =
-            item.href === '/admin'
-              ? pathname === '/admin' || pathname.startsWith('/admin/albums')
-              : item.href === '/admin/users'
-              ? pathname.startsWith('/admin/users')
-              : pathname.startsWith(item.href)
+        {navItems
+          .filter((item) => {
+            // 如果没有指定 roles，所有角色都可以访问
+            if (!item.roles) return true
+            // 如果用户没有角色信息，默认不允许访问（安全起见）
+            if (!user.role) return false
+            // 检查用户角色是否在允许的角色列表中
+            return item.roles.includes(user.role as UserRole)
+          })
+          .map((item) => {
+            const isActive =
+              item.href === '/admin'
+                ? pathname === '/admin' || pathname.startsWith('/admin/albums')
+                : item.href === '/admin/users'
+                ? pathname.startsWith('/admin/users')
+                : pathname.startsWith(item.href)
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
-                isActive
-                  ? 'bg-accent/10 text-accent'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
-              )}
-            >
-              <item.icon className="w-5 h-5" />
-              <span className="font-medium">{item.label}</span>
-            </Link>
-          )
-        })}
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
+                  isActive
+                    ? 'bg-accent/10 text-accent'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
+                )}
+              >
+                <item.icon className="w-5 h-5" />
+                <span className="font-medium">{item.label}</span>
+              </Link>
+            )
+          })}
       </nav>
 
       {/* 语言切换器 */}

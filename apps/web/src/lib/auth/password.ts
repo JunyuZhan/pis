@@ -59,6 +59,13 @@ export async function hashPassword(password: string): Promise<string> {
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   // Prevent empty string or malformed hash
   if (!hash || hash.trim() === '' || !hash.includes(':')) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[VerifyPassword] Invalid hash format:', {
+        hashExists: !!hash,
+        hashLength: hash?.length || 0,
+        hashIncludesColon: hash?.includes(':') || false,
+      })
+    }
     return false
   }
 
@@ -66,11 +73,25 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 
   // Validate format
   if (!salt || !iterations || !storedHash) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[VerifyPassword] Invalid hash parts:', {
+        saltExists: !!salt,
+        iterationsExists: !!iterations,
+        storedHashExists: !!storedHash,
+        partsCount: hash.split(':').length,
+      })
+    }
     return false
   }
 
   const iterCount = parseInt(iterations, 10)
   if (isNaN(iterCount) || iterCount <= 0) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[VerifyPassword] Invalid iterations:', {
+        iterations,
+        parsedIterations: iterCount,
+      })
+    }
     return false
   }
 
@@ -80,8 +101,33 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   try {
     // 使用同步版本避免 Next.js 15 worker thread 问题
     const derivedKey = crypto.pbkdf2Sync(password, salt, iterCount, keylen, digest)
-    return derivedKey.toString('hex') === storedHash
-  } catch {
+    const derivedHash = derivedKey.toString('hex')
+    const isValid = derivedHash === storedHash
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[VerifyPassword] Verification result:', {
+        isValid,
+        saltLength: salt.length,
+        saltPreview: salt.substring(0, 16) + '...',
+        iterations: iterCount,
+        storedHashLength: storedHash.length,
+        storedHashPreview: storedHash.substring(0, 16) + '...',
+        derivedHashLength: derivedHash.length,
+        derivedHashPreview: derivedHash.substring(0, 16) + '...',
+        hashMatch: derivedHash === storedHash,
+        // 如果哈希不匹配，显示更多信息用于调试
+        ...(!isValid && {
+          storedHashStart: storedHash.substring(0, 32),
+          derivedHashStart: derivedHash.substring(0, 32),
+        }),
+      })
+    }
+    
+    return isValid
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[VerifyPassword] Verification error:', error)
+    }
     return false
   }
 }

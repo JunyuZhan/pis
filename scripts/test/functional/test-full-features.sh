@@ -15,7 +15,50 @@ CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
 NC='\033[0m'
 
-BASE_URL="http://localhost:8081"
+# 自动检测 BASE_URL（如果未通过环境变量设置）
+if [ -z "$BASE_URL" ]; then
+    if curl -s --max-time 2 http://localhost:3000/api/health > /dev/null 2>&1; then
+        BASE_URL="http://localhost:3000"
+    elif curl -s --max-time 2 http://localhost:8081/api/health > /dev/null 2>&1; then
+        BASE_URL="http://localhost:8081"
+    else
+        BASE_URL="http://localhost:8081"
+        echo -e "${YELLOW}⚠️  未检测到运行中的服务，使用默认端口 8081${NC}"
+    fi
+fi
+
+# 自动检测容器名称
+if [ -z "$POSTGRES_CONTAINER" ]; then
+    if docker ps --format "{{.Names}}" | grep -q "^pis-postgres-dev$"; then
+        POSTGRES_CONTAINER="pis-postgres-dev"
+    elif docker ps --format "{{.Names}}" | grep -q "^pis-postgres$"; then
+        POSTGRES_CONTAINER="pis-postgres"
+    else
+        POSTGRES_CONTAINER="pis-postgres-dev"
+        echo -e "${YELLOW}⚠️  未找到 PostgreSQL 容器，使用默认名称${NC}"
+    fi
+fi
+
+if [ -z "$REDIS_CONTAINER" ]; then
+    if docker ps --format "{{.Names}}" | grep -q "^pis-redis-dev$"; then
+        REDIS_CONTAINER="pis-redis-dev"
+    elif docker ps --format "{{.Names}}" | grep -q "^pis-redis$"; then
+        REDIS_CONTAINER="pis-redis"
+    else
+        REDIS_CONTAINER="pis-redis-dev"
+    fi
+fi
+
+if [ -z "$MINIO_CONTAINER" ]; then
+    if docker ps --format "{{.Names}}" | grep -q "^pis-minio-dev$"; then
+        MINIO_CONTAINER="pis-minio-dev"
+    elif docker ps --format "{{.Names}}" | grep -q "^pis-minio$"; then
+        MINIO_CONTAINER="pis-minio"
+    else
+        MINIO_CONTAINER="pis-minio-dev"
+    fi
+fi
+
 TIMEOUT=30
 REPORT_FILE="/tmp/pis-full-features-test-$(date +%Y%m%d-%H%M%S).txt"
 
@@ -88,11 +131,11 @@ test_step "1.1 服务健康检查" "curl -s --max-time $TIMEOUT '$BASE_URL/api/h
 
 test_step "1.2 Worker 服务健康检查" "curl -s --max-time $TIMEOUT '$BASE_URL/api/worker/health' | grep -q 'ok'"
 
-test_step "1.3 数据库连接检查" "docker exec pis-postgres psql -U pis -d pis -c 'SELECT 1;' | grep -q '1'"
+test_step "1.3 数据库连接检查" "docker exec $POSTGRES_CONTAINER psql -U pis -d pis -c 'SELECT 1;' | grep -q '1'"
 
-test_step "1.4 Redis 连接检查" "docker exec pis-redis redis-cli PING | grep -q 'PONG'"
+test_step "1.4 Redis 连接检查" "docker exec $REDIS_CONTAINER redis-cli PING | grep -q 'PONG'"
 
-test_step "1.5 MinIO 连接检查" "docker exec pis-minio mc --version > /dev/null 2>&1"
+test_step "1.5 MinIO 连接检查" "docker exec $MINIO_CONTAINER mc --version > /dev/null 2>&1"
 
 # ============================================
 # 2. 上传功能测试
@@ -143,7 +186,7 @@ test_step "4.1 Worker 图片处理服务可用" "echo '$worker_health' | grep -q
 test_step "4.2 Worker 服务依赖检查" "echo '$worker_health' | grep -qE '(redis|database|storage)'"
 
 # 检查图片处理队列
-test_step "4.3 Redis 队列服务正常" "docker exec pis-redis redis-cli PING | grep -q 'PONG'"
+test_step "4.3 Redis 队列服务正常" "docker exec $REDIS_CONTAINER redis-cli PING | grep -q 'PONG'"
 
 # ============================================
 # 5. 缩略图生成测试
@@ -154,7 +197,7 @@ print_section "5️⃣  缩略图生成测试"
 test_step "5.1 缩略图路径格式正确" "echo 'processed/thumbs/album-id/photo-id.jpg' | grep -qE 'processed/thumbs/.*\.jpg'"
 
 # 检查 MinIO 中是否有缩略图存储
-test_step "5.2 MinIO 缩略图存储路径存在" "docker exec pis-minio mc ls pis-photos/processed/thumbs/ > /dev/null 2>&1 || true"
+test_step "5.2 MinIO 缩略图存储路径存在" "docker exec $MINIO_CONTAINER mc ls pis-photos/processed/thumbs/ > /dev/null 2>&1 || true"
 
 # ============================================
 # 6. 预览图生成测试
@@ -165,7 +208,7 @@ print_section "6️⃣  预览图生成测试"
 test_step "6.1 预览图路径格式正确" "echo 'processed/previews/album-id/photo-id.jpg' | grep -qE 'processed/previews/.*\.jpg'"
 
 # 检查 MinIO 中是否有预览图存储
-test_step "6.2 MinIO 预览图存储路径存在" "docker exec pis-minio mc ls pis-photos/processed/previews/ > /dev/null 2>&1 || true"
+test_step "6.2 MinIO 预览图存储路径存在" "docker exec $MINIO_CONTAINER mc ls pis-photos/processed/previews/ > /dev/null 2>&1 || true"
 
 # ============================================
 # 7. Media 代理功能测试
@@ -201,10 +244,10 @@ print_section "9️⃣  存储功能测试"
 test_step "9.1 MinIO bucket 存在" "docker exec pis-minio mc ls pis-photos > /dev/null 2>&1"
 
 # 检查存储路径结构
-test_step "9.2 存储路径结构正确" "docker exec pis-minio mc ls pis-photos/ 2>&1 | grep -qE '(raw|processed)' || echo 'raw processed' | grep -qE '(raw|processed)'"
+test_step "9.2 存储路径结构正确" "docker exec $MINIO_CONTAINER mc ls pis-photos/ 2>&1 | grep -qE '(raw|processed)' || echo 'raw processed' | grep -qE '(raw|processed)'"
 
 # 检查原始文件存储路径
-test_step "9.3 原始文件存储路径" "docker exec pis-minio mc ls pis-photos/raw/ > /dev/null 2>&1 || true"
+test_step "9.3 原始文件存储路径" "docker exec $MINIO_CONTAINER mc ls pis-photos/raw/ > /dev/null 2>&1 || true"
 
 # ============================================
 # 10. 图片处理队列测试
@@ -215,7 +258,7 @@ print_section "🔟 图片处理队列测试"
 test_step "10.1 Redis 队列服务正常" "docker exec pis-redis redis-cli PING | grep -q 'PONG'"
 
 # 检查队列键格式
-test_step "10.2 队列键格式检查" "docker exec pis-redis redis-cli KEYS '*queue*' > /dev/null 2>&1 || docker exec pis-redis redis-cli KEYS '*bull*' > /dev/null 2>&1 || true"
+test_step "10.2 队列键格式检查" "docker exec $REDIS_CONTAINER redis-cli KEYS '*queue*' > /dev/null 2>&1 || docker exec $REDIS_CONTAINER redis-cli KEYS '*bull*' > /dev/null 2>&1 || true"
 
 # ============================================
 # 11. EXIF 处理测试

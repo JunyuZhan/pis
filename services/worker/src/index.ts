@@ -16,7 +16,7 @@
  * import './index'
  * ```
  *
- * @author junyuzhan <junyuzhan@outlook.com>
+ * @author junyuzhan
  * @license MIT
  */
 
@@ -56,7 +56,9 @@ let envLoaded = false;
 let loadedEnvPath: string | null = null;
 // 使用 console.log 而不是 process.stderr.write，确保输出可见
 console.log(`[Worker Env] Root dir: ${rootDir}`);
-console.log(`[Worker Env] Checking .env.local paths: ${envLocalPaths.join(', ')}`);
+console.log(
+  `[Worker Env] Checking .env.local paths: ${envLocalPaths.join(", ")}`,
+);
 for (const envLocalPath of envLocalPaths) {
   if (existsSync(envLocalPath)) {
     console.log(`[Worker Env] Loading .env.local from: ${envLocalPath}`);
@@ -68,10 +70,18 @@ for (const envLocalPath of envLocalPaths) {
 }
 
 // 验证环境变量是否加载成功
-console.log(`[Worker Env] DATABASE_PASSWORD: ${process.env.DATABASE_PASSWORD ? 'SET (' + process.env.DATABASE_PASSWORD.substring(0, 5) + '...)' : 'NOT SET'}`);
-console.log(`[Worker Env] DATABASE_HOST: ${process.env.DATABASE_HOST || 'NOT SET'}`);
-console.log(`[Worker Env] DATABASE_USER: ${process.env.DATABASE_USER || 'NOT SET'}`);
-console.log(`[Worker Env] DATABASE_NAME: ${process.env.DATABASE_NAME || 'NOT SET'}`);
+console.log(
+  `[Worker Env] DATABASE_PASSWORD: ${process.env.DATABASE_PASSWORD ? "SET (" + process.env.DATABASE_PASSWORD.substring(0, 5) + "...)" : "NOT SET"}`,
+);
+console.log(
+  `[Worker Env] DATABASE_HOST: ${process.env.DATABASE_HOST || "NOT SET"}`,
+);
+console.log(
+  `[Worker Env] DATABASE_USER: ${process.env.DATABASE_USER || "NOT SET"}`,
+);
+console.log(
+  `[Worker Env] DATABASE_NAME: ${process.env.DATABASE_NAME || "NOT SET"}`,
+);
 
 // 初始化 logger（需要在加载环境变量之后）
 // 使用动态导入确保环境变量已加载
@@ -99,7 +109,10 @@ try {
     debug: (...args: any[]) => console.debug(...args),
   };
   if (!envLoaded || !loadedEnvPath) {
-    console.warn("⚠️  No .env.local file found. Tried paths:", envLocalPaths.join(", "));
+    console.warn(
+      "⚠️  No .env.local file found. Tried paths:",
+      envLocalPaths.join(", "),
+    );
   }
 }
 
@@ -142,19 +155,25 @@ let supabase: any;
 let ftpServerService: any;
 try {
   // 验证环境变量已加载
-  if (!process.env.DATABASE_PASSWORD && process.env.DATABASE_TYPE !== 'supabase') {
-    logger.error({ 
-      DATABASE_PASSWORD: process.env.DATABASE_PASSWORD ? 'SET' : 'NOT SET',
-      DATABASE_HOST: process.env.DATABASE_HOST,
-      DATABASE_USER: process.env.DATABASE_USER,
-      DATABASE_NAME: process.env.DATABASE_NAME,
-    }, "⚠️  DATABASE_PASSWORD not loaded before database client import");
+  if (
+    !process.env.DATABASE_PASSWORD &&
+    process.env.DATABASE_TYPE !== "supabase"
+  ) {
+    logger.error(
+      {
+        DATABASE_PASSWORD: process.env.DATABASE_PASSWORD ? "SET" : "NOT SET",
+        DATABASE_HOST: process.env.DATABASE_HOST,
+        DATABASE_USER: process.env.DATABASE_USER,
+        DATABASE_NAME: process.env.DATABASE_NAME,
+      },
+      "⚠️  DATABASE_PASSWORD not loaded before database client import",
+    );
   }
-  
+
   const dbModule = await import("./lib/database/client.js");
   supabase = dbModule.db;
   logger.info("✅ Database client imported successfully");
-  
+
   // 延迟导入 FTP 服务器（它依赖数据库客户端）
   const ftpServerModule = await import("./ftp-server.js");
   ftpServerService = ftpServerModule.ftpServerService;
@@ -713,6 +732,8 @@ const worker = new Worker<PhotoJobData>(
             watermark_type: albumData.watermark_type,
             watermark_config: albumData.watermark_config,
             color_grading: albumData.color_grading,
+            enable_ai_retouch: albumData.enable_ai_retouch,
+            ai_retouch_config: albumData.ai_retouch_config,
           });
         }
       } catch (err: any) {

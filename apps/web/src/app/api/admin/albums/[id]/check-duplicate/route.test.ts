@@ -32,6 +32,33 @@ describe('POST /api/admin/albums/[id]/check-duplicate', () => {
     mockDb = createMockDatabaseClient()
     mockAdminDb = createMockDatabaseClient()
     
+    // Mock admin role query for requireAdmin
+    const mockRoleSelect = vi.fn().mockReturnThis()
+    const mockRoleEq = vi.fn().mockReturnThis()
+    const mockRoleSingle = vi.fn().mockResolvedValue({
+      data: { role: 'admin' },
+      error: null,
+    })
+    mockAdminDb.from.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: mockRoleSelect,
+          eq: mockRoleEq,
+          single: mockRoleSingle,
+        }
+      }
+      // For other tables, return default chain
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: null,
+          error: null,
+        }),
+      }
+    })
+    
     vi.mocked(createClient).mockResolvedValue(mockDb)
     vi.mocked(createAdminClient).mockResolvedValue(mockAdminDb)
     mockGetCurrentUser = vi.mocked(getCurrentUser)
@@ -192,11 +219,20 @@ describe('POST /api/admin/albums/[id]/check-duplicate', () => {
         error: null,
       })
 
-      mockAdminDb.from.mockReturnValue({
-        select: mockSelectPhoto,
-        eq: mockEqPhoto,
-        is: mockIsPhoto,
-        limit: mockLimit,
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminDb.from.getMockImplementation()
+      mockAdminDb.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For photos table, return the new mock
+        return {
+          select: mockSelectPhoto,
+          eq: mockEqPhoto,
+          is: mockIsPhoto,
+          limit: mockLimit,
+        }
       })
 
       const request = createMockRequest(
@@ -253,11 +289,20 @@ describe('POST /api/admin/albums/[id]/check-duplicate', () => {
         error: null,
       })
 
-      mockAdminDb.from.mockReturnValue({
-        select: mockSelectPhoto,
-        eq: mockEqPhoto,
-        is: mockIsPhoto,
-        limit: mockLimit,
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminDb.from.getMockImplementation()
+      mockAdminDb.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For photos table, return the new mock
+        return {
+          select: mockSelectPhoto,
+          eq: mockEqPhoto,
+          is: mockIsPhoto,
+          limit: mockLimit,
+        }
       })
 
       const request = createMockRequest(

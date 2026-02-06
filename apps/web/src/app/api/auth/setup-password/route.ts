@@ -171,6 +171,7 @@ export async function POST(request: NextRequest) {
               {
                 success: true,
                 message: '管理员账户创建并设置成功',
+                email: normalizedEmail, // 返回用户邮箱，用于自动登录
               },
               200
             )
@@ -211,9 +212,31 @@ export async function POST(request: NextRequest) {
 
       // 哈希密码
       const passwordHash = await hashPassword(password)
+      
+      // 开发环境添加调试日志
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[SetupPassword] Password hash generated:', {
+          email: normalizedEmail,
+          userId: user.id,
+          passwordHashLength: passwordHash.length,
+          passwordHashFormat: passwordHash.includes(':') ? 'valid' : 'invalid',
+          passwordHashPreview: `${passwordHash.substring(0, 20)}...`,
+        })
+      }
 
       // 更新密码
       await authDb.updateUserPassword(user.id, passwordHash)
+      
+      // 开发环境验证密码是否已正确保存
+      if (process.env.NODE_ENV === 'development') {
+        const verifyUser = await authDb.findUserByEmail(normalizedEmail)
+        console.log('[SetupPassword] Password saved verification:', {
+          email: normalizedEmail,
+          passwordHashExists: !!verifyUser?.password_hash,
+          passwordHashLength: verifyUser?.password_hash?.length || 0,
+          passwordHashMatches: verifyUser?.password_hash === passwordHash,
+        })
+      }
 
       // 记录密码设置成功
       const maskedEmail = normalizedEmail.length > 3 
@@ -231,6 +254,7 @@ export async function POST(request: NextRequest) {
         {
           success: true,
           message: '密码设置成功，请使用新密码登录',
+          email: normalizedEmail, // 返回用户邮箱，用于自动登录
         },
         200
       )

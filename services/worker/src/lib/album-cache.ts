@@ -9,6 +9,8 @@ interface CachedAlbum {
   watermark_type: string | null;
   watermark_config: any;
   color_grading?: { preset?: string } | null;
+  enable_ai_retouch?: boolean;
+  ai_retouch_config?: any;
   cachedAt: number;
 }
 

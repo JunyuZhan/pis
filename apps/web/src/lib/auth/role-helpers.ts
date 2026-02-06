@@ -26,7 +26,8 @@
  * ```
  */
 import { NextRequest } from 'next/server'
-import { getCurrentUser } from './api-helpers'
+import { getCurrentUser } from './api-helpers' // 这个 getCurrentUser 接受 NextRequest 参数
+import { getCurrentUser as getCurrentUserFromCookies } from './index' // 这个 getCurrentUser 从 cookies 读取（用于 Server Components）
 import { createAdminClient } from '@/lib/database'
 
 /**
@@ -44,7 +45,76 @@ export interface UserWithRole {
 }
 
 /**
- * 获取当前用户的角色
+ * 从用户 ID 获取角色（内部辅助函数）
+ */
+async function getUserRoleById(userId: string): Promise<UserRole | null> {
+  try {
+    if (!userId) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('getUserRoleById: userId is empty or undefined')
+      }
+      return null
+    }
+
+    const db = await createAdminClient()
+    const { data, error } = await db
+      .from('users')
+      .select('role')
+      .eq('id', userId)
+      .single()
+
+    // 处理数据库查询错误
+    if (error) {
+      // 数据库查询错误
+      if (process.env.NODE_ENV === 'development') {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        console.error(`Failed to get user role for user ${userId}:`, errorMessage || 'Unknown error')
+      }
+      return null
+    }
+
+    // 处理查询结果为空的情况（用户不存在）
+    if (!data) {
+      // 数据为空但没有错误 - 用户不存在于数据库中
+      // 这可能是正常情况（用户从 JWT 获取但数据库中没有记录）
+      // 在生产环境中静默处理，开发环境记录警告
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`User ${userId} not found in database. User may need to be created.`)
+      }
+      return null
+    }
+
+    const role = (data as { role: string | null }).role
+    if (!role) {
+      // 用户存在但没有角色字段或角色为 null
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`User ${userId} exists but has no role field or role is null`)
+      }
+      return null
+    }
+
+    // 验证角色是否有效
+    const validRoles: UserRole[] = ['admin', 'photographer', 'retoucher', 'guest']
+    if (validRoles.includes(role as UserRole)) {
+      return role as UserRole
+    }
+
+    // 如果角色不在有效列表中，默认返回 null（安全起见）
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`Invalid role "${role}" for user ${userId}, treating as null`)
+    }
+    return null
+  } catch (error) {
+    // 捕获意外的异常
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Unexpected error getting user role:', error)
+    }
+    return null
+  }
+}
+
+/**
+ * 获取当前用户的角色（用于 API Routes）
  *
  * @description
  * 从数据库查询当前登录用户的角色信息。
@@ -62,38 +132,51 @@ export interface UserWithRole {
  * ```
  */
 export async function getUserRole(request: NextRequest): Promise<UserRole | null> {
+  // 使用 getCurrentUser 从 api-helpers，它接受 NextRequest 参数
   const user = await getCurrentUser(request)
   if (!user) {
     return null
   }
 
-  try {
-    const db = await createAdminClient()
-    const { data, error } = await db
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+  return getUserRoleById(user.id)
+}
 
-    if (error || !data) {
-      console.error('Failed to get user role:', error)
-      return null
+/**
+ * 获取当前用户的角色（用于 Server Components）
+ *
+ * @description
+ * 从数据库查询当前登录用户的角色信息。
+ * 适用于 Server Components，直接从 cookies 读取用户信息。
+ * 如果用户未登录或查询失败，返回 null。
+ *
+ * @returns {Promise<UserRole | null>} 用户角色，未登录或查询失败返回 null
+ *
+ * @example
+ * ```typescript
+ * const role = await getUserRoleFromCookies()
+ * if (role === 'admin') {
+ *   // 管理员逻辑
+ * }
+ * ```
+ */
+export async function getUserRoleFromCookies(): Promise<UserRole | null> {
+  // 使用 getCurrentUser 从 index，它从 cookies 读取（用于 Server Components）
+  const user = await getCurrentUserFromCookies()
+  if (!user) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('getUserRoleFromCookies: No user found in cookies')
     }
-
-    const role = (data as { role: string }).role
-    // 验证角色是否有效
-    const validRoles: UserRole[] = ['admin', 'photographer', 'retoucher', 'guest']
-    if (validRoles.includes(role as UserRole)) {
-      return role as UserRole
-    }
-
-    // 如果角色不在有效列表中，默认返回 null（安全起见）
-    console.warn(`Invalid role "${role}" for user ${user.id}, treating as null`)
-    return null
-  } catch (error) {
-    console.error('Error getting user role:', error)
     return null
   }
+
+  if (!user.id) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('getUserRoleFromCookies: User object has no id field')
+    }
+    return null
+  }
+
+  return getUserRoleById(user.id)
 }
 
 /**

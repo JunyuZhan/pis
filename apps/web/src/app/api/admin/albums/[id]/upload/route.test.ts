@@ -85,6 +85,40 @@ describe('POST /api/admin/albums/[id]/upload', () => {
     // 默认用户已登录
     vi.mocked(getCurrentUser).mockResolvedValue({ id: VALID_USER_ID, email: 'test@example.com' } as any)
     
+    // Mock admin role query for requireAdmin
+    // This is needed because requireAdmin queries the database for user role
+    const mockRoleSelect = vi.fn().mockReturnThis()
+    const mockRoleEq = vi.fn().mockReturnThis()
+    const mockRoleSingle = vi.fn().mockResolvedValue({
+      data: { role: 'admin' },
+      error: null,
+    })
+    
+    // Mock adminClient.from('users') for role queries
+    mockAdminClient.from.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: mockRoleSelect,
+          eq: mockRoleEq,
+          single: mockRoleSingle,
+        }
+      }
+      // For other tables, return default chain
+      const mockSelect = vi.fn().mockReturnThis()
+      const mockEq = vi.fn().mockReturnThis()
+      const mockIs = vi.fn().mockReturnThis()
+      const mockSingle = vi.fn().mockResolvedValue({
+        data: null,
+        error: null,
+      })
+      return {
+        select: mockSelect,
+        eq: mockEq,
+        is: mockIs,
+        single: mockSingle,
+      }
+    })
+    
     // 默认相册存在
     const mockSelect = vi.fn().mockReturnThis()
     const mockEq = vi.fn().mockReturnThis()
@@ -1328,9 +1362,22 @@ describe('POST /api/admin/albums/[id]/upload', () => {
       
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       
-      vi.mocked(createAdminClient)
-        .mockRejectedValueOnce(new Error('DB Connection Error'))
-        .mockResolvedValueOnce(mockAdminClient)
+      // requireAdmin needs to query users table first, so we need to allow that
+      // Then make createAdminClient throw for insert, but succeed for cleanup
+      let callCount = 0
+      vi.mocked(createAdminClient).mockImplementation(async () => {
+        callCount++
+        // First call: requireAdmin queries users table - should succeed
+        // Second call: insert photo - should throw
+        // Third call: cleanup - should succeed
+        if (callCount === 1) {
+          return mockAdminClient
+        } else if (callCount === 2) {
+          throw new Error('DB Connection Error')
+        } else {
+          return mockAdminClient
+        }
+      })
 
       const request = createMockRequest('http://localhost:3000/api/admin/albums/123e4567-e89b-12d3-a456-426614174000/upload', {
         method: 'POST',
@@ -1349,10 +1396,13 @@ describe('POST /api/admin/albums/[id]/upload', () => {
       // Wait for async cleanup to potentially run
       await new Promise(resolve => setTimeout(resolve, 200))
       
-      // Verify createAdminClient was called twice (once for initial fail, once for cleanup)
+      // Verify createAdminClient was called 3 times:
+      // 1. requireAdmin queries users table
+      // 2. insert photo (throws error)
+      // 3. cleanup (succeeds)
       // Note: beforeEach calls createAdminClient from @/lib/supabase/server, which is a different spy
       // So we only count calls from route.ts which uses @/lib/database
-      expect(createAdminClient).toHaveBeenCalledTimes(2)
+      expect(createAdminClient).toHaveBeenCalledTimes(3)
       
       consoleErrorSpy.mockRestore()
     })

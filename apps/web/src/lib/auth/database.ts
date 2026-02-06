@@ -3,7 +3,7 @@
  *
  * 实现 AuthDatabase 接口，使用 PostgreSQL/Supabase 客户端
  *
- * @author PIS Contributors
+ * @author junyuzhan
  * @license MIT
  *
  * @example
@@ -14,8 +14,8 @@
  * initAuthDatabase()
  * ```
  */
-import { createAdminClient } from '@/lib/database'
-import type { AuthDatabase } from './index'
+import { createAdminClient } from "@/lib/database";
+import type { AuthDatabase } from "./index";
 
 /**
  * 扩展的认证数据库接口
@@ -29,7 +29,7 @@ export interface ExtendedAuthDatabase extends AuthDatabase {
    *
    * @param userId - 用户 ID
    */
-  updateLastLogin(userId: string): Promise<void>
+  updateLastLogin(userId: string): Promise<void>;
 }
 
 /**
@@ -62,32 +62,38 @@ export class PostgreSQLAuthDatabase implements ExtendedAuthDatabase {
    * ```
    */
   async findUserByEmail(
-    email: string
-  ): Promise<{ id: string; email: string; password_hash: string | null } | null> {
-    const db = await createAdminClient()
+    email: string,
+  ): Promise<{
+    id: string;
+    email: string;
+    password_hash: string | null;
+  } | null> {
+    const db = await createAdminClient();
     // 明确指定要查询的字段，确保 password_hash 被包含
     // 排除已删除的用户（deleted_at IS NULL）
     const { data, error } = await db
-      .from<{ id: string; email: string; password_hash: string | null }>('users')
-      .select('id, email, password_hash')
-      .eq('email', email.toLowerCase())
-      .is('deleted_at', null) // 排除已删除的用户
-      .maybeSingle() // 使用 maybeSingle 避免多条记录时抛出错误，且在无记录时返回 null 而非错误
+      .from<{ id: string; email: string; password_hash: string | null }>(
+        "users",
+      )
+      .select("id, email, password_hash")
+      .eq("email", email.toLowerCase())
+      .is("deleted_at", null) // 排除已删除的用户
+      .maybeSingle(); // 使用 maybeSingle 避免多条记录时抛出错误，且在无记录时返回 null 而非错误
 
     if (error) {
-      console.error('Find user error:', error)
-      return null
+      console.error("Find user error:", error);
+      return null;
     }
 
     if (!data) {
-      return null
+      return null;
     }
 
     return {
       id: data.id,
       email: data.email,
       password_hash: data.password_hash, // 保持 null，用于首次登录设置密码
-    }
+    };
   }
 
   /**
@@ -108,36 +114,46 @@ export class PostgreSQLAuthDatabase implements ExtendedAuthDatabase {
   async createUser(
     email: string,
     passwordHash: string | null,
-    role: 'admin' | 'photographer' | 'retoucher' | 'guest' = 'admin'
+    role: "admin" | "photographer" | "retoucher" | "guest" = "admin",
   ): Promise<{ id: string; email: string }> {
-    const db = await createAdminClient()
-    
+    const db = await createAdminClient();
+
     // 验证角色值有效性
-    const validRoles: Array<'admin' | 'photographer' | 'retoucher' | 'guest'> = ['admin', 'photographer', 'retoucher', 'guest']
+    const validRoles: Array<"admin" | "photographer" | "retoucher" | "guest"> =
+      ["admin", "photographer", "retoucher", "guest"];
     if (!validRoles.includes(role)) {
-      throw new Error(`Invalid role: ${role}. Must be one of: ${validRoles.join(', ')}`)
+      throw new Error(
+        `Invalid role: ${role}. Must be one of: ${validRoles.join(", ")}`,
+      );
     }
-    
-    const { data, error } = await db.insert<
-      { id: string; email: string; password_hash: string | null; role: string; is_active: boolean }
-    >(
-      'users',
-      {
-        email: email.toLowerCase(),
-        password_hash: passwordHash,
-        role: role,
-        is_active: true,
-      } as unknown as { id: string; email: string; password_hash: string | null; role: string; is_active: boolean }
-    )
+
+    const { data, error } = await db.insert<{
+      id: string;
+      email: string;
+      password_hash: string | null;
+      role: string;
+      is_active: boolean;
+    }>("users", {
+      email: email.toLowerCase(),
+      password_hash: passwordHash,
+      role: role,
+      is_active: true,
+    } as unknown as {
+      id: string;
+      email: string;
+      password_hash: string | null;
+      role: string;
+      is_active: boolean;
+    });
 
     if (error || !data || data.length === 0) {
-      throw new Error(error?.message || 'Failed to create user')
+      throw new Error(error?.message || "Failed to create user");
     }
 
     return {
       id: data[0].id,
       email: data[0].email,
-    }
+    };
   }
 
   /**
@@ -147,12 +163,66 @@ export class PostgreSQLAuthDatabase implements ExtendedAuthDatabase {
    * @param passwordHash - 新的密码哈希值
    * @throws {Error} 更新失败时抛出错误
    */
-  async updateUserPassword(userId: string, passwordHash: string): Promise<void> {
-    const db = await createAdminClient()
-    const { error } = await db.update('users', { password_hash: passwordHash }, { id: userId })
+  async updateUserPassword(
+    userId: string,
+    passwordHash: string,
+  ): Promise<void> {
+    const db = await createAdminClient();
+
+    // 开发环境添加调试日志
+    if (process.env.NODE_ENV === "development") {
+      console.log("[UpdateUserPassword] Updating password:", {
+        userId,
+        passwordHashLength: passwordHash.length,
+        passwordHashFormat: passwordHash.includes(":") ? "valid" : "invalid",
+        passwordHashPreview: `${passwordHash.substring(0, 20)}...`,
+      });
+    }
+
+    const { error } = await db.update(
+      "users",
+      { password_hash: passwordHash },
+      { id: userId },
+    );
 
     if (error) {
-      throw new Error(error.message || 'Failed to update password')
+      if (process.env.NODE_ENV === "development") {
+        console.error("[UpdateUserPassword] Update error:", error);
+      }
+      throw new Error(error.message || "Failed to update password");
+    }
+
+    // 开发环境验证更新是否成功
+    if (process.env.NODE_ENV === "development") {
+      try {
+        const userResult = await db
+          .from("users")
+          .select("email, password_hash")
+          .eq("id", userId)
+          .maybeSingle();
+
+        if (userResult.data) {
+          const userData = userResult.data as {
+            email: string;
+            password_hash?: string;
+          };
+          const verifyUser = await this.findUserByEmail(userData.email);
+          console.log("[UpdateUserPassword] Update verification:", {
+            userId,
+            email: userData.email,
+            passwordHashSaved: !!verifyUser?.password_hash,
+            passwordHashMatches: verifyUser?.password_hash === passwordHash,
+            passwordHashLength: verifyUser?.password_hash?.length || 0,
+          });
+        } else {
+          console.warn(
+            "[UpdateUserPassword] Could not verify update - user not found:",
+            userId,
+          );
+        }
+      } catch (verifyError) {
+        console.error("[UpdateUserPassword] Verification error:", verifyError);
+      }
     }
   }
 
@@ -166,12 +236,16 @@ export class PostgreSQLAuthDatabase implements ExtendedAuthDatabase {
    * @param userId - 用户 ID
    */
   async updateLastLogin(userId: string): Promise<void> {
-    const db = await createAdminClient()
-    const { error } = await db.update('users', { last_login_at: new Date().toISOString() }, { id: userId })
+    const db = await createAdminClient();
+    const { error } = await db.update(
+      "users",
+      { last_login_at: new Date().toISOString() },
+      { id: userId },
+    );
 
     if (error) {
       // 记录错误但不抛出（登录时间更新失败不应阻止登录）
-      console.error('Failed to update last login time:', error)
+      console.error("Failed to update last login time:", error);
     }
   }
 
@@ -179,20 +253,20 @@ export class PostgreSQLAuthDatabase implements ExtendedAuthDatabase {
    * 检查是否存在任何管理员账户
    */
   async hasAnyAdmin(): Promise<boolean> {
-    const db = await createAdminClient()
+    const db = await createAdminClient();
     const { count, error } = await db
-      .from('users')
-      .select('id', { count: 'exact', head: true })
-      .eq('role', 'admin')
-      .eq('is_active', true)
-      .is('deleted_at', null) // 排除已删除的管理员
+      .from("users")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "admin")
+      .eq("is_active", true)
+      .is("deleted_at", null); // 排除已删除的管理员
 
     if (error) {
-      console.error('Failed to check admin existence:', error)
-      return false
+      console.error("Failed to check admin existence:", error);
+      return false;
     }
 
-    return (count || 0) > 0
+    return (count || 0) > 0;
   }
 }
 
@@ -218,7 +292,7 @@ export class PostgreSQLAuthDatabase implements ExtendedAuthDatabase {
 export function initAuthDatabase(): void {
   // 使用动态导入避免循环依赖
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { setAuthDatabase } = require('./index')
-  const db = new PostgreSQLAuthDatabase()
-  setAuthDatabase(db)
+  const { setAuthDatabase } = require("./index");
+  const db = new PostgreSQLAuthDatabase();
+  setAuthDatabase(db);
 }

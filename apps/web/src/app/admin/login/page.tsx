@@ -8,8 +8,6 @@ import { Turnstile } from '@/components/auth/turnstile'
 /**
  * 管理员登录页
  */
-// 固定管理员邮箱和用户名映射
-const ADMIN_EMAIL = 'admin@example.com'
 const ADMIN_USERNAME = 'admin'
 
 export default function LoginPage() {
@@ -18,6 +16,8 @@ export default function LoginPage() {
   const [loginType, setLoginType] = useState<'email' | 'username'>('username')
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState(ADMIN_USERNAME)
+  // 动态获取的管理员邮箱（从 check-admin-status API 获取）
+  const [adminEmail, setAdminEmail] = useState<string | null>(null)
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -66,6 +66,11 @@ export default function LoginPage() {
       // 确保正确处理布尔值（防止字符串 "true"/"false"）
       const needsSetup = data.needsPasswordSetup === true || data.needsPasswordSetup === 'true'
       setNeedsPasswordSetup(needsSetup)
+      
+      // ⚠️ 重要：保存实际的管理员邮箱（用于用户名登录）
+      if (data.email) {
+        setAdminEmail(data.email)
+      }
     } catch {
       // 网络错误或其他错误，默认显示登录表单（更安全）
       setNeedsPasswordSetup(false)
@@ -82,9 +87,12 @@ export default function LoginPage() {
   // 将用户名或邮箱转换为实际邮箱
   const getEmailForLogin = (): string => {
     if (loginType === 'username') {
-      // 用户名登录：固定映射到 admin@example.com
+      // 用户名登录：动态映射到实际的管理员邮箱
+      // ⚠️ 重要：使用从 check-admin-status API 获取的实际管理员邮箱
+      // 如果还没有获取到，发送 "admin" 让服务端处理（服务端会动态查找）
       if (username.toLowerCase() === ADMIN_USERNAME.toLowerCase()) {
-        return ADMIN_EMAIL
+        // 如果已经获取到管理员邮箱，使用它；否则发送 "admin" 让服务端处理
+        return adminEmail || 'admin'
       }
       // 其他用户名暂不支持，返回空字符串（会触发验证错误）
       return ''
@@ -183,8 +191,14 @@ export default function LoginPage() {
     try {
       console.log('[Login] Starting login request')
       
-      // 获取实际邮箱（用户名登录会转换为 admin@example.com）
+      // 获取实际邮箱（用户名登录会动态映射到实际的管理员邮箱）
       const actualEmail = getEmailForLogin()
+      console.log('[Login] Login details:', {
+        loginType,
+        actualEmail,
+        passwordLength: password.length,
+        hasTurnstileToken: !!turnstileToken,
+      })
       
       // 调用服务端登录 API（包含速率限制和登录逻辑）
       const response = await fetch('/api/auth/login', {
@@ -197,13 +211,22 @@ export default function LoginPage() {
           password,
           turnstileToken: turnstileToken || undefined, // 可选：如果配置了 Turnstile
         }),
+        credentials: 'include', // 确保 Cookie 被包含
+      })
+
+      console.log('[Login] Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
       })
 
       const data = await response.json()
+      console.log('[Login] Response data:', data)
 
       if (!response.ok) {
         // 处理首次登录需要设置密码的情况（428 Precondition Required）
         if (response.status === 428 && (data.requiresPasswordSetup || data.error?.code === 'PASSWORD_NOT_SET')) {
+          console.log('[Login] Password not set, switching to setup form')
           // 重新检查状态，确保 UI 正确显示密码设置表单
           await checkAdminStatus()
           setError('首次登录需要设置密码')
@@ -213,32 +236,74 @@ export default function LoginPage() {
         
         // 处理速率限制错误
         if (response.status === 429) {
-          setError(data.error?.message || '请求过于频繁，请稍后再试')
+          const errorMsg = data.error?.message || '请求过于频繁，请稍后再试'
+          console.error('[Login] Rate limit exceeded:', errorMsg)
+          setError(errorMsg)
         } else if (response.status === 401) {
           // 统一错误消息，不暴露具体错误原因
-          setError('邮箱或密码错误')
+          const errorMsg = data.error?.message || '邮箱或密码错误'
+          console.error('[Login] ====== LOGIN FAILED (401) ======')
+          console.error('[Login] Status:', response.status)
+          console.error('[Login] Email used:', actualEmail)
+          console.error('[Login] Error:', data.error)
+          console.error('[Login] Full response:', data)
+          console.error('[Login] Error message:', errorMsg)
+          setError(errorMsg)
         } else if (response.status === 400) {
           // 显示详细的验证错误信息
+          let errorMsg = '请求格式错误'
           if (data.error?.details && Array.isArray(data.error.details) && data.error.details.length > 0) {
             const firstDetail = data.error.details[0]
-            setError(firstDetail.message || data.error?.message || '输入验证失败')
-          } else {
-            setError(data.error?.message || '请求格式错误')
+            errorMsg = firstDetail.message || data.error?.message || '输入验证失败'
+          } else if (data.error?.message) {
+            errorMsg = data.error.message
           }
+          console.error('[Login] Validation error:', {
+            status: response.status,
+            error: data.error,
+            errorMsg,
+          })
+          setError(errorMsg)
         } else {
-          setError(data.error?.message || '登录失败，请重试')
+          const errorMsg = data.error?.message || `登录失败，请重试 (${response.status})`
+          console.error('[Login] Unexpected error:', {
+            status: response.status,
+            error: data.error,
+            errorMsg,
+          })
+          setError(errorMsg)
         }
         return
       }
 
       // 登录成功，使用 window.location 强制刷新页面以确保 cookie 生效
       console.log('[Login] Login successful, redirecting to admin')
+      console.log('[Login] ====== LOGIN SUCCESS ======')
+      console.log('[Login] Email:', actualEmail)
+      console.log('[Login] Response status:', response.status)
+      console.log('[Login] Response data:', data)
+      
+      // 开发环境：添加调试暂停点，让用户有时间查看日志
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Login] ⚠️ DEBUG MODE: Will redirect in 15 seconds...')
+        console.log('[Login] ⚠️ Check the logs above before redirect!')
+        console.log('[Login] ⚠️ You have time to copy the logs!')
+        // 可选：取消注释下面的行来暂停执行（需要开发者工具打开）
+        // debugger
+        await new Promise(resolve => setTimeout(resolve, 15000))
+      } else {
+        // 生产环境：短暂延迟确保 Cookie 被设置
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+      
       // 使用 window.location.href 而不是 router.push，确保浏览器重新加载页面
       // 这样可以让服务端设置的 cookie 立即生效，避免 layout 检查用户时读取不到会话
+      console.log('[Login] Redirecting to /admin using window.location.href')
       window.location.href = '/admin'
     } catch (err) {
       console.error('[Login] Login error:', err)
-      setError('登录失败，请重试')
+      const errorMsg = err instanceof Error ? err.message : '登录失败，请重试'
+      setError(errorMsg)
     } finally {
       setLoading(false)
       console.log('[Login] Login process completed')
@@ -271,7 +336,7 @@ export default function LoginPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: ADMIN_EMAIL, // 固定使用 admin@example.com
+          email: adminEmail || 'admin@pis.com', // 使用动态获取的管理员邮箱，或回退到默认值
           password: newPassword,
           confirmPassword,
         }),
@@ -295,38 +360,129 @@ export default function LoginPage() {
 
       // 密码设置成功，自动使用新密码登录
       const savedPassword = newPassword // 保存密码用于登录
+      // 优先使用从 check-admin-status 获取的实际管理员邮箱
+      // 如果没有获取到，使用设置密码时使用的邮箱（从 API 响应中获取）
+      // 最后回退到 'admin'，让服务端动态查找
+      const loginEmail = adminEmail || data.email || 'admin'
+      
+      console.log('[SetupPassword] Password setup successful, attempting auto-login:', {
+        email: loginEmail,
+        adminEmail,
+        dataEmail: data.email,
+        passwordLength: savedPassword.length,
+        hasTurnstileToken: !!turnstileToken,
+      })
+      
+      // 清空表单（但保持 loading 状态，直到登录完成）
       setNewPassword('')
       setConfirmPassword('')
       setError('')
       
       // 自动尝试登录
       try {
+        console.log('[SetupPassword] Sending login request...')
         const loginResponse = await fetch('/api/auth/login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            email: ADMIN_EMAIL, // 固定使用 admin@example.com
+            email: loginEmail,
             password: savedPassword,
             turnstileToken: turnstileToken || undefined,
           }),
+          credentials: 'include', // 确保 Cookie 被包含
+        })
+
+        console.log('[SetupPassword] Login response received:', {
+          status: loginResponse.status,
+          statusText: loginResponse.statusText,
+          ok: loginResponse.ok,
         })
 
         const loginData = await loginResponse.json()
+        console.log('[SetupPassword] Login response data:', loginData)
 
         if (loginResponse.ok) {
-          // 登录成功，使用 window.location 强制刷新页面以确保 cookie 生效
+          // 登录成功，先更新状态，然后重定向
           console.log('[SetupPassword] Login successful after password setup, redirecting to admin')
+          console.log('[SetupPassword] ====== AUTO-LOGIN SUCCESS ======')
+          console.log('[SetupPassword] Email:', loginEmail)
+          console.log('[SetupPassword] Response status:', loginResponse.status)
+          console.log('[SetupPassword] Response data:', loginData)
+          
+          // 开发环境：添加调试暂停点，让用户有时间查看日志
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[SetupPassword] ⚠️ DEBUG MODE: Will redirect in 15 seconds...')
+            console.log('[SetupPassword] ⚠️ Check the logs above before redirect!')
+            console.log('[SetupPassword] ⚠️ You have time to copy the logs!')
+            // 可选：取消注释下面的行来暂停执行（需要开发者工具打开）
+            // debugger
+          }
+          
+          // 更新状态，防止显示登录表单
+          setNeedsPasswordSetup(false)
+          
+          // 重要：等待 Cookie 被浏览器保存
+          // 使用多层等待确保 Cookie 被完全处理：
+          // 1. requestAnimationFrame 确保浏览器有机会处理 DOM 更新
+          // 2. setTimeout 确保 Cookie 被浏览器保存
+          // 开发环境：增加延迟时间，让用户有时间查看和复制日志
+          const delay = process.env.NODE_ENV === 'development' ? 15000 : 500
+          
+          // 验证 Cookie 是否已设置（通过检查 document.cookie）
+          // 注意：HttpOnly Cookie 无法通过 JavaScript 读取，但我们可以等待足够的时间
+          console.log('[SetupPassword] Waiting for cookies to be set...')
+          console.log('[SetupPassword] Note: HttpOnly cookies cannot be verified via JavaScript, but we wait long enough')
+          
+          await new Promise(resolve => {
+            // 第一层：等待下一个渲染帧
+            requestAnimationFrame(() => {
+              // 第二层：再等待一个渲染帧
+              requestAnimationFrame(() => {
+                // 第三层：等待浏览器处理 Cookie（通常需要 50-100ms）
+                // 开发环境：增加延迟以便查看日志
+                setTimeout(() => {
+                  console.log('[SetupPassword] Delay completed, redirecting now...')
+                  console.log('[SetupPassword] Cookie should be set by now (HttpOnly cookies are not visible to JS)')
+                  resolve(undefined)
+                }, delay)
+              })
+            })
+          })
+          
+          // 使用 window.location.href 而不是 replace，确保完整的页面加载
+          // 这会触发完整的页面重新加载，确保 Cookie 被正确读取
+          // 注意：使用 href 而不是 replace，因为 replace 可能会更快地清除状态
+          console.log('[SetupPassword] Redirecting to /admin using window.location.href')
           window.location.href = '/admin'
+          
+          // 不调用 finally 中的 setSetupLoading(false)，因为页面即将重定向
+          return
         } else {
-          // 登录失败，重新检查状态（密码已设置，应该显示登录表单）
-          setError(loginData.error?.message || '密码已设置，但自动登录失败，请刷新页面后登录')
+          // 登录失败，显示错误但保持密码设置表单（因为密码已设置成功）
+          const errorMessage = loginData.error?.message || `密码已设置，但自动登录失败 (${loginResponse.status})，请使用新密码登录`
+          console.error('[SetupPassword] ====== AUTO-LOGIN FAILED ======')
+          console.error('[SetupPassword] Status:', loginResponse.status)
+          console.error('[SetupPassword] Email used:', loginEmail)
+          console.error('[SetupPassword] Error:', loginData.error)
+          console.error('[SetupPassword] Full response:', loginData)
+          console.error('[SetupPassword] Error message:', errorMessage)
+          setError(errorMessage)
+          // 更新状态为不需要设置密码，显示登录表单
+          setNeedsPasswordSetup(false)
           await checkAdminStatus() // 重新检查状态，确保显示登录表单
         }
       } catch (loginErr) {
-        console.error('Auto login error:', loginErr)
-        setError('密码已设置，但自动登录失败，请刷新页面后登录')
+        console.error('[SetupPassword] ====== AUTO-LOGIN EXCEPTION ======')
+        console.error('[SetupPassword] Error:', loginErr)
+        console.error('[SetupPassword] Error type:', loginErr instanceof Error ? loginErr.constructor.name : typeof loginErr)
+        console.error('[SetupPassword] Error message:', loginErr instanceof Error ? loginErr.message : String(loginErr))
+        console.error('[SetupPassword] Error stack:', loginErr instanceof Error ? loginErr.stack : 'N/A')
+        const errorMessage = loginErr instanceof Error ? loginErr.message : '密码已设置，但自动登录失败，请使用新密码登录'
+        setError(errorMessage)
+        // 更新状态为不需要设置密码，显示登录表单
+        setNeedsPasswordSetup(false)
         await checkAdminStatus() // 重新检查状态，确保显示登录表单
       }
     } catch (err) {
@@ -467,7 +623,7 @@ export default function LoginPage() {
               {setupLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  设置中...
+                  {needsPasswordSetup ? '设置中...' : '登录中...'}
                 </>
               ) : (
                 '设置密码并登录'

@@ -1,11 +1,11 @@
-'use client'
+"use client";
 
 /**
  * PIS Web - 认证状态 Hook
  *
  * 提供用户认证状态管理和登出功能
  *
- * @author PIS Contributors
+ * @author junyuzhan
  * @license MIT
  *
  * @example
@@ -22,17 +22,24 @@
  * }
  * ```
  */
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+/**
+ * 用户角色类型
+ */
+export type UserRole = "admin" | "photographer" | "retoucher" | "guest";
 
 /**
  * 认证用户信息
  */
-interface AuthUser {
+export interface AuthUser {
   /** 用户唯一标识符（UUID） */
-  id: string
+  id: string;
   /** 用户邮箱地址 */
-  email: string
+  email: string;
+  /** 用户角色 */
+  role?: UserRole | null;
 }
 
 /**
@@ -40,13 +47,13 @@ interface AuthUser {
  */
 interface UseAuthReturn {
   /** 当前用户信息，未登录时为 null */
-  user: AuthUser | null
+  user: AuthUser | null;
   /** 加载状态 */
-  loading: boolean
+  loading: boolean;
   /** 是否已登录 */
-  isAuthenticated: boolean
+  isAuthenticated: boolean;
   /** 登出函数 */
-  signOut: () => Promise<void>
+  signOut: () => Promise<void>;
 }
 
 /**
@@ -78,31 +85,52 @@ interface UseAuthReturn {
  * ```
  */
 export function useAuth(): UseAuthReturn {
-  const router = useRouter()
-  const [user, setUser] = useState<AuthUser | null>(null)
-  const [loading, setLoading] = useState(true)
+  const router = useRouter();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // 获取当前用户
     const fetchUser = async () => {
       try {
-        const res = await fetch('/api/auth/me')
-        const data = await res.json()
-        setUser(data.user)
-      } catch {
-        setUser(null)
-      } finally {
-        setLoading(false)
-      }
-    }
+        const res = await fetch("/api/auth/me");
 
-    fetchUser()
+        // 检查响应状态
+        if (!res.ok) {
+          // 只有明确返回 401/403 时才清除用户状态（认证失败）
+          if (res.status === 401 || res.status === 403) {
+            setUser(null);
+          }
+          // 其他错误（500、网络错误等）不改变用户状态，保持当前状态
+          // 这样可以避免网络不稳定时意外登出用户
+          return;
+        }
+
+        const data = await res.json();
+        setUser(data.user);
+      } catch (error) {
+        // 网络错误或其他异常时不改变用户状态，只记录日志
+        // 这样可以避免网络不稳定时意外登出用户
+        // Cookie 中的 token 可能仍然有效，中间件会处理认证
+        if (process.env.NODE_ENV === "development") {
+          console.warn(
+            "[useAuth] Failed to fetch user, but keeping current state:",
+            error,
+          );
+        }
+        // 不设置 setUser(null)，保持当前状态
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
 
     // 定期检查认证状态（每 5 分钟）
-    const interval = setInterval(fetchUser, 5 * 60 * 1000)
+    const interval = setInterval(fetchUser, 5 * 60 * 1000);
 
-    return () => clearInterval(interval)
-  }, [])
+    return () => clearInterval(interval);
+  }, []);
 
   /**
    * 登出函数
@@ -112,19 +140,19 @@ export function useAuth(): UseAuthReturn {
    */
   const signOut = async () => {
     try {
-      await fetch('/api/auth/signout', { method: 'POST' })
+      await fetch("/api/auth/signout", { method: "POST" });
     } catch (error) {
-      console.error('Sign out error:', error)
+      console.error("Sign out error:", error);
     }
-    setUser(null)
-    router.push('/admin/login')
-    router.refresh()
-  }
+    setUser(null);
+    router.push("/admin/login");
+    router.refresh();
+  };
 
   return {
     user,
     loading,
     signOut,
     isAuthenticated: !!user,
-  }
+  };
 }

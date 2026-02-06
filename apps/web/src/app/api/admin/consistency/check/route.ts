@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth/api-helpers'
+import { requireAdmin } from '@/lib/auth/role-helpers'
 import { consistencyCheckSchema } from '@/lib/validation/schemas'
 import { safeValidate, handleError, ApiError } from '@/lib/validation/error-handler'
 
@@ -20,11 +20,17 @@ import { safeValidate, handleError, ApiError } from '@/lib/validation/error-hand
  */
 export async function POST(request: NextRequest) {
   try {
-    // 验证登录状态
+    // 先检查用户是否已登录
+    const { getCurrentUser } = await import('@/lib/auth/api-helpers')
     const user = await getCurrentUser(request)
-
     if (!user) {
-      return ApiError.unauthorized('请先登录')
+      return ApiError.unauthorized('需要登录才能执行此操作')
+    }
+
+    // 再检查用户是否为管理员
+    const admin = await requireAdmin(request)
+    if (!admin) {
+      return ApiError.forbidden('需要管理员权限才能执行一致性检查')
     }
 
     // 解析和验证请求体（允许空请求体）

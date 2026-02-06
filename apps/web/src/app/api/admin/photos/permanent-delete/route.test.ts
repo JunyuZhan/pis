@@ -36,12 +36,7 @@ vi.mock('@/lib/auth/api-helpers', () => ({
 
 vi.mock('@/lib/database', () => ({
   createClient: vi.fn().mockResolvedValue(mockSupabaseClient),
-  createAdminClient: vi.fn().mockReturnValue(mockAdminClient),
-}))
-
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn().mockResolvedValue(mockSupabaseClient),
-  createAdminClient: vi.fn().mockReturnValue(mockAdminClient),
+  createAdminClient: vi.fn().mockResolvedValue(mockAdminClient),
 }))
 
 vi.mock('@/lib/cloudflare-purge', () => ({
@@ -57,18 +52,19 @@ global.fetch = vi.fn()
 
 describe('POST /api/admin/photos/permanent-delete', () => {
   let mockAuth: any
-  let mockSupabaseClient: any
-  let mockAdminClient: any
-  let purgePhotoCache: any
-  let revalidatePath: any
+    let mockSupabaseClient: any
+    let mockAdminClient: any
+    let purgePhotoCache: any
+    let revalidatePath: any
+    let originalMockImplementation: any
 
   beforeEach(async () => {
     vi.clearAllMocks()
     
-    const { createClient, createAdminClient } = await import('@/lib/supabase/server')
+    const { createClient, createAdminClient } = await import('@/lib/database')
     mockSupabaseClient = await createClient()
     mockAuth = mockSupabaseClient.auth
-    mockAdminClient = createAdminClient()
+    mockAdminClient = await createAdminClient()
     
     const { purgePhotoCache: purgeMock } = await import('@/lib/cloudflare-purge')
     purgePhotoCache = purgeMock
@@ -80,6 +76,34 @@ describe('POST /api/admin/photos/permanent-delete', () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       id: 'user-123', email: 'test@example.com',
     } as any)
+    
+    // Mock admin role query for requireAdmin
+    const mockRoleSelect = vi.fn().mockReturnThis()
+    const mockRoleEq = vi.fn().mockReturnThis()
+    const mockRoleSingle = vi.fn().mockResolvedValue({
+      data: { role: 'admin' },
+      error: null,
+    })
+    originalMockImplementation = (table: string) => {
+      if (table === 'users') {
+        return {
+          select: mockRoleSelect,
+          eq: mockRoleEq,
+          single: mockRoleSingle,
+        }
+      }
+      // For other tables, return default chain
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: null,
+          error: null,
+        }),
+      }
+    }
+    mockAdminClient.from.mockImplementation(originalMockImplementation)
 
     // 默认fetch成功
     global.fetch = vi.fn().mockResolvedValue({
@@ -195,10 +219,19 @@ describe('POST /api/admin/photos/permanent-delete', () => {
         error: null,
       })
 
-      mockAdminClient.from.mockReturnValue({
-        select: mockSelect,
-        in: mockIn,
-        not: mockNot,
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For other tables, return the new mock
+        return {
+          select: mockSelect,
+          in: mockIn,
+          not: mockNot,
+        }
       })
 
       const request = createMockRequest('http://localhost:3000/api/admin/photos/permanent-delete', {
@@ -224,10 +257,19 @@ describe('POST /api/admin/photos/permanent-delete', () => {
         error: { message: 'Database error' },
       })
 
-      mockAdminClient.from.mockReturnValue({
-        select: mockSelect,
-        in: mockIn,
-        not: mockNot,
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For other tables, return the new mock
+        return {
+          select: mockSelect,
+          in: mockIn,
+          not: mockNot,
+        }
       })
 
       const request = createMockRequest('http://localhost:3000/api/admin/photos/permanent-delete', {
@@ -286,25 +328,44 @@ describe('POST /api/admin/photos/permanent-delete', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
-          select: mockSelect,
-          in: mockIn,
-          not: mockNot,
-        })
-        .mockReturnValueOnce({
-          select: mockAlbumsSelect,
-          in: mockAlbumsIn,
-        })
-        .mockReturnValueOnce({
-          select: mockCountSelect,
-          eq: mockCountEq,
-          is: mockCountIs,
-        })
-        .mockReturnValue({
-          update: mockUpdate,
-          eq: mockUpdateEq,
-        })
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      let callCount = 0
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For other tables, handle sequential calls
+        callCount++
+        if (callCount === 1) {
+          // First call: photos table
+          return {
+            select: mockSelect,
+            in: mockIn,
+            not: mockNot,
+          }
+        } else if (callCount === 2) {
+          // Second call: albums table
+          return {
+            select: mockAlbumsSelect,
+            in: mockAlbumsIn,
+          }
+        } else if (callCount === 3) {
+          // Third call: photos count
+          return {
+            select: mockCountSelect,
+            eq: mockCountEq,
+            is: mockCountIs,
+          }
+        } else {
+          // Subsequent calls: update
+          return {
+            update: mockUpdate,
+            eq: mockUpdateEq,
+          }
+        }
+      })
 
       mockCountSelect.mockReturnThis()
       mockCountEq.mockReturnThis()
@@ -377,25 +438,36 @@ describe('POST /api/admin/photos/permanent-delete', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
-          select: mockSelect,
-          in: mockIn,
-          not: mockNot,
-        })
-        .mockReturnValueOnce({
-          select: mockAlbumsSelect,
-          in: mockAlbumsIn,
-        })
-        .mockReturnValueOnce({
-          select: mockCountSelect,
-          eq: mockCountEq,
-          is: mockCountIs,
-        })
-        .mockReturnValue({
-          update: mockUpdate,
-          eq: mockUpdateEq,
-        })
+      let callCount = 0
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          return originalMockImplementation(table)
+        }
+        callCount++
+        if (callCount === 1) {
+          return {
+            select: mockSelect,
+            in: mockIn,
+            not: mockNot,
+          }
+        } else if (callCount === 2) {
+          return {
+            select: mockAlbumsSelect,
+            in: mockAlbumsIn,
+          }
+        } else if (callCount === 3) {
+          return {
+            select: mockCountSelect,
+            eq: mockCountEq,
+            is: mockCountIs,
+          }
+        } else {
+          return {
+            update: mockUpdate,
+            eq: mockUpdateEq,
+          }
+        }
+      })
 
       mockCountSelect.mockReturnThis()
       mockCountEq.mockReturnThis()
@@ -477,25 +549,36 @@ describe('POST /api/admin/photos/permanent-delete', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
-          select: mockSelect,
-          in: mockIn,
-          not: mockNot,
-        })
-        .mockReturnValueOnce({
-          select: mockAlbumsSelect,
-          in: mockAlbumsIn,
-        })
-        .mockReturnValueOnce({
-          select: mockCountSelect,
-          eq: mockCountEq,
-          is: mockCountIs,
-        })
-        .mockReturnValue({
-          update: mockUpdate,
-          eq: mockUpdateEq,
-        })
+      let callCount = 0
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          return originalMockImplementation(table)
+        }
+        callCount++
+        if (callCount === 1) {
+          return {
+            select: mockSelect,
+            in: mockIn,
+            not: mockNot,
+          }
+        } else if (callCount === 2) {
+          return {
+            select: mockAlbumsSelect,
+            in: mockAlbumsIn,
+          }
+        } else if (callCount === 3) {
+          return {
+            select: mockCountSelect,
+            eq: mockCountEq,
+            is: mockCountIs,
+          }
+        } else {
+          return {
+            update: mockUpdate,
+            eq: mockUpdateEq,
+          }
+        }
+      })
 
       mockCountSelect.mockReturnThis()
       mockCountEq.mockReturnThis()
@@ -565,25 +648,36 @@ describe('POST /api/admin/photos/permanent-delete', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
-          select: mockSelect,
-          in: mockIn,
-          not: mockNot,
-        })
-        .mockReturnValueOnce({
-          select: mockAlbumsSelect,
-          in: mockAlbumsIn,
-        })
-        .mockReturnValueOnce({
-          select: mockCountSelect,
-          eq: mockCountEq,
-          is: mockCountIs,
-        })
-        .mockReturnValue({
-          update: mockUpdate,
-          eq: mockUpdateEq,
-        })
+      let callCount = 0
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          return originalMockImplementation(table)
+        }
+        callCount++
+        if (callCount === 1) {
+          return {
+            select: mockSelect,
+            in: mockIn,
+            not: mockNot,
+          }
+        } else if (callCount === 2) {
+          return {
+            select: mockAlbumsSelect,
+            in: mockAlbumsIn,
+          }
+        } else if (callCount === 3) {
+          return {
+            select: mockCountSelect,
+            eq: mockCountEq,
+            is: mockCountIs,
+          }
+        } else {
+          return {
+            update: mockUpdate,
+            eq: mockUpdateEq,
+          }
+        }
+      })
 
       mockCountSelect.mockReturnThis()
       mockCountEq.mockReturnThis()
@@ -660,25 +754,36 @@ describe('POST /api/admin/photos/permanent-delete', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
-          select: mockSelect,
-          in: mockIn,
-          not: mockNot,
-        })
-        .mockReturnValueOnce({
-          select: mockAlbumsSelect,
-          in: mockAlbumsIn,
-        })
-        .mockReturnValueOnce({
-          select: mockCountSelect,
-          eq: mockCountEq,
-          is: mockCountIs,
-        })
-        .mockReturnValue({
-          update: mockUpdate,
-          eq: mockUpdateEq,
-        })
+      let callCount = 0
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          return originalMockImplementation(table)
+        }
+        callCount++
+        if (callCount === 1) {
+          return {
+            select: mockSelect,
+            in: mockIn,
+            not: mockNot,
+          }
+        } else if (callCount === 2) {
+          return {
+            select: mockAlbumsSelect,
+            in: mockAlbumsIn,
+          }
+        } else if (callCount === 3) {
+          return {
+            select: mockCountSelect,
+            eq: mockCountEq,
+            is: mockCountIs,
+          }
+        } else {
+          return {
+            update: mockUpdate,
+            eq: mockUpdateEq,
+          }
+        }
+      })
 
       mockCountSelect.mockReturnThis()
       mockCountEq.mockReturnThis()
@@ -761,25 +866,36 @@ describe('POST /api/admin/photos/permanent-delete', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
-          select: mockSelect,
-          in: mockIn,
-          not: mockNot,
-        })
-        .mockReturnValueOnce({
-          select: mockAlbumsSelect,
-          in: mockAlbumsIn,
-        })
-        .mockReturnValueOnce({
-          select: mockCountSelect,
-          eq: mockCountEq,
-          is: mockCountIs,
-        })
-        .mockReturnValue({
-          update: mockUpdate,
-          eq: mockUpdateEq,
-        })
+      let callCount = 0
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          return originalMockImplementation(table)
+        }
+        callCount++
+        if (callCount === 1) {
+          return {
+            select: mockSelect,
+            in: mockIn,
+            not: mockNot,
+          }
+        } else if (callCount === 2) {
+          return {
+            select: mockAlbumsSelect,
+            in: mockAlbumsIn,
+          }
+        } else if (callCount === 3) {
+          return {
+            select: mockCountSelect,
+            eq: mockCountEq,
+            is: mockCountIs,
+          }
+        } else {
+          return {
+            update: mockUpdate,
+            eq: mockUpdateEq,
+          }
+        }
+      })
 
       mockCountSelect.mockReturnThis()
       mockCountEq.mockReturnThis()
@@ -853,25 +969,36 @@ describe('POST /api/admin/photos/permanent-delete', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
-          select: mockSelect,
-          in: mockIn,
-          not: mockNot,
-        })
-        .mockReturnValueOnce({
-          select: mockAlbumsSelect,
-          in: mockAlbumsIn,
-        })
-        .mockReturnValueOnce({
-          select: mockCountSelect,
-          eq: mockCountEq,
-          is: mockCountIs,
-        })
-        .mockReturnValue({
-          update: mockUpdate,
-          eq: mockUpdateEq,
-        })
+      let callCount = 0
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          return originalMockImplementation(table)
+        }
+        callCount++
+        if (callCount === 1) {
+          return {
+            select: mockSelect,
+            in: mockIn,
+            not: mockNot,
+          }
+        } else if (callCount === 2) {
+          return {
+            select: mockAlbumsSelect,
+            in: mockAlbumsIn,
+          }
+        } else if (callCount === 3) {
+          return {
+            select: mockCountSelect,
+            eq: mockCountEq,
+            is: mockCountIs,
+          }
+        } else {
+          return {
+            update: mockUpdate,
+            eq: mockUpdateEq,
+          }
+        }
+      })
 
       mockCountSelect.mockReturnThis()
       mockCountEq.mockReturnThis()
@@ -928,16 +1055,25 @@ describe('POST /api/admin/photos/permanent-delete', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
-          select: mockSelect,
-          in: mockIn,
-          not: mockNot,
-        })
-        .mockReturnValueOnce({
-          select: mockAlbumsSelect,
-          in: mockAlbumsIn,
-        })
+      let callCount = 0
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          return originalMockImplementation(table)
+        }
+        callCount++
+        if (callCount === 1) {
+          return {
+            select: mockSelect,
+            in: mockIn,
+            not: mockNot,
+          }
+        } else {
+          return {
+            select: mockAlbumsSelect,
+            in: mockAlbumsIn,
+          }
+        }
+      })
 
       mockAdminClient.delete.mockResolvedValue({
         data: null,
@@ -1005,25 +1141,36 @@ describe('POST /api/admin/photos/permanent-delete', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
-          select: mockSelect,
-          in: mockIn,
-          not: mockNot,
-        })
-        .mockReturnValueOnce({
-          select: mockAlbumsSelect,
-          in: mockAlbumsIn,
-        })
-        .mockReturnValueOnce({
-          select: mockCountSelect,
-          eq: mockCountEq,
-          is: mockCountIs,
-        })
-        .mockReturnValue({
-          update: mockUpdate,
-          eq: mockUpdateEq,
-        })
+      let callCount = 0
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          return originalMockImplementation(table)
+        }
+        callCount++
+        if (callCount === 1) {
+          return {
+            select: mockSelect,
+            in: mockIn,
+            not: mockNot,
+          }
+        } else if (callCount === 2) {
+          return {
+            select: mockAlbumsSelect,
+            in: mockAlbumsIn,
+          }
+        } else if (callCount === 3) {
+          return {
+            select: mockCountSelect,
+            eq: mockCountEq,
+            is: mockCountIs,
+          }
+        } else {
+          return {
+            update: mockUpdate,
+            eq: mockUpdateEq,
+          }
+        }
+      })
 
       mockCountSelect.mockReturnThis()
       mockCountEq.mockReturnThis()
@@ -1093,25 +1240,36 @@ describe('POST /api/admin/photos/permanent-delete', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
-          select: mockSelect,
-          in: mockIn,
-          not: mockNot,
-        })
-        .mockReturnValueOnce({
-          select: mockAlbumsSelect,
-          in: mockAlbumsIn,
-        })
-        .mockReturnValueOnce({
-          select: mockCountSelect,
-          eq: mockCountEq,
-          is: mockCountIs,
-        })
-        .mockReturnValue({
-          update: mockUpdate,
-          eq: mockUpdateEq,
-        })
+      let callCount = 0
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          return originalMockImplementation(table)
+        }
+        callCount++
+        if (callCount === 1) {
+          return {
+            select: mockSelect,
+            in: mockIn,
+            not: mockNot,
+          }
+        } else if (callCount === 2) {
+          return {
+            select: mockAlbumsSelect,
+            in: mockAlbumsIn,
+          }
+        } else if (callCount === 3) {
+          return {
+            select: mockCountSelect,
+            eq: mockCountEq,
+            is: mockCountIs,
+          }
+        } else {
+          return {
+            update: mockUpdate,
+            eq: mockUpdateEq,
+          }
+        }
+      })
 
       mockCountSelect.mockReturnThis()
       mockCountEq.mockReturnThis()
@@ -1183,25 +1341,36 @@ describe('POST /api/admin/photos/permanent-delete', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
-          select: mockSelect,
-          in: mockIn,
-          not: mockNot,
-        })
-        .mockReturnValueOnce({
-          select: mockAlbumsSelect,
-          in: mockAlbumsIn,
-        })
-        .mockReturnValueOnce({
-          select: mockCountSelect,
-          eq: mockCountEq,
-          is: mockCountIs,
-        })
-        .mockReturnValue({
-          update: mockUpdate,
-          eq: mockUpdateEq,
-        })
+      let callCount = 0
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          return originalMockImplementation(table)
+        }
+        callCount++
+        if (callCount === 1) {
+          return {
+            select: mockSelect,
+            in: mockIn,
+            not: mockNot,
+          }
+        } else if (callCount === 2) {
+          return {
+            select: mockAlbumsSelect,
+            in: mockAlbumsIn,
+          }
+        } else if (callCount === 3) {
+          return {
+            select: mockCountSelect,
+            eq: mockCountEq,
+            is: mockCountIs,
+          }
+        } else {
+          return {
+            update: mockUpdate,
+            eq: mockUpdateEq,
+          }
+        }
+      })
 
       mockCountSelect.mockReturnThis()
       mockCountEq.mockReturnThis()

@@ -63,6 +63,33 @@ describe('PATCH /api/admin/photos/[id]/rotate', () => {
       update: vi.fn(),
     }
     
+    // Mock admin role query for requireAdmin
+    const mockRoleSelect = vi.fn().mockReturnThis()
+    const mockRoleEq = vi.fn().mockReturnThis()
+    const mockRoleSingle = vi.fn().mockResolvedValue({
+      data: { role: 'admin' },
+      error: null,
+    })
+    mockAdminClient.from.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: mockRoleSelect,
+          eq: mockRoleEq,
+          single: mockRoleSingle,
+        }
+      }
+      // For other tables, return default chain
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: null,
+          error: null,
+        }),
+      }
+    })
+    
     // Mock createClient to return mockSupabaseClient
     const { createClient, createAdminClient } = await import('@/lib/database')
     vi.mocked(createClient).mockResolvedValue(mockSupabaseClient)
@@ -179,13 +206,21 @@ describe('PATCH /api/admin/photos/[id]/rotate', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For photos table, return the new mock
+        return {
           select: mockAdminSelect2,
           eq: mockAdminEq2,
           is: mockAdminIs,
           single: mockAdminSingle2,
-        })
+        }
+      })
 
       const request = createMockRequest(`http://localhost:3000/api/admin/photos/${photoId}/rotate`, {
         method: 'PATCH',
@@ -251,13 +286,21 @@ describe('PATCH /api/admin/photos/[id]/rotate', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For photos table, return the new mock
+        return {
           select: mockAdminSelect2,
           eq: mockAdminEq2,
           is: mockAdminIs,
           single: mockAdminSingle2,
-        })
+        }
+      })
 
       const request = createMockRequest(`http://localhost:3000/api/admin/photos/${photoId}/rotate`, {
         method: 'PATCH',
@@ -399,13 +442,21 @@ describe('PATCH /api/admin/photos/[id]/rotate', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For photos table, return the new mock
+        return {
           select: mockAdminSelect2,
           eq: mockAdminEq2,
           is: mockAdminIs,
           single: mockAdminSingle2,
-        })
+        }
+      })
 
       // Mock successful worker API call
       global.fetch = vi.fn().mockResolvedValue({
@@ -478,13 +529,21 @@ describe('PATCH /api/admin/photos/[id]/rotate', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For photos table, return the new mock
+        return {
           select: mockAdminSelect2,
           eq: mockAdminEq2,
           is: mockAdminIs,
           single: mockAdminSingle2,
-        })
+        }
+      })
 
       // Mock worker API error
       global.fetch = vi.fn().mockResolvedValue({
@@ -557,13 +616,21 @@ describe('PATCH /api/admin/photos/[id]/rotate', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For photos table, return the new mock
+        return {
           select: mockAdminSelect2,
           eq: mockAdminEq2,
           is: mockAdminIs,
           single: mockAdminSingle2,
-        })
+        }
+      })
 
       // Mock network error
       global.fetch = vi.fn().mockRejectedValue(new Error('fetch failed'))
@@ -632,13 +699,21 @@ describe('PATCH /api/admin/photos/[id]/rotate', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For photos table, return the new mock
+        return {
           select: mockAdminSelect2,
           eq: mockAdminEq2,
           is: mockAdminIs,
           single: mockAdminSingle2,
-        })
+        }
+      })
 
       const request = createMockRequest(`http://localhost:3000/api/admin/photos/${photoId}/rotate`, {
         method: 'PATCH',

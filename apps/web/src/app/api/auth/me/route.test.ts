@@ -6,9 +6,20 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { GET } from './route'
+import { createMockRequest } from '@/test/test-utils'
 
 vi.mock('@/lib/auth', () => ({
   getCurrentUser: vi.fn(),
+}))
+
+vi.mock('@/lib/auth/role-helpers', () => ({
+  getUserRole: vi.fn(),
+}))
+
+vi.mock('next/headers', () => ({
+  cookies: vi.fn().mockResolvedValue({
+    get: vi.fn().mockReturnValue(null),
+  }),
 }))
 
 describe("GET /api/auth/me", () => {
@@ -19,13 +30,16 @@ describe("GET /api/auth/me", () => {
   describe("user retrieval", () => {
     it('should return user if token is valid', async () => {
       const { getCurrentUser } = await import('@/lib/auth')
+      const { getUserRole } = await import('@/lib/auth/role-helpers')
 
       vi.mocked(getCurrentUser).mockResolvedValue({
         id: 'user-123',
         email: 'test@example.com',
-      })
+      } as any)
+      vi.mocked(getUserRole).mockResolvedValue('admin')
 
-      const response = await GET()
+      const request = createMockRequest('http://localhost:3000/api/auth/me')
+      const response = await GET(request)
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -39,7 +53,8 @@ describe("GET /api/auth/me", () => {
 
       vi.mocked(getCurrentUser).mockResolvedValue(null)
 
-      const response = await GET()
+      const request = createMockRequest('http://localhost:3000/api/auth/me')
+      const response = await GET(request)
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -52,7 +67,8 @@ describe("GET /api/auth/me", () => {
 
       vi.mocked(getCurrentUser).mockRejectedValue(new Error('Auth error'))
 
-      const response = await GET()
+      const request = createMockRequest('http://localhost:3000/api/auth/me')
+      const response = await GET(request)
       const data = await response.json()
 
       expect(response.status).toBe(200)

@@ -3,10 +3,7 @@
   "version": "1.0.0",
   "private": false,
   "description": "专业级私有化即时摄影分享系统 (Private Instant photo Sharing)",
-  "author": {
-    "name": "junyuzhan",
-    "email": "junyuzhan@outlook.com"
-  },
+  "author": "junyuzhan",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -37,13 +34,16 @@
     "cleanup:failed-photos:execute": "cd services/worker && pnpm exec tsx ../../scripts/utils/cleanup-failed-photos.ts --execute",
     "create-admin": "pnpm exec tsx scripts/utils/create-admin.ts",
     "init-users": "pnpm exec tsx scripts/utils/init-users.ts",
-    "test:components": "bash scripts/test/test-components.sh",
-    "test:e2e": "bash scripts/test/test-e2e.sh",
+    "test:quick": "bash scripts/test/core/quick-verify.sh",
+    "test:integration": "bash scripts/test/core/integration-test.sh",
+    "test:components": "bash scripts/test/component/test-components.sh",
+    "test:components:reliability": "bash scripts/test/component/test-component-reliability.sh",
+    "test:e2e": "bash scripts/test/utils/test-e2e.sh",
     "test:e2e:ui": "pnpm exec playwright test --ui",
     "test:e2e:debug": "pnpm exec playwright test --debug",
-    "test:mobile": "bash scripts/test/test-mobile.sh",
-    "test:edge-cases": "bash scripts/test/test-edge-cases.sh",
-    "test:browser-compat": "bash scripts/test/test-browser-compat.sh"
+    "test:mobile": "bash scripts/test/utils/test-mobile.sh",
+    "test:edge-cases": "bash scripts/test/functional/test-edge-cases.sh",
+    "test:browser-compat": "bash scripts/test/utils/test-browser-compat.sh"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

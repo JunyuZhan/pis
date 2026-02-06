@@ -4,7 +4,7 @@
  * 使用 pino 提供高性能的结构化日志
  * 注意：Next.js 环境中，日志主要输出到控制台
  *
- * @author PIS Contributors
+ * @author junyuzhan
  * @license MIT
  *
  * @example
@@ -19,13 +19,15 @@
  * log.info('Simple info message')
  * ```
  */
-import pino from 'pino'
+import pino from "pino";
 
 /** 日志级别（从环境变量读取，默认 info） */
-const LOG_LEVEL = (process.env.LOG_LEVEL || 'info').toLowerCase() as pino.Level
+const LOG_LEVEL = (process.env.LOG_LEVEL || "info").toLowerCase() as pino.Level;
 
 /** 是否启用彩色输出（开发环境默认启用） */
-const ENABLE_PRETTY = process.env.NODE_ENV === 'development' || process.env.ENABLE_PRETTY_LOG === 'true'
+const ENABLE_PRETTY =
+  process.env.NODE_ENV === "development" ||
+  process.env.ENABLE_PRETTY_LOG === "true";
 
 /**
  * 创建 Pino Logger 实例
@@ -38,7 +40,7 @@ const logger = pino({
   level: LOG_LEVEL,
   // 基础配置
   base: {
-    service: 'pis-web',
+    service: "pis-web",
     pid: process.pid,
   },
   // 时间戳格式
@@ -52,19 +54,19 @@ const logger = pino({
   // 格式化配置（开发环境）
   ...(ENABLE_PRETTY && {
     transport: {
-      target: 'pino-pretty',
+      target: "pino-pretty",
       options: {
         colorize: true,
-        translateTime: 'SYS:standard',
-        ignore: 'pid,hostname',
+        translateTime: "SYS:standard",
+        ignore: "pid,hostname",
         singleLine: false,
       },
     },
   }),
-})
+});
 
 // 导出默认 logger 实例
-export default logger
+export default logger;
 
 /**
  * 便捷日志方法
@@ -89,7 +91,7 @@ export const log = {
   warn: logger.warn.bind(logger),
   error: logger.error.bind(logger),
   fatal: logger.fatal.bind(logger),
-}
+};
 
 /**
  * Logger 类型定义
@@ -97,7 +99,7 @@ export const log = {
  * @description
  * Pino Logger 的类型，用于类型注解
  */
-export type Logger = typeof logger
+export type Logger = typeof logger;
 
 /** 导出 logger 实例（用于高级用法） */
-export { logger }
+export { logger };

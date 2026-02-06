@@ -34,6 +34,11 @@ vi.mock('@/lib/auth/jwt-helpers', async () => {
   }
 })
 
+// Mock auth api-helpers for requireAdmin
+vi.mock('@/lib/auth/api-helpers', () => ({
+  getCurrentUser: vi.fn(),
+}))
+
 // Mock global fetch
 global.fetch = vi.fn()
 
@@ -55,8 +60,47 @@ describe('POST /api/admin/photos/reprocess', () => {
       },
       update: vi.fn().mockResolvedValue({ data: [], error: null }),
     }
-    const { createClient } = await import('@/lib/database')
+    const { createClient, createAdminClient } = await import('@/lib/database')
     vi.mocked(createClient).mockResolvedValue(mockSupabaseClient)
+    
+    // Mock admin client for role queries
+    const mockAdminClient = {
+      from: vi.fn(),
+    }
+    // Mock admin role query for requireAdmin
+    const mockRoleSelect = vi.fn().mockReturnThis()
+    const mockRoleEq = vi.fn().mockReturnThis()
+    const mockRoleSingle = vi.fn().mockResolvedValue({
+      data: { role: 'admin' },
+      error: null,
+    })
+    mockAdminClient.from.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: mockRoleSelect,
+          eq: mockRoleEq,
+          single: mockRoleSingle,
+        }
+      }
+      // For other tables, return default chain
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: null,
+          error: null,
+        }),
+      }
+    })
+    vi.mocked(createAdminClient).mockResolvedValue(mockAdminClient)
+    
+    // Mock getCurrentUser for requireAdmin
+    const { getCurrentUser } = await import('@/lib/auth/api-helpers')
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      id: '00000000-0000-0000-0000-000000000000',
+      email: 'test@example.com',
+    } as any)
 
     // 导入 mock
     const { getUserFromRequest } = await import('@/lib/auth/jwt-helpers')
@@ -77,7 +121,8 @@ describe('POST /api/admin/photos/reprocess', () => {
 
   describe('authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
-      mockGetUserFromRequest.mockResolvedValue(null)
+      const { getCurrentUser } = await import('@/lib/auth/api-helpers')
+      vi.mocked(getCurrentUser).mockResolvedValue(null)
 
       const request = createMockRequest('http://localhost:3000/api/admin/photos/reprocess', {
         method: 'POST',

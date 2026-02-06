@@ -101,3 +101,8 @@ temp/
 
 # Claude AI configuration
 .claude/
+
+# Reports (keep structure but ignore temporary reports)
+reports/**/*.tmp
+reports/**/*.temp
+reports/test-reports/*.log

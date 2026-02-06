@@ -2,13 +2,10 @@
   "name": "@pis/web",
   "version": "1.0.0",
   "private": false,
-  "author": {
-    "name": "junyuzhan",
-    "email": "junyuzhan@outlook.com"
-  },
+  "author": "junyuzhan",
   "license": "MIT",
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

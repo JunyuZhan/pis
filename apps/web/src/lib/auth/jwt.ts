@@ -7,32 +7,47 @@
  *
  * @module lib/auth/jwt
  */
-import { SignJWT, jwtVerify } from 'jose'
+import { SignJWT, jwtVerify } from "jose";
 
 // ==================== Configuration ====================
 
 /** JWT 密钥（从环境变量读取） */
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.AUTH_JWT_SECRET || process.env.ALBUM_SESSION_SECRET || 'fallback-secret-please-change'
-)
+  process.env.AUTH_JWT_SECRET ||
+    process.env.ALBUM_SESSION_SECRET ||
+    "fallback-secret-please-change",
+);
+
+// 开发环境：输出 JWT 密钥配置信息（用于调试）
+if (process.env.NODE_ENV === "development") {
+  console.log("[JWT Config]", {
+    envVarExists: !!process.env.AUTH_JWT_SECRET,
+    envVarValue: process.env.AUTH_JWT_SECRET
+      ? `${process.env.AUTH_JWT_SECRET.substring(0, 10)}...`
+      : "undefined",
+    secretLength: JWT_SECRET.length,
+    hasFallback:
+      !process.env.AUTH_JWT_SECRET && !process.env.ALBUM_SESSION_SECRET,
+  });
+}
 
 /** JWT 签发者标识 */
-const JWT_ISSUER = 'pis-auth'
+const JWT_ISSUER = "pis-auth";
 
 /** JWT 受众标识 */
-const JWT_AUDIENCE = 'pis-app'
+const JWT_AUDIENCE = "pis-app";
 
 /** 访问令牌有效期（1小时） */
-const ACCESS_TOKEN_EXPIRY = '1h'
+const ACCESS_TOKEN_EXPIRY = "1h";
 
 /** 刷新令牌有效期（7天） */
-const REFRESH_TOKEN_EXPIRY = '7d'
+const REFRESH_TOKEN_EXPIRY = "7d";
 
 /** 访问令牌 Cookie 名称 */
-export const COOKIE_NAME = 'pis-auth-token'
+export const COOKIE_NAME = "pis-auth-token";
 
 /** 刷新令牌 Cookie 名称 */
-export const REFRESH_COOKIE_NAME = 'pis-refresh-token'
+export const REFRESH_COOKIE_NAME = "pis-refresh-token";
 
 // ==================== Type Definitions ====================
 
@@ -41,19 +56,19 @@ export const REFRESH_COOKIE_NAME = 'pis-refresh-token'
  */
 export interface JWTPayload {
   /** 用户邮箱 */
-  email: string
+  email: string;
   /** 令牌类型 */
-  type: 'access' | 'refresh'
+  type: "access" | "refresh";
   /** 用户 ID（subject） */
-  sub: string
+  sub: string;
   /** 签发者 */
-  iss: string
+  iss: string;
   /** 受众 */
-  aud: string
+  aud: string;
   /** 签发时间（issued at） */
-  iat: number
+  iat: number;
   /** 过期时间（expiration） */
-  exp: number
+  exp: number;
 }
 
 /**
@@ -61,9 +76,9 @@ export interface JWTPayload {
  */
 export interface AuthUser {
   /** 用户唯一标识符（UUID） */
-  id: string
+  id: string;
   /** 用户邮箱地址 */
-  email: string
+  email: string;
 }
 
 // ==================== JWT Tokens ====================
@@ -75,14 +90,14 @@ export interface AuthUser {
  * @returns {Promise<string>} 签名后的 JWT 访问令牌
  */
 export async function createAccessToken(user: AuthUser): Promise<string> {
-  return new SignJWT({ email: user.email, type: 'access' })
-    .setProtectedHeader({ alg: 'HS256' })
+  return new SignJWT({ email: user.email, type: "access" })
+    .setProtectedHeader({ alg: "HS256" })
     .setSubject(user.id)
     .setIssuer(JWT_ISSUER)
     .setAudience(JWT_AUDIENCE)
     .setIssuedAt()
     .setExpirationTime(ACCESS_TOKEN_EXPIRY)
-    .sign(JWT_SECRET)
+    .sign(JWT_SECRET);
 }
 
 /**
@@ -92,14 +107,14 @@ export async function createAccessToken(user: AuthUser): Promise<string> {
  * @returns {Promise<string>} 签名后的 JWT 刷新令牌
  */
 export async function createRefreshToken(user: AuthUser): Promise<string> {
-  return new SignJWT({ email: user.email, type: 'refresh' })
-    .setProtectedHeader({ alg: 'HS256' })
+  return new SignJWT({ email: user.email, type: "refresh" })
+    .setProtectedHeader({ alg: "HS256" })
     .setSubject(user.id)
     .setIssuer(JWT_ISSUER)
     .setAudience(JWT_AUDIENCE)
     .setIssuedAt()
     .setExpirationTime(REFRESH_TOKEN_EXPIRY)
-    .sign(JWT_SECRET)
+    .sign(JWT_SECRET);
 }
 
 /**
@@ -113,9 +128,18 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
     const { payload } = await jwtVerify(token, JWT_SECRET, {
       issuer: JWT_ISSUER,
       audience: JWT_AUDIENCE,
-    })
-    return payload as unknown as JWTPayload
-  } catch {
-    return null
+    });
+    return payload as unknown as JWTPayload;
+  } catch (error) {
+    // 开发环境输出详细错误信息
+    if (process.env.NODE_ENV === "development") {
+      console.error("[JWT verifyToken] Verification failed:", {
+        error: error instanceof Error ? error.message : String(error),
+        tokenLength: token.length,
+        tokenPreview: token.substring(0, 30) + "...",
+        secretLength: JWT_SECRET.length,
+      });
+    }
+    return null;
   }
 }

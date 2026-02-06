@@ -3,10 +3,7 @@
   "version": "1.0.0",
   "private": false,
   "type": "module",
-  "author": {
-    "name": "junyuzhan",
-    "email": "junyuzhan@outlook.com"
-  },
+  "author": "junyuzhan",
   "license": "MIT",
   "scripts": {
     "dev": "tsx watch src/index.ts",

@@ -29,8 +29,8 @@ export function ChangePasswordForm() {
       return
     }
 
-    if (formData.newPassword.length < 6) {
-      setError('新密码至少需要6个字符')
+    if (formData.newPassword.length < 8) {
+      setError('新密码至少需要8个字符')
       setLoading(false)
       return
     }
@@ -90,9 +90,12 @@ export function ChangePasswordForm() {
       )}
 
       <div>
-        <label className="block text-sm font-medium mb-2">当前密码</label>
+        <label htmlFor="current-password" className="block text-sm font-medium mb-2">
+          当前密码
+        </label>
         <div className="relative">
           <input
+            id="current-password"
             type={showCurrentPassword ? 'text' : 'password'}
             value={formData.currentPassword}
             onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
@@ -104,7 +107,7 @@ export function ChangePasswordForm() {
             type="button"
             onClick={() => setShowCurrentPassword(!showCurrentPassword)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary p-1.5 -m-1.5 rounded active:scale-[0.95] touch-manipulation"
-            aria-label={showCurrentPassword ? '隐藏密码' : '显示密码'}
+            aria-label={showCurrentPassword ? '隐藏当前密码' : '显示当前密码'}
           >
             {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
@@ -112,22 +115,25 @@ export function ChangePasswordForm() {
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-2">新密码</label>
+        <label htmlFor="new-password" className="block text-sm font-medium mb-2">
+          新密码
+        </label>
         <div className="relative">
           <input
+            id="new-password"
             type={showNewPassword ? 'text' : 'password'}
             value={formData.newPassword}
             onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
             className="input pr-10"
-            placeholder="至少6个字符"
+            placeholder="至少8个字符"
             required
-            minLength={6}
+            minLength={8}
           />
           <button
             type="button"
             onClick={() => setShowNewPassword(!showNewPassword)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary p-1.5 -m-1.5 rounded active:scale-[0.95] touch-manipulation"
-            aria-label={showNewPassword ? '隐藏密码' : '显示密码'}
+            aria-label={showNewPassword ? '隐藏新密码' : '显示新密码'}
           >
             {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
@@ -135,22 +141,25 @@ export function ChangePasswordForm() {
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-2">确认新密码</label>
+        <label htmlFor="confirm-password" className="block text-sm font-medium mb-2">
+          确认新密码
+        </label>
         <div className="relative">
           <input
+            id="confirm-password"
             type={showConfirmPassword ? 'text' : 'password'}
             value={formData.confirmPassword}
             onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
             className="input pr-10"
             placeholder="请再次输入新密码"
             required
-            minLength={6}
+            minLength={8}
           />
           <button
             type="button"
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary p-1.5 -m-1.5 rounded active:scale-[0.95] touch-manipulation"
-            aria-label={showConfirmPassword ? '隐藏密码' : '显示密码'}
+            aria-label={showConfirmPassword ? '隐藏确认密码' : '显示确认密码'}
           >
             {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>

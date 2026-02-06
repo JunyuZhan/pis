@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/database'
+import { requireAdmin } from '@/lib/auth/role-helpers'
 import { getCurrentUser } from '@/lib/auth/api-helpers'
 import type { PhotoGroupUpdate } from '@/types/database'
 import { albumGroupParamsSchema, updateGroupSchema } from '@/lib/validation/schemas'
@@ -30,11 +31,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { id: albumId, groupId } = paramsValidation.data
     const db = await createClient()
 
-    // 验证登录状态
+    // 先检查用户是否已登录
     const user = await getCurrentUser(request)
-
     if (!user) {
-      return ApiError.unauthorized('请先登录')
+      return ApiError.unauthorized('需要登录才能执行此操作')
+    }
+
+    // 再检查用户是否为管理员
+    const admin = await requireAdmin(request)
+    if (!admin) {
+      return ApiError.forbidden('需要管理员权限才能执行此操作')
     }
 
     // 验证相册存在
@@ -96,11 +102,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const db = await createClient()
     const dbAdmin = await createAdminClient()
 
-    // 验证登录状态
+    // 先检查用户是否已登录
     const user = await getCurrentUser(request)
-
     if (!user) {
-      return ApiError.unauthorized('请先登录')
+      return ApiError.unauthorized('需要登录才能执行此操作')
+    }
+
+    // 再检查用户是否为管理员
+    const admin = await requireAdmin(request)
+    if (!admin) {
+      return ApiError.forbidden('需要管理员权限才能执行此操作')
     }
 
     // 验证相册存在
@@ -209,11 +220,16 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const db = await createClient()
     const dbAdmin = await createAdminClient()
 
-    // 验证登录状态
+    // 先检查用户是否已登录
     const user = await getCurrentUser(request)
-
     if (!user) {
-      return ApiError.unauthorized('请先登录')
+      return ApiError.unauthorized('需要登录才能执行此操作')
+    }
+
+    // 再检查用户是否为管理员
+    const admin = await requireAdmin(request)
+    if (!admin) {
+      return ApiError.forbidden('需要管理员权限才能执行此操作')
     }
 
     // 验证相册存在

@@ -878,10 +878,9 @@ create_admin_account() {
         echo -e "${CYAN}正在创建管理员账号...${NC}"
         
         # 自动生成管理员账号（首次部署，密码为空，首次登录时设置）
-        ADMIN_EMAIL="admin@${DOMAIN:-localhost}"
-        if [ "$DOMAIN" = "localhost" ]; then
-            ADMIN_EMAIL="admin@example.com"
-        fi
+        # ⚠️ 重要：统一使用 admin@pis.com，与数据库初始化脚本一致
+        # 如果 DOMAIN 不是 localhost，也可以使用 admin@${DOMAIN}，但需要确保数据库初始化脚本也创建该邮箱
+        ADMIN_EMAIL="admin@pis.com"
         # 不设置密码，让用户首次登录时设置
         ADMIN_PASSWORD=""
         
@@ -903,7 +902,7 @@ create_admin_account() {
         # 已有管理员账号，询问是否创建新的
         echo -e "${CYAN}是否创建新的管理员账号？${NC}"
         echo ""
-        ADMIN_EMAIL=$(get_input "管理员邮箱" "admin@example.com")
+        ADMIN_EMAIL=$(get_input "管理员邮箱" "admin@pis.com")
         ADMIN_PASSWORD=$(get_input "管理员密码（至少 8 个字符，留空自动生成）" "")
         
         # 导出变量以便在其他函数中使用

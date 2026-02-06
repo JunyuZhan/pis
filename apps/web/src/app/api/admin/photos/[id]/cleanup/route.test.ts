@@ -40,6 +40,34 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
       from: vi.fn(),
       delete: vi.fn().mockResolvedValue({ data: [], error: null }),
     }
+    
+    // Mock admin role query for requireAdmin
+    const mockRoleSelect = vi.fn().mockReturnThis()
+    const mockRoleEq = vi.fn().mockReturnThis()
+    const mockRoleSingle = vi.fn().mockResolvedValue({
+      data: { role: 'admin' },
+      error: null,
+    })
+    mockAdminClient.from.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: mockRoleSelect,
+          eq: mockRoleEq,
+          single: mockRoleSingle,
+        }
+      }
+      // For other tables, return default chain
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: null,
+          error: null,
+        }),
+      }
+    })
+    
     vi.mocked(createAdminClient).mockResolvedValue(mockAdminClient)
     
     // 默认用户已登录
@@ -80,10 +108,19 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         error: { message: 'Not found' },
       })
 
-      mockAdminClient.from.mockReturnValue({
-        select: mockSelect,
-        eq: mockEq,
-        single: mockSingle,
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For other tables, return the new mock
+        return {
+          select: mockSelect,
+          eq: mockEq,
+          single: mockSingle,
+        }
       })
 
       const request = createMockRequest(`http://localhost:3000/api/admin/photos/${validPhotoId}/cleanup`, {
@@ -113,10 +150,19 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         error: null,
       })
 
-      mockAdminClient.from.mockReturnValue({
-        select: mockSelect,
-        eq: mockEq,
-        single: mockSingle,
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For other tables, return the new mock
+        return {
+          select: mockSelect,
+          eq: mockEq,
+          single: mockSingle,
+        }
       })
 
       const request = createMockRequest(`http://localhost:3000/api/admin/photos/${validPhotoId}/cleanup`, {
@@ -146,12 +192,20 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For photos table, return the new mock
+        return {
           select: mockSelect,
           eq: mockEq,
           single: mockSingle,
-        })
+        }
+      })
 
       const request = createMockRequest(`http://localhost:3000/api/admin/photos/${validPhotoId}/cleanup`, {
         method: 'DELETE',
@@ -180,12 +234,20 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For photos table, return the new mock
+        return {
           select: mockSelect,
           eq: mockEq,
           single: mockSingle,
-        })
+        }
+      })
 
       const request = createMockRequest(`http://localhost:3000/api/admin/photos/${validPhotoId}/cleanup`, {
         method: 'DELETE',
@@ -215,12 +277,20 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For photos table, return the new mock
+        return {
           select: mockSelect,
           eq: mockEq,
           single: mockSingle,
-        })
+        }
+      })
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -254,12 +324,20 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For photos table, return the new mock
+        return {
           select: mockSelect,
           eq: mockEq,
           single: mockSingle,
-        })
+        }
+      })
 
       // MinIO cleanup fails
       global.fetch = vi.fn().mockResolvedValue({
@@ -294,12 +372,20 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For photos table, return the new mock
+        return {
           select: mockSelect,
           eq: mockEq,
           single: mockSingle,
-        })
+        }
+      })
 
       const request = createMockRequest(`http://localhost:3000/api/admin/photos/${validPhotoId}/cleanup`, {
         method: 'DELETE',
@@ -331,12 +417,20 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For photos table, return the new mock
+        return {
           select: mockSelect,
           eq: mockEq,
           single: mockSingle,
-        })
+        }
+      })
 
       const request = createMockRequest(`http://localhost:3000/api/admin/photos/${validPhotoId}/cleanup`, {
         method: 'DELETE',
@@ -365,12 +459,20 @@ describe('DELETE /api/admin/photos/[id]/cleanup', () => {
         error: null,
       })
 
-      mockAdminClient.from
-        .mockReturnValueOnce({
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminClient.from.getMockImplementation()
+      mockAdminClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For photos table, return the new mock
+        return {
           select: mockSelect,
           eq: mockEq,
           single: mockSingle,
-        })
+        }
+      })
 
       mockAdminClient.delete.mockResolvedValueOnce({
         data: null,

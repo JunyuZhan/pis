@@ -20,6 +20,7 @@ vi.mock('@/lib/auth/api-helpers', () => ({
 
 describe('GET /api/admin/albums/[id]/groups/[groupId]/photos', () => {
   let mockDb: any
+  let mockAdminDb: any
   let mockGetCurrentUser: any
 
   const validAlbumId = '550e8400-e29b-41d4-a716-446655440000'
@@ -30,11 +31,42 @@ describe('GET /api/admin/albums/[id]/groups/[groupId]/photos', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     
-    const { createClient } = await import('@/lib/database')
+    const { createClient, createAdminClient } = await import('@/lib/database')
     const { getCurrentUser } = await import('@/lib/auth/api-helpers')
     
     mockDb = createMockDatabaseClient()
     vi.mocked(createClient).mockResolvedValue(mockDb)
+    
+    // Mock admin client for role queries
+    mockAdminDb = createMockDatabaseClient()
+    // Mock admin role query for requireAdmin
+    const mockRoleSelect = vi.fn().mockReturnThis()
+    const mockRoleEq = vi.fn().mockReturnThis()
+    const mockRoleSingle = vi.fn().mockResolvedValue({
+      data: { role: 'admin' },
+      error: null,
+    })
+    mockAdminDb.from.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: mockRoleSelect,
+          eq: mockRoleEq,
+          single: mockRoleSingle,
+        }
+      }
+      // For other tables, return default chain
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: null,
+          error: null,
+        }),
+      }
+    })
+    vi.mocked(createAdminClient).mockResolvedValue(mockAdminDb)
+    
     mockGetCurrentUser = vi.mocked(getCurrentUser)
     
     // 默认用户已登录
@@ -263,6 +295,34 @@ describe('POST /api/admin/albums/[id]/groups/[groupId]/photos', () => {
     
     mockDb = createMockDatabaseClient()
     mockAdminDb = createMockDatabaseClient()
+    
+    // Mock admin role query for requireAdmin
+    const mockRoleSelect = vi.fn().mockReturnThis()
+    const mockRoleEq = vi.fn().mockReturnThis()
+    const mockRoleSingle = vi.fn().mockResolvedValue({
+      data: { role: 'admin' },
+      error: null,
+    })
+    mockAdminDb.from.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: mockRoleSelect,
+          eq: mockRoleEq,
+          single: mockRoleSingle,
+        }
+      }
+      // For other tables, return default chain
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: null,
+          error: null,
+        }),
+      }
+    })
+    
     vi.mocked(createClient).mockResolvedValue(mockDb)
     vi.mocked(createAdminClient).mockResolvedValue(mockAdminDb)
     mockGetCurrentUser = vi.mocked(getCurrentUser)
@@ -417,10 +477,19 @@ describe('POST /api/admin/albums/[id]/groups/[groupId]/photos', () => {
           in: mockInPhotos,
         })
 
-      mockAdminDb.from.mockReturnValue({
-        select: mockSelectExisting,
-        eq: mockEqExisting,
-        in: mockInExisting,
+      // Preserve the users table mock for requireAdmin
+      const originalMockImplementation = mockAdminDb.from.getMockImplementation()
+      mockAdminDb.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          // Return the original users mock for requireAdmin
+          return originalMockImplementation!(table)
+        }
+        // For other tables, return the new mock
+        return {
+          select: mockSelectExisting,
+          eq: mockEqExisting,
+          in: mockInExisting,
+        }
       })
 
       const request = createMockRequest(
@@ -463,6 +532,34 @@ describe('DELETE /api/admin/albums/[id]/groups/[groupId]/photos', () => {
     
     mockDb = createMockDatabaseClient()
     mockAdminDb = createMockDatabaseClient()
+    
+    // Mock admin role query for requireAdmin
+    const mockRoleSelect = vi.fn().mockReturnThis()
+    const mockRoleEq = vi.fn().mockReturnThis()
+    const mockRoleSingle = vi.fn().mockResolvedValue({
+      data: { role: 'admin' },
+      error: null,
+    })
+    mockAdminDb.from.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: mockRoleSelect,
+          eq: mockRoleEq,
+          single: mockRoleSingle,
+        }
+      }
+      // For other tables, return default chain
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: null,
+          error: null,
+        }),
+      }
+    })
+    
     vi.mocked(createClient).mockResolvedValue(mockDb)
     vi.mocked(createAdminClient).mockResolvedValue(mockAdminDb)
     mockGetCurrentUser = vi.mocked(getCurrentUser)

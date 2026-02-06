@@ -1,6 +1,6 @@
 # PIS Deployment Guide
 
-> Author: junyuzhan (junyuzhan@outlook.com)
+> Author: junyuzhan
 > License: MIT
 
 ## Table of Contents
@@ -52,10 +52,10 @@ bash docker/deploy.sh <server-ip> <ssh-user>
 
 The script will guide you to choose between two deployment modes:
 
-| Mode | Description | Best For |
-|------|-------------|----------|
+| Mode                                | Description                                                                    | Best For                            |
+| ----------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------- |
 | **Fully Standalone**（Recommended） | All services containerized (PostgreSQL + MinIO + Redis + Web + Worker + Nginx) | Complete self-hosting, data privacy |
-| **Hybrid**（Optional） | Vercel (frontend) + Supabase (database) + Your server (storage/worker) | Quick setup, cloud frontend |
+| **Hybrid**（Optional）              | Vercel (frontend) + Supabase (database) + Your server (storage/worker)         | Quick setup, cloud frontend         |
 
 ### Deployment Flow
 
@@ -73,6 +73,7 @@ Step 8: Verify deployment
 ### Auto-Generated Secrets
 
 The deployment script automatically generates secure random values for:
+
 - `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY` (MinIO credentials)
 - `WORKER_API_KEY` (Worker API authentication)
 - `ALBUM_SESSION_SECRET` (JWT session signing)
@@ -81,11 +82,11 @@ The deployment script automatically generates secure random values for:
 
 ### Database Options
 
-| Type | Recommended For | Features |
-|------|-----------------|----------|
-| **PostgreSQL**（Recommended） | Standalone deployment | Self-hosted, local Docker, full control |
-| **Supabase**（Optional） | Hybrid deployment | Cloud-hosted, includes auth, requires internet |
-| **MySQL** | Standalone deployment | Self-hosted, local Docker |
+| Type                          | Recommended For       | Features                                       |
+| ----------------------------- | --------------------- | ---------------------------------------------- |
+| **PostgreSQL**（Recommended） | Standalone deployment | Self-hosted, local Docker, full control        |
+| **Supabase**（Optional）      | Hybrid deployment     | Cloud-hosted, includes auth, requires internet |
+| **MySQL**                     | Standalone deployment | Self-hosted, local Docker                      |
 
 ### PostgreSQL Configuration (Recommended)
 
@@ -123,6 +124,7 @@ If choosing hybrid mode, Supabase credentials are needed:
 #### Standalone Mode
 
 All services are accessible via your domain:
+
 ```
 https://yourdomain.com          # Main application
 https://yourdomain.com/media    # Media files
@@ -131,6 +133,7 @@ https://yourdomain.com/media    # Media files
 #### Hybrid Mode
 
 1. **Access MinIO Console** (if using MinIO):
+
    ```
    http://your-server-ip:9001
    ```
@@ -177,6 +180,7 @@ ss -tuln | grep -E ":(80|443|9000|9001|3001)"
 ## Architecture Overview
 
 > ⚠️ **Important**: The following is an **example deployment architecture**. PIS supports multiple deployment options:
+>
 > - **Frontend**: Vercel, self-hosted, Docker, K8s, or any platform supporting Next.js
 > - **Worker**: Standalone server, Docker, K8s, Cloud Functions, etc.
 > - **Storage**: MinIO, OSS, COS, S3, or any S3-compatible storage
@@ -206,17 +210,18 @@ ss -tuln | grep -E ":(80|443|9000|9001|3001)"
         └────────────────────┴────────────┴───────────────────────────────┘
 ```
 
-| Component | Example Deployment | Purpose |
-|-----------|-------------------|---------|
-| Next.js Frontend | Vercel (example) | User interface, API routes |
-| PostgreSQL | Supabase (example) | Metadata storage |
-| Auth | Supabase (example) | User authentication |
-| Realtime | Supabase (example) | Real-time push |
-| MinIO | Internal Docker (example) | Photo storage |
-| Worker | Internal Docker (example) | Image processing |
-| Redis | Internal Docker (example) | Task queue |
+| Component        | Example Deployment        | Purpose                    |
+| ---------------- | ------------------------- | -------------------------- |
+| Next.js Frontend | Vercel (example)          | User interface, API routes |
+| PostgreSQL       | Supabase (example)        | Metadata storage           |
+| Auth             | Supabase (example)        | User authentication        |
+| Realtime         | Supabase (example)        | Real-time push             |
+| MinIO            | Internal Docker (example) | Photo storage              |
+| Worker           | Internal Docker (example) | Image processing           |
+| Redis            | Internal Docker (example) | Task queue                 |
 
 **Other Deployment Options**:
+
 - **Fully Self-Hosted**: All services on the same server with nginx/Caddy
 - **Cloud-Native**: Vercel + Cloud Functions + S3 + Supabase
 - **Hybrid**: Self-hosted frontend + Cloud storage + Cloud database
@@ -237,11 +242,11 @@ ss -tuln | grep -E ":(80|443|9000|9001|3001)"
 
 PIS supports flexible deployment options. Example requirements:
 
-- A Linux server (recommended 2 cores 4GB+) - *if self-hosting Worker*
-- Docker installed - *if using Docker deployment*
-- Domain names - *optional, depends on your deployment*
-- Supabase account (free tier is fine) - *or use PostgreSQL/MySQL*
-- Vercel account (free tier is fine) - *or use other hosting platforms*
+- A Linux server (recommended 2 cores 4GB+) - _if self-hosting Worker_
+- Docker installed - _if using Docker deployment_
+- Domain names - _optional, depends on your deployment_
+- Supabase account (free tier is fine) - _or use PostgreSQL/MySQL_
+- Vercel account (free tier is fine) - _or use other hosting platforms_
 
 ---
 
@@ -261,11 +266,11 @@ PIS supports flexible deployment options. Example requirements:
 
 Go to project → **Settings** → **API**, copy the following information:
 
-| Name | Purpose | Example |
-|------|---------|---------|
-| Project URL | All clients | `https://xxxxx.supabase.co` |
-| anon public | Frontend browser | `eyJhbGciOiJIUzI1NiIs...` |
-| service_role | Worker backend | `eyJhbGciOiJIUzI1NiIs...` (⚠️ Keep secret!) |
+| Name         | Purpose          | Example                                     |
+| ------------ | ---------------- | ------------------------------------------- |
+| Project URL  | All clients      | `https://xxxxx.supabase.co`                 |
+| anon public  | Frontend browser | `eyJhbGciOiJIUzI1NiIs...`                   |
+| service_role | Worker backend   | `eyJhbGciOiJIUzI1NiIs...` (⚠️ Keep secret!) |
 
 ### 3. Execute Database Schema
 
@@ -276,6 +281,7 @@ Go to project → **Settings** → **API**, copy the following information:
 5. ✅ Done!
 
 **Or use command line**:
+
 ```bash
 # Use Supabase CLI or other migration tools to execute database schema
 ```
@@ -296,6 +302,7 @@ Go to project → **Settings** → **API**, copy the following information:
 5. ✅ Done! You can now use this email and password to log in at `/admin/login`
 
 **Note**:
+
 - The email and password you create here will be used to log in to the admin dashboard
 - Make sure to check "Auto Confirm User" so you can log in immediately
 - You can create multiple admin accounts if needed
@@ -305,11 +312,11 @@ Go to project → **Settings** → **API**, copy the following information:
 1. Go to **Authentication** → **URL Configuration**
 2. Set:
 
-| Configuration | Value |
-|--------------|-------|
-| Site URL | `https://yourdomain.com` |
+| Configuration | Value                                  |
+| ------------- | -------------------------------------- |
+| Site URL      | `https://yourdomain.com`               |
 | Redirect URLs | `https://yourdomain.com/auth/callback` |
-| | `http://localhost:3000/auth/callback` |
+|               | `http://localhost:3000/auth/callback`  |
 
 ### 6. Enable Realtime (Optional but Recommended)
 
@@ -337,6 +344,7 @@ docker-compose up -d minio redis minio-init
 ```
 
 Verify services started:
+
 ```bash
 docker-compose ps
 # Should see pis-minio and pis-redis status as Up (healthy)
@@ -391,11 +399,11 @@ pnpm dev
 
 ### 5. Access Application
 
-| URL | Description |
-|-----|-------------|
-| http://localhost:3000 | Frontend homepage |
-| http://localhost:3000/admin/login | Admin dashboard login |
-| http://localhost:9001 | MinIO Console (minioadmin/minioadmin) |
+| URL                               | Description                           |
+| --------------------------------- | ------------------------------------- |
+| http://localhost:3000             | Frontend homepage                     |
+| http://localhost:3000/admin/login | Admin dashboard login                 |
+| http://localhost:9001             | MinIO Console (minioadmin/minioadmin) |
 
 ---
 
@@ -508,6 +516,7 @@ server {
 ```
 
 Enable configuration:
+
 ```bash
 sudo ln -s /etc/nginx/sites-available/media.yourdomain.com /etc/nginx/sites-enabled/
 sudo certbot --nginx -d media.yourdomain.com
@@ -529,6 +538,7 @@ Supports Supabase (recommended), PostgreSQL, MySQL. Configure `DATABASE_TYPE` an
 ### CDN
 
 Configure CDN to improve image loading speed:
+
 1. Add media server domain to CDN
 2. Configure cache rules (long-term cache for thumbnails/previews)
 3. Update `NEXT_PUBLIC_MEDIA_URL` to point to CDN address
@@ -540,28 +550,28 @@ Configure CDN to improve image loading speed:
 
 ### Frontend (Vercel / apps/web/.env)
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | `https://xxx.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key | `eyJ...` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key | `eyJ...` |
-| `NEXT_PUBLIC_APP_URL` | Application access URL | `https://yourdomain.com` |
-| `NEXT_PUBLIC_MEDIA_URL` | Media CDN address | `https://media.yourdomain.com/pis-photos` |
+| Variable                        | Description               | Example                                   |
+| ------------------------------- | ------------------------- | ----------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase project URL      | `https://xxx.supabase.co`                 |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key    | `eyJ...`                                  |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Supabase service role key | `eyJ...`                                  |
+| `NEXT_PUBLIC_APP_URL`           | Application access URL    | `https://yourdomain.com`                  |
+| `NEXT_PUBLIC_MEDIA_URL`         | Media CDN address         | `https://media.yourdomain.com/pis-photos` |
 
 ### Worker (Docker / .env)
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `SUPABASE_URL` | Supabase project URL | `https://xxx.supabase.co` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key | `eyJ...` |
-| `MINIO_ENDPOINT_HOST` | MinIO host | `minio` (Docker) / `localhost` |
-| `MINIO_ENDPOINT_PORT` | MinIO port | `9000` |
-| `MINIO_USE_SSL` | Use SSL | `false` |
-| `MINIO_ACCESS_KEY` | MinIO access key | Custom strong password |
-| `MINIO_SECRET_KEY` | MinIO secret key | Custom strong password (≥8 chars) |
-| `MINIO_BUCKET` | Bucket name | `pis-photos` |
-| `REDIS_HOST` | Redis host | `redis` (Docker) / `localhost` |
-| `REDIS_PORT` | Redis port | `6379` |
+| Variable                    | Description               | Example                           |
+| --------------------------- | ------------------------- | --------------------------------- |
+| `SUPABASE_URL`              | Supabase project URL      | `https://xxx.supabase.co`         |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key | `eyJ...`                          |
+| `MINIO_ENDPOINT_HOST`       | MinIO host                | `minio` (Docker) / `localhost`    |
+| `MINIO_ENDPOINT_PORT`       | MinIO port                | `9000`                            |
+| `MINIO_USE_SSL`             | Use SSL                   | `false`                           |
+| `MINIO_ACCESS_KEY`          | MinIO access key          | Custom strong password            |
+| `MINIO_SECRET_KEY`          | MinIO secret key          | Custom strong password (≥8 chars) |
+| `MINIO_BUCKET`              | Bucket name               | `pis-photos`                      |
+| `REDIS_HOST`                | Redis host                | `redis` (Docker) / `localhost`    |
+| `REDIS_PORT`                | Redis port                | `6379`                            |
 
 ---
 

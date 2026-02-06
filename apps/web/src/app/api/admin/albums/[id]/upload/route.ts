@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/database'
-import { getCurrentUser } from '@/lib/auth/api-helpers'
+import { requireAdmin } from '@/lib/auth/role-helpers'
 import { v4 as uuidv4 } from 'uuid'
 import { checkRateLimit } from '@/middleware-rate-limit'
 import { uploadPhotoSchema, albumIdSchema } from '@/lib/validation/schemas'
@@ -89,17 +89,24 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const albumId = idValidation.data.id
     response = new NextResponse()
 
-    // 验证登录状态
+    // 先检查用户是否已登录
+    const { getCurrentUser } = await import('@/lib/auth/api-helpers')
     const user = await getCurrentUser(request)
-
     if (!user) {
-      return ApiError.unauthorized('请先登录')
+      return ApiError.unauthorized('需要登录才能执行此操作')
+    }
+
+    // 再检查用户是否为管理员
+    const admin = await requireAdmin(request)
+
+    if (!admin) {
+      return ApiError.forbidden('需要管理员权限才能执行此操作')
     }
 
     // 速率限制：每个用户每分钟最多 300 次上传请求（支持批量并发上传）
     // 假设并发为 5，每秒处理 5 张，一分钟可处理 300 张
     const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
-    const identifier = `upload:${user.id}:${ip}`
+    const identifier = `upload:${admin.id}:${ip}`
     const rateLimit = await checkRateLimit(identifier, 300, 60 * 1000) // 300 次/分钟
 
     if (!rateLimit.allowed) {

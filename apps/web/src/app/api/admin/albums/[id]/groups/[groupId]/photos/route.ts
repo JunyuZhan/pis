@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/database'
+import { requireAdmin } from '@/lib/auth/role-helpers'
 import { getCurrentUser } from '@/lib/auth/api-helpers'
 import { albumGroupParamsSchema, assignPhotosToGroupSchema, removePhotosFromGroupSchema } from '@/lib/validation/schemas'
 import { safeValidate, handleError, ApiError } from '@/lib/validation/error-handler'
@@ -35,6 +36,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // 验证登录状态（管理员）或公开访问（访客）
     const user = await getCurrentUser(request)
+    const admin = await requireAdmin(request)
 
     // 验证相册存在
     const albumResult = await db
@@ -50,7 +52,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const album = albumResult.data as { id: string; user_id: string; is_public: boolean }
 
     // 验证权限：管理员或公开相册的访客
-    if (user && album.user_id === user.id) {
+    if (admin) {
       // 管理员可以访问
     } else if (album.is_public) {
       // 公开相册的访客可以访问
@@ -103,11 +105,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const db = await createClient()
     const dbAdmin = await createAdminClient()
 
-    // 验证登录状态
+    // 先检查用户是否已登录
     const user = await getCurrentUser(request)
-
     if (!user) {
-      return ApiError.unauthorized('请先登录')
+      return ApiError.unauthorized('需要登录才能执行此操作')
+    }
+
+    // 再检查用户是否为管理员
+    const admin = await requireAdmin(request)
+    if (!admin) {
+      return ApiError.forbidden('需要管理员权限才能执行此操作')
     }
 
     // 验证相册存在
@@ -209,11 +216,16 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const db = await createClient()
     const dbAdmin = await createAdminClient()
 
-    // 验证登录状态
+    // 先检查用户是否已登录
     const user = await getCurrentUser(request)
-
     if (!user) {
-      return ApiError.unauthorized('请先登录')
+      return ApiError.unauthorized('需要登录才能执行此操作')
+    }
+
+    // 再检查用户是否为管理员
+    const admin = await requireAdmin(request)
+    if (!admin) {
+      return ApiError.forbidden('需要管理员权限才能执行此操作')
     }
 
     // 验证相册存在

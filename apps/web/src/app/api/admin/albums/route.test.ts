@@ -19,9 +19,15 @@ vi.mock('@/lib/auth/jwt-helpers', async () => {
   }
 })
 
+// Mock auth api-helpers for requireAdmin
+vi.mock('@/lib/auth/api-helpers', () => ({
+  getCurrentUser: vi.fn(),
+}))
+
 // Mock database
 vi.mock('@/lib/database', () => ({
   createClient: vi.fn(),
+  createAdminClient: vi.fn(),
 }))
 
 // Mock global fetch
@@ -31,6 +37,7 @@ vi.mock('@/lib/utils', () => ({
   getAlbumShareUrl: vi.fn((slug: string) => `https://example.com/album/${slug}`),
   generateAlbumSlug: vi.fn(() => 'test-album'),
   getAppBaseUrl: vi.fn(() => 'http://localhost:3000'),
+  generateUploadToken: vi.fn(() => 'mock-upload-token'),
 }))
 
 describe('GET /api/admin/albums', () => {
@@ -39,7 +46,8 @@ describe('GET /api/admin/albums', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     
-    const { createClient } = await import('@/lib/database')
+    const { createClient, createAdminClient } = await import('@/lib/database')
+    const { getCurrentUser } = await import('@/lib/auth/api-helpers')
     
     // Initialize mockSupabaseClient with default mocks
     mockSupabaseClient = {
@@ -53,7 +61,45 @@ describe('GET /api/admin/albums', () => {
       },
     }
     
+    // Mock admin client for role queries
+    const mockAdminClient = {
+      from: vi.fn(),
+    }
+    // Mock admin role query for requireAdmin
+    const mockRoleSelect = vi.fn().mockReturnThis()
+    const mockRoleEq = vi.fn().mockReturnThis()
+    const mockRoleSingle = vi.fn().mockResolvedValue({
+      data: { role: 'admin' },
+      error: null,
+    })
+    mockAdminClient.from.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: mockRoleSelect,
+          eq: mockRoleEq,
+          single: mockRoleSingle,
+        }
+      }
+      // For other tables, return default chain
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: null,
+          error: null,
+        }),
+      }
+    })
+    
     vi.mocked(createClient).mockResolvedValue(mockSupabaseClient)
+    vi.mocked(createAdminClient).mockResolvedValue(mockAdminClient)
+    
+    // Mock getCurrentUser for requireAdmin
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      id: 'user-123',
+      email: 'test@example.com',
+    } as any)
     
     // 默认用户已登录
     vi.mocked(getUserFromRequest).mockResolvedValue({
@@ -63,7 +109,8 @@ describe('GET /api/admin/albums', () => {
 
   describe('authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
-      vi.mocked(getUserFromRequest).mockResolvedValue(null)
+      const { getCurrentUser } = await import('@/lib/auth/api-helpers')
+      vi.mocked(getCurrentUser).mockResolvedValue(null)
 
       const request = createMockRequest('http://localhost:3000/api/admin/albums')
       const response = await GET(request)
@@ -254,7 +301,8 @@ describe('GET /api/admin/albums', () => {
     })
 
     it('should return 500 on exception', async () => {
-      vi.mocked(getUserFromRequest).mockRejectedValue(new Error('Unexpected error'))
+      const { getCurrentUser } = await import('@/lib/auth/api-helpers')
+      vi.mocked(getCurrentUser).mockRejectedValue(new Error('Unexpected error'))
 
       const request = createMockRequest('http://localhost:3000/api/admin/albums')
       const response = await GET(request)
@@ -272,7 +320,8 @@ describe('POST /api/admin/albums', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     
-    const { createClient } = await import('@/lib/database')
+    const { createClient, createAdminClient } = await import('@/lib/database')
+    const { getCurrentUser } = await import('@/lib/auth/api-helpers')
     
     // Initialize mockSupabaseClient with default mocks
     mockSupabaseClient = {
@@ -286,7 +335,45 @@ describe('POST /api/admin/albums', () => {
       },
     }
     
+    // Mock admin client for role queries
+    const mockAdminClient = {
+      from: vi.fn(),
+    }
+    // Mock admin role query for requireAdmin
+    const mockRoleSelect = vi.fn().mockReturnThis()
+    const mockRoleEq = vi.fn().mockReturnThis()
+    const mockRoleSingle = vi.fn().mockResolvedValue({
+      data: { role: 'admin' },
+      error: null,
+    })
+    mockAdminClient.from.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: mockRoleSelect,
+          eq: mockRoleEq,
+          single: mockRoleSingle,
+        }
+      }
+      // For other tables, return default chain
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: null,
+          error: null,
+        }),
+      }
+    })
+    
     vi.mocked(createClient).mockResolvedValue(mockSupabaseClient)
+    vi.mocked(createAdminClient).mockResolvedValue(mockAdminClient)
+    
+    // Mock getCurrentUser for requireAdmin
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      id: 'user-123',
+      email: 'test@example.com',
+    } as any)
     
     // 默认用户已登录
     vi.mocked(getUserFromRequest).mockResolvedValue({
@@ -329,7 +416,8 @@ describe('POST /api/admin/albums', () => {
 
   describe('authentication', () => {
     it('should return 401 if user is not authenticated', async () => {
-      vi.mocked(getUserFromRequest).mockResolvedValue(null)
+      const { getCurrentUser } = await import('@/lib/auth/api-helpers')
+      vi.mocked(getCurrentUser).mockResolvedValue(null)
 
       const request = createMockRequest('http://localhost:3000/api/admin/albums', {
         method: 'POST',
@@ -483,24 +571,17 @@ describe('POST /api/admin/albums', () => {
     })
 
     it('should accept valid public URLs for poster_image_url', async () => {
-      const mockInsert = vi.fn().mockReturnThis()
-      const mockSelect = vi.fn().mockReturnThis()
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: {
+      const mockInsert = vi.fn().mockResolvedValue({
+        data: [{
           id: 'album-123',
           slug: 'test-album',
           title: 'Test Album',
           is_public: false,
           poster_image_url: 'https://example.com/image.jpg',
-        },
+        }],
         error: null,
       })
-
-      mockSupabaseClient.from.mockReturnValue({
-        insert: mockInsert,
-        select: mockSelect,
-        single: mockSingle,
-      })
+      mockSupabaseClient.insert = mockInsert
 
       const request = createMockRequest('http://localhost:3000/api/admin/albums', {
         method: 'POST',
@@ -641,7 +722,8 @@ describe('POST /api/admin/albums', () => {
     })
 
     it('should return 500 on exception', async () => {
-      vi.mocked(getUserFromRequest).mockRejectedValue(new Error('Unexpected error'))
+      const { getCurrentUser } = await import('@/lib/auth/api-helpers')
+      vi.mocked(getCurrentUser).mockRejectedValue(new Error('Unexpected error'))
 
       const request = createMockRequest('http://localhost:3000/api/admin/albums', {
         method: 'POST',

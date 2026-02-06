@@ -16,6 +16,11 @@ vi.mock('@/lib/auth/api-helpers', () => ({
 // Mock fetch for worker call
 global.fetch = vi.fn()
 
+vi.mock('@/lib/database', () => ({
+  createClient: vi.fn(),
+  createAdminClient: vi.fn(),
+}))
+
 describe('PUT /api/admin/upload-proxy', () => {
   let mockGetCurrentUser: any
   let mockFetch: any
@@ -24,8 +29,41 @@ describe('PUT /api/admin/upload-proxy', () => {
     vi.clearAllMocks()
     
     const { getCurrentUser } = await import('@/lib/auth/api-helpers')
+    const { createAdminClient } = await import('@/lib/database')
     mockGetCurrentUser = vi.mocked(getCurrentUser)
     mockFetch = vi.mocked(global.fetch)
+    
+    // Mock admin client for role queries
+    const mockAdminClient = {
+      from: vi.fn(),
+    }
+    // Mock admin role query for requireAdmin
+    const mockRoleSelect = vi.fn().mockReturnThis()
+    const mockRoleEq = vi.fn().mockReturnThis()
+    const mockRoleSingle = vi.fn().mockResolvedValue({
+      data: { role: 'admin' },
+      error: null,
+    })
+    mockAdminClient.from.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: mockRoleSelect,
+          eq: mockRoleEq,
+          single: mockRoleSingle,
+        }
+      }
+      // For other tables, return default chain
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: null,
+          error: null,
+        }),
+      }
+    })
+    vi.mocked(createAdminClient).mockResolvedValue(mockAdminClient)
     
     // 默认用户已登录
     mockGetCurrentUser.mockResolvedValue({

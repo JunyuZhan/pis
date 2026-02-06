@@ -35,12 +35,25 @@ vi.mock('@/lib/auth', () => ({
   createSession: vi.fn(),
 }))
 
+vi.mock('@/lib/auth/jwt', () => ({
+  createAccessToken: vi.fn().mockResolvedValue('mock-access-token'),
+  createRefreshToken: vi.fn().mockResolvedValue('mock-refresh-token'),
+  COOKIE_NAME: 'pis-auth-token',
+  REFRESH_COOKIE_NAME: 'pis-refresh-token',
+}))
+
 vi.mock('@/lib/auth/password', () => ({
   verifyPassword: vi.fn(),
 }))
 
 vi.mock('@/middleware-rate-limit', () => ({
   checkRateLimit: vi.fn(),
+}))
+
+vi.mock('next/headers', () => ({
+  cookies: vi.fn().mockResolvedValue({
+    set: vi.fn(),
+  }),
 }))
 
 describe('POST /api/auth/login', () => {
