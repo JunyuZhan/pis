@@ -483,6 +483,44 @@ generate_config() {
             echo ""
             # 继续执行下面的配置生成代码
         else
+            # 检查必需变量是否存在，如果缺失则补充
+            local need_update=0
+            
+            # 检查 AUTH_JWT_SECRET
+            if ! grep -q "^AUTH_JWT_SECRET=" "$env_target" 2>/dev/null || [ -z "$auth_jwt_secret" ]; then
+                echo -e "${YELLOW}⚠️  检测到缺失 AUTH_JWT_SECRET，将自动生成${NC}"
+                if [ -z "$AUTH_JWT_SECRET" ]; then
+                    AUTH_JWT_SECRET=$(generate_secret)
+                fi
+                if [[ "$OSTYPE" == "darwin"* ]]; then
+                    sed -i '' "/^AUTH_JWT_SECRET=/d" "$env_target" 2>/dev/null || true
+                else
+                    sed -i "/^AUTH_JWT_SECRET=/d" "$env_target" 2>/dev/null || true
+                fi
+                echo "AUTH_JWT_SECRET=$AUTH_JWT_SECRET" >> "$env_target"
+                need_update=1
+            fi
+            
+            # 检查 ALBUM_SESSION_SECRET
+            local album_secret=$(grep '^ALBUM_SESSION_SECRET=' "$env_target" 2>/dev/null | cut -d'=' -f2 | xargs)
+            if ! grep -q "^ALBUM_SESSION_SECRET=" "$env_target" 2>/dev/null || [ -z "$album_secret" ]; then
+                echo -e "${YELLOW}⚠️  检测到缺失 ALBUM_SESSION_SECRET，将自动生成${NC}"
+                if [ -z "$ALBUM_SESSION_SECRET" ]; then
+                    ALBUM_SESSION_SECRET=$(generate_secret)
+                fi
+                if [[ "$OSTYPE" == "darwin"* ]]; then
+                    sed -i '' "/^ALBUM_SESSION_SECRET=/d" "$env_target" 2>/dev/null || true
+                else
+                    sed -i "/^ALBUM_SESSION_SECRET=/d" "$env_target" 2>/dev/null || true
+                fi
+                echo "ALBUM_SESSION_SECRET=$ALBUM_SESSION_SECRET" >> "$env_target"
+                need_update=1
+            fi
+            
+            if [ "$need_update" -eq 1 ]; then
+                echo -e "${CYAN}已补充缺失的安全密钥${NC}"
+            fi
+            
             echo -e "${CYAN}配置文件位置：$env_target${NC}"
             echo -e "${CYAN}已配置自定义密钥，保留现有配置${NC}"
             echo ""
