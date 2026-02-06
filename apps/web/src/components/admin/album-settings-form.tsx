@@ -8,6 +8,7 @@ import { MultiWatermarkManager, type WatermarkItem } from './multi-watermark-man
 import { StylePresetSelector } from './style-preset-selector'
 import { StorageChecker } from './storage-checker'
 import { TemplateSelector } from './template-selector'
+import { CustomerSelector } from './customer-selector'
 import { showSuccess, handleApiError } from '@/lib/toast'
 import { getSafeMediaUrl, getFtpServerHost, getFtpServerPort } from '@/lib/utils'
 
@@ -1018,6 +1019,15 @@ export function AlbumSettingsForm({ album, coverOriginalKey }: AlbumSettingsForm
             </span>
           </p>
         </div>
+      </section>
+
+      {/* 客户关联 */}
+      <section className="card space-y-4">
+        <h2 className="text-lg font-medium">客户关联</h2>
+        <p className="text-sm text-text-muted">
+          将此相册关联到客户，方便管理和查看客户的所有相册
+        </p>
+        <CustomerSelector albumId={album.id} />
       </section>
 
       {/* 存储检查 */}
