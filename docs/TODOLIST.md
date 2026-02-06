@@ -42,51 +42,55 @@
 
 ## 高优先级
 
-### 1. 后台系统设置界面
+### 1. 后台系统设置界面 ✅ 已完成
 > 让用户通过网页配置系统，无需编辑 .env 文件
 
 **功能点：**
-- [ ] 创建 `system_settings` 数据库表
-- [ ] 品牌设置
-  - [ ] 摄影师/工作室名称
-  - [ ] 品牌标语
-  - [ ] Logo 上传
-  - [ ] Favicon 上传
-- [ ] 版权与备案
-  - [ ] 版权声明文字
-  - [ ] ICP 备案号
-  - [ ] 公安备案号
-- [ ] 站点配置
-  - [ ] 站点标题
-  - [ ] 站点描述
-  - [ ] SEO 关键词
-- [ ] 功能开关
-  - [ ] 是否允许游客访问首页
-  - [ ] 默认是否启用水印
-  - [ ] 默认是否允许下载
-  - [ ] 是否显示 EXIF 信息
-- [ ] 社交链接
-  - [ ] 微信二维码
-  - [ ] 微博/Instagram 等链接
-  - [ ] 联系方式
+- [x] 创建 `system_settings` 数据库表
+- [x] 品牌设置
+  - [x] 摄影师/工作室名称
+  - [x] 品牌标语
+  - [ ] Logo 上传（待实现）
+  - [ ] Favicon 上传（待实现）
+- [x] 版权与备案
+  - [x] 版权声明文字
+  - [x] ICP 备案号
+  - [x] 公安备案号
+- [x] 站点配置
+  - [x] 站点标题
+  - [x] 站点描述
+  - [x] SEO 关键词
+- [x] 功能开关
+  - [x] 是否允许游客访问首页
+  - [x] 默认是否启用水印
+  - [x] 默认是否允许下载
+  - [x] 是否显示 EXIF 信息
+- [x] 社交链接
+  - [ ] 微信二维码上传（待实现）
+  - [x] 微博/Instagram 等链接
+  - [x] 联系方式
+- [x] 主题设置
+  - [x] 主题模式（亮色/暗色/跟随系统）
+  - [x] 主色调选择
 
-**技术实现：**
+**已完成的技术实现：**
 ```
-1. 数据库表设计
-   - key (VARCHAR): 设置键名
-   - value (JSONB): 设置值
-   - category (VARCHAR): 分类
-   - updated_at (TIMESTAMP): 更新时间
+1. 数据库表: system_settings
+   - docker/init-postgresql-db.sql (新增表和初始数据)
+   - docker/migrations/001_add_system_settings.sql (迁移脚本)
 
 2. API 接口
    - GET /api/admin/settings - 获取所有设置
    - PATCH /api/admin/settings - 更新设置
-   - GET /api/public/settings - 获取公开设置（品牌、备案等）
+   - GET /api/public/settings - 获取公开设置
 
 3. 前端组件
-   - SettingsPage: 设置页面
-   - SettingsForm: 各分类的表单组件
-   - useSettings: 全局设置 Hook
+   - components/admin/system-settings-section.tsx
+   - hooks/use-settings.ts (useSettings, useAdminSettings, SettingsProvider)
+   - lib/settings.ts (服务端获取设置)
+
+4. Footer 组件更新
+   - site-footer.tsx / album-footer.tsx 使用数据库设置
 ```
 
 ### 2. GitHub Releases 升级系统

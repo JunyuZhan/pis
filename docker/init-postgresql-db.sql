@@ -392,6 +392,79 @@ VALUES (
 ON CONFLICT (email) DO NOTHING;
 
 -- ============================================
+-- 系统设置表（用于后台可视化配置）
+-- ============================================
+CREATE TABLE IF NOT EXISTS system_settings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    key VARCHAR(100) UNIQUE NOT NULL,        -- 设置键名
+    value JSONB NOT NULL DEFAULT '{}',       -- 设置值（支持复杂数据结构）
+    category VARCHAR(50) NOT NULL,           -- 分类: brand, site, feature, social, seo
+    description TEXT,                        -- 设置说明
+    is_public BOOLEAN DEFAULT false,         -- 是否公开（前台可访问）
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 创建索引
+CREATE INDEX IF NOT EXISTS idx_system_settings_key ON system_settings(key);
+CREATE INDEX IF NOT EXISTS idx_system_settings_category ON system_settings(category);
+CREATE INDEX IF NOT EXISTS idx_system_settings_public ON system_settings(is_public) WHERE is_public = true;
+
+-- 为 system_settings 表创建触发器
+DROP TRIGGER IF EXISTS update_system_settings_updated_at ON system_settings;
+CREATE TRIGGER update_system_settings_updated_at
+    BEFORE UPDATE ON system_settings
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- 初始化默认系统设置
+-- 品牌设置
+INSERT INTO system_settings (key, value, category, description, is_public) VALUES
+('brand_name', '"PIS Photography"', 'brand', '品牌/工作室名称', true),
+('brand_tagline', '"专业活动摄影"', 'brand', '品牌标语', true),
+('brand_logo', 'null', 'brand', 'Logo 图片 URL', true),
+('brand_favicon', 'null', 'brand', 'Favicon URL', true)
+ON CONFLICT (key) DO NOTHING;
+
+-- 版权与备案
+INSERT INTO system_settings (key, value, category, description, is_public) VALUES
+('copyright_text', '""', 'brand', '版权声明文字（留空则使用品牌名称）', true),
+('icp_number', '""', 'brand', 'ICP 备案号', true),
+('police_number', '""', 'brand', '公安备案号', true)
+ON CONFLICT (key) DO NOTHING;
+
+-- 站点设置
+INSERT INTO system_settings (key, value, category, description, is_public) VALUES
+('site_title', '"PIS - 即时影像分享"', 'site', '站点标题', true),
+('site_description', '"专业级私有化即时摄影分享系统"', 'site', '站点描述', true),
+('site_keywords', '"摄影,相册,分享,活动摄影"', 'site', 'SEO 关键词', true)
+ON CONFLICT (key) DO NOTHING;
+
+-- 功能开关
+INSERT INTO system_settings (key, value, category, description, is_public) VALUES
+('allow_public_home', 'true', 'feature', '是否允许游客访问首页', false),
+('default_watermark_enabled', 'false', 'feature', '新相册默认启用水印', false),
+('default_allow_download', 'true', 'feature', '新相册默认允许下载', false),
+('default_show_exif', 'true', 'feature', '新相册默认显示 EXIF', false),
+('polling_interval', '3000', 'feature', '实时更新轮询间隔（毫秒）', false)
+ON CONFLICT (key) DO NOTHING;
+
+-- 社交链接
+INSERT INTO system_settings (key, value, category, description, is_public) VALUES
+('social_wechat_qrcode', 'null', 'social', '微信二维码图片 URL', true),
+('social_weibo', '""', 'social', '微博链接', true),
+('social_instagram', '""', 'social', 'Instagram 链接', true),
+('social_email', '""', 'social', '联系邮箱', true),
+('social_phone', '""', 'social', '联系电话', true)
+ON CONFLICT (key) DO NOTHING;
+
+-- 主题设置
+INSERT INTO system_settings (key, value, category, description, is_public) VALUES
+('theme_mode', '"system"', 'theme', '主题模式: light, dark, system', true),
+('theme_primary_color', '"#4F46E5"', 'theme', '主色调', true)
+ON CONFLICT (key) DO NOTHING;
+
+-- ============================================
 -- 初始化完成提示
 -- ============================================
 DO $$
@@ -408,6 +481,7 @@ BEGIN
     RAISE NOTICE '   - package_downloads 表: 存储打包下载任务';
     RAISE NOTICE '   - photo_groups 表: 存储照片分组';
     RAISE NOTICE '   - photo_group_assignments 表: 存储照片分组关联';
+    RAISE NOTICE '   - system_settings 表: 存储系统设置';
     RAISE NOTICE '';
     RAISE NOTICE '👤 默认用户账户:';
     RAISE NOTICE '   - 管理员: admin@pis.com';

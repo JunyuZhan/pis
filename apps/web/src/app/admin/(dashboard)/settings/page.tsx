@@ -14,12 +14,14 @@ import {
   CheckCircle2,
   Download,
   Sparkles,
+  Settings,
 } from "lucide-react";
 import { ChangePasswordForm } from "@/components/admin/change-password-form";
 import { TemplateManager } from "@/components/admin/template-manager";
 import { ConsistencyChecker } from "@/components/admin/consistency-checker";
 import { UpgradeManager } from "@/components/admin/upgrade-manager";
 import { AIRetouchSettings } from "@/components/admin/ai-retouch-settings";
+import { SystemSettingsSection } from "@/components/admin/system-settings-section";
 
 export default async function SettingsPage() {
   const db = await createClient();
@@ -150,6 +152,15 @@ export default async function SettingsPage() {
           修改密码
         </h2>
         <ChangePasswordForm />
+      </div>
+
+      {/* 站点设置 */}
+      <div className="card">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Settings className="w-5 h-5 text-accent" />
+          站点设置
+        </h2>
+        <SystemSettingsSection />
       </div>
 
       {/* 系统统计 */}
