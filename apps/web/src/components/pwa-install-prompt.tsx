@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { X, Download, Share, Plus } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { X, Download } from 'lucide-react'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -11,12 +11,12 @@ interface BeforeInstallPromptEvent extends Event {
 export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showPrompt, setShowPrompt] = useState(false)
-  const [showInstallGuide, setShowInstallGuide] = useState(false)
+  const [isInstalling, setIsInstalling] = useState(false)
   const [isIOS, setIsIOS] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
   const [isStandalone, setIsStandalone] = useState(false)
   const hasBeforeInstallPromptRef = useRef(false)
   const promptShownRef = useRef(false)
+  const installTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     // 检查是否已经安装
@@ -60,9 +60,6 @@ export function PWAInstallPrompt() {
     const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as WindowMSStream).MSStream
     setIsIOS(iOS)
     
-    // 检查是否是移动设备（包括 Android、iOS 等）
-    const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    setIsMobile(mobile)
 
     // 检查 Service Worker 是否已注册
     const checkServiceWorker = async () => {
@@ -93,47 +90,14 @@ export function PWAInstallPrompt() {
       setDeferredPrompt(promptEvent)
       hasBeforeInstallPromptRef.current = true
       
-      // 移动端：直接弹出系统安装提示
-      if (mobile && !iOS) {
-        // 延迟一点时间，确保页面加载完成
-        setTimeout(async () => {
-          if (shouldShowPrompt()) {
-            try {
-              console.log('[PWA] Mobile device detected, showing system install prompt directly')
-              // 先标记，避免重复弹出
-              markPromptShown()
-              await promptEvent.prompt()
-              const { outcome } = await promptEvent.userChoice
-              if (outcome === 'accepted') {
-                console.log('[PWA] User accepted install prompt')
-              } else {
-                console.log('[PWA] User dismissed install prompt')
-              }
-              setDeferredPrompt(null)
-            } catch (error) {
-              console.error('[PWA] Install prompt error:', error)
-              // 如果直接弹出失败，显示自定义提示
-              // 注意：此时 markPromptShown() 已经调用，需要重置才能显示
-              promptShownRef.current = false
-              localStorage.removeItem('pwa-prompt-dismissed')
-              if (shouldShowPrompt()) {
-                markPromptShown()
-                setShowPrompt(true)
-              }
-            }
-          }
-        }, 2000)
-      } else {
-        // 桌面端或移动端没有 beforeinstallprompt 事件：显示自定义提示框
-        // 移动端 Android 如果有 beforeinstallprompt 事件，会在上面的 if 分支直接弹出
-        setTimeout(() => {
-          if (shouldShowPrompt()) {
-            console.log('[PWA] Desktop or mobile without beforeinstallprompt, showing custom install prompt')
-            markPromptShown()
-            setShowPrompt(true)
-          }
-        }, 3000)
-      }
+      // 显示自定义提示框
+      setTimeout(() => {
+        if (shouldShowPrompt()) {
+          console.log('[PWA] Showing custom install prompt')
+          markPromptShown()
+          setShowPrompt(true)
+        }
+      }, 3000)
     }
 
     window.addEventListener('beforeinstallprompt', handler)
@@ -175,38 +139,78 @@ export function PWAInstallPrompt() {
     }
   }, [])
 
-  const handleInstall = async () => {
-    // 确保标记已设置（防止重复显示）
-    promptShownRef.current = true
-    localStorage.setItem('pwa-prompt-dismissed', Date.now().toString())
-    
-    if (deferredPrompt) {
-      try {
+  const handleInstall = useCallback(async () => {
+    // 防抖：如果正在安装，忽略重复点击
+    if (isInstalling) {
+      return
+    }
+
+    setIsInstalling(true)
+
+    // 清除之前的超时
+    if (installTimeoutRef.current) {
+      clearTimeout(installTimeoutRef.current)
+    }
+
+    // 设置超时，防止长时间无响应
+    installTimeoutRef.current = setTimeout(() => {
+      setIsInstalling(false)
+    }, 5000)
+
+    try {
+      if (deferredPrompt) {
+        // 有 deferredPrompt，直接调用系统安装提示
         await deferredPrompt.prompt()
         const { outcome } = await deferredPrompt.userChoice
         
         if (outcome === 'accepted') {
           console.log('[PWA] User accepted install prompt')
+          // 标记已处理，关闭提示
+          promptShownRef.current = true
+          localStorage.setItem('pwa-prompt-dismissed', Date.now().toString())
+          setDeferredPrompt(null)
+          setShowPrompt(false)
+        } else {
+          // 用户取消，保持提示框显示
+          console.log('[PWA] User dismissed install prompt')
         }
-      } catch (error) {
-        console.error('[PWA] Install error:', error)
+      } else {
+        // 没有 deferredPrompt，关闭提示（用户需要手动安装）
+        console.log('[PWA] No deferredPrompt, user needs to install manually')
+        promptShownRef.current = true
+        localStorage.setItem('pwa-prompt-dismissed', Date.now().toString())
+        setShowPrompt(false)
       }
-
-      setDeferredPrompt(null)
+    } catch (error) {
+      console.error('[PWA] Install error:', error)
+      // 如果调用失败，关闭提示
+      promptShownRef.current = true
+      localStorage.setItem('pwa-prompt-dismissed', Date.now().toString())
       setShowPrompt(false)
-    } else {
-      // 没有 deferredPrompt，提供手动安装指引
-      console.log('[PWA] No deferredPrompt, showing manual install instructions')
-      setShowPrompt(false)
+    } finally {
+      setIsInstalling(false)
+      if (installTimeoutRef.current) {
+        clearTimeout(installTimeoutRef.current)
+        installTimeoutRef.current = null
+      }
     }
-  }
+  }, [deferredPrompt, isInstalling])
 
-  const handleDismiss = () => {
+  const handleDismiss = useCallback(() => {
     // 确保标记已设置（防止重复显示）
     promptShownRef.current = true
     localStorage.setItem('pwa-prompt-dismissed', Date.now().toString())
     setShowPrompt(false)
-  }
+  }, [])
+
+  // 清理超时
+  useEffect(() => {
+    return () => {
+      if (installTimeoutRef.current) {
+        clearTimeout(installTimeoutRef.current)
+      }
+    }
+  }, [])
 
   if (isStandalone || !showPrompt) return null
 
@@ -231,80 +235,24 @@ export function PWAInstallPrompt() {
               }
             </p>
 
-            {isIOS ? (
-              // iOS 安装指引
-              <div className="text-xs text-text-muted space-y-1">
-                <p className="flex items-center gap-1">
-                  <span className="bg-surface px-1.5 py-0.5 rounded">1</span>
-                  点击底部的 <Share className="w-3.5 h-3.5 inline" /> 分享按钮
-                </p>
-                <p className="flex items-center gap-1">
-                  <span className="bg-surface px-1.5 py-0.5 rounded">2</span>
-                  选择 <Plus className="w-3.5 h-3.5 inline" /> &quot;添加到主屏幕&quot;
-                </p>
-              </div>
-            ) : (
-              // 其他平台安装按钮
-              <div className="space-y-2">
-                {deferredPrompt ? (
-                  <button
-                    onClick={handleInstall}
-                    className="btn-primary text-sm w-full"
-                  >
-                    <Download className="w-4 h-4" />
-                    立即安装
-                  </button>
-                ) : isMobile ? (
-                  // 移动端：即使没有 deferredPrompt，也显示安装按钮
-                  // 点击后显示安装指引
-                  <>
-                    <button
-                      onClick={() => {
-                        setShowInstallGuide(true)
-                      }}
-                      className="btn-primary text-sm w-full"
-                    >
-                      <Download className="w-4 h-4" />
-                      安装应用
-                    </button>
-                    {showInstallGuide && (
-                      <div className="mt-2 p-3 bg-surface rounded-lg border border-border">
-                        <p className="text-xs text-text-secondary mb-2 font-medium">安装步骤：</p>
-                        <div className="text-xs text-text-muted space-y-1.5">
-                          <p className="flex items-start gap-1.5">
-                            <span className="bg-accent/20 text-accent px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 mt-0.5">1</span>
-                            <span>点击浏览器右上角菜单按钮 <span className="text-accent font-medium">⋮</span></span>
-                          </p>
-                          <p className="flex items-start gap-1.5">
-                            <span className="bg-accent/20 text-accent px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 mt-0.5">2</span>
-                            <span>选择&ldquo;安装应用&rdquo;或&ldquo;添加到主屏幕&rdquo;</span>
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => setShowInstallGuide(false)}
-                          className="mt-2 text-xs text-accent hover:text-accent/80"
-                        >
-                          收起
-                        </button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  // 桌面端：显示手动安装步骤
-                  <div className="text-xs text-text-muted space-y-1">
-                    <p className="font-medium text-text-secondary mb-1">手动安装步骤：</p>
-                    <p className="flex items-center gap-1">
-                      <span className="bg-surface px-1.5 py-0.5 rounded">1</span>
-                      点击浏览器地址栏右侧的 <Download className="w-3.5 h-3.5 inline" /> 图标
-                    </p>
-                    <p className="flex items-center gap-1">
-                      <span className="bg-surface px-1.5 py-0.5 rounded">2</span>
-                      选择&ldquo;安装&rdquo;或&ldquo;添加到主屏幕&rdquo;
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* 安装按钮 */}
+            <button
+              onClick={handleInstall}
+              disabled={isInstalling}
+              className="btn-primary text-sm w-full disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+            >
+              {isInstalling ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  安装中...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  {deferredPrompt ? '立即安装' : '安装应用'}
+                </>
+              )}
+            </button>
           </div>
 
           {/* 关闭按钮 */}
