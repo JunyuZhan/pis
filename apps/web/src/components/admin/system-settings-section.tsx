@@ -337,6 +337,12 @@ export function SystemSettingsSection() {
         if ('theme_border_radius' in updates) {
           setBorderRadius(formData.theme_border_radius as 'none' | 'sm' | 'md' | 'lg' | 'xl' | 'full')
         }
+        
+        // 触发前台设置刷新（通过自定义事件）
+        // 前台 SettingsProvider 会监听此事件并刷新设置
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('settings-updated'))
+        }
       } catch (fetchError: unknown) {
         clearTimeout(timeoutId)
         

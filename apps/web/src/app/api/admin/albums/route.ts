@@ -170,6 +170,52 @@ export async function POST(request: NextRequest) {
 
     const db = await createClient()
 
+    // 获取系统默认设置
+    let defaultWatermarkEnabled = false
+    let defaultAllowDownload = true
+    let defaultShowExif = true
+    
+    try {
+      // 从数据库直接读取功能设置（非公开设置，需要管理员权限）
+      const { createAdminClient } = await import('@/lib/database')
+      const adminDb = await createAdminClient()
+      const { data: settingsData, error: settingsError } = await adminDb
+        .from('system_settings')
+        .select('key, value')
+        .in('key', ['default_watermark_enabled', 'default_allow_download', 'default_show_exif'])
+      
+      if (settingsError) {
+        console.warn('获取系统默认设置失败，使用硬编码默认值:', settingsError)
+      } else if (settingsData) {
+        const settingsMap = new Map(
+          (settingsData as Array<{ key: string; value: unknown }>).map(s => [s.key, s.value])
+        )
+        
+        // 解析 JSON 字符串值
+        const parseValue = (value: unknown): boolean => {
+          if (typeof value === 'string') {
+            try {
+              const parsed = JSON.parse(value)
+              return parsed === true
+            } catch {
+              return value === 'true'
+            }
+          }
+          return value === true
+        }
+        
+        defaultWatermarkEnabled = parseValue(settingsMap.get('default_watermark_enabled')) || false
+        defaultAllowDownload = settingsMap.has('default_allow_download') 
+          ? parseValue(settingsMap.get('default_allow_download')) !== false
+          : true
+        defaultShowExif = settingsMap.has('default_show_exif')
+          ? parseValue(settingsMap.get('default_show_exif')) !== false
+          : true
+      }
+    } catch (error) {
+      console.warn('获取系统默认设置失败，使用硬编码默认值:', error)
+    }
+
     // 解析和验证请求体
     let body: unknown
     try {
@@ -233,11 +279,11 @@ export async function POST(request: NextRequest) {
       expires_at: finalExpiresAt,
       layout: layout || 'masonry',
       sort_rule: sort_rule || 'capture_desc',
-      allow_download: allow_download ?? true,
+      allow_download: allow_download ?? defaultAllowDownload,
       allow_batch_download: finalAllowBatchDownload, // 默认关闭，需要管理员明确开启
-      show_exif: show_exif ?? true,
+      show_exif: show_exif ?? defaultShowExif,
       allow_share: true, // 默认允许分享
-      watermark_enabled: watermark_enabled ?? false,
+      watermark_enabled: watermark_enabled ?? defaultWatermarkEnabled,
       watermark_type: watermark_type || null,
       watermark_config: (watermark_config || {}) as Json,
       color_grading: color_grading as Json | null,  // 新增：调色配置

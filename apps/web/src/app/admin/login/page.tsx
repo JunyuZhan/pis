@@ -47,7 +47,7 @@ export default function LoginPage() {
 
     // 检测是否为移动端
     const userAgent =
-      navigator.userAgent || navigator.vendor || (window as any).opera;
+      navigator.userAgent || navigator.vendor || (window as Window & { opera?: string }).opera || '';
     const mobileRegex =
       /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
     setIsMobile(mobileRegex.test(userAgent));

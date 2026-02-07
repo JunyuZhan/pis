@@ -25,21 +25,6 @@ interface UserInfo {
   role: string;
 }
 
-interface SpecialPermissionRow {
-  granted: boolean;
-  expires_at: string | null;
-  permissions: {
-    code: string;
-    name: string;
-  };
-}
-
-interface RolePermissionRow {
-  permissions: {
-    code: string;
-  };
-}
-
 const updateUserPermissionsSchema = z.object({
   grants: z.array(
     z.object({

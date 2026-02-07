@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback, useRef } from 'react'
 import type { Photo } from '@/types/database'
+import { useSettings } from './use-settings'
 
 interface UsePhotoRealtimeOptions {
   albumId: string
@@ -47,6 +48,10 @@ export function usePhotoRealtime({
   onUpdate,
   onDelete,
 }: UsePhotoRealtimeOptions) {
+  // 从设置中获取轮询间隔
+  const { settings } = useSettings()
+  const pollingInterval = settings?.polling_interval || parseInt(process.env.NEXT_PUBLIC_POLLING_INTERVAL || '5000', 10)
+
   // 使用 ref 存储回调，避免重复订阅
   const callbacksRef = useRef({ onInsert, onUpdate, onDelete })
   callbacksRef.current = { onInsert, onUpdate, onDelete }
@@ -98,8 +103,7 @@ export function usePhotoRealtime({
     // 初始化已知照片ID
     checkForUpdates()
 
-    // 设置轮询间隔（默认5秒）
-    const pollingInterval = parseInt(process.env.NEXT_PUBLIC_POLLING_INTERVAL || '5000', 10)
+    // 设置轮询间隔（从设置中读取，默认5秒）
     const intervalId = setInterval(checkForUpdates, pollingInterval)
 
     // 在effect开始时复制ref值，避免cleanup时ref已改变
@@ -109,7 +113,7 @@ export function usePhotoRealtime({
       clearInterval(intervalId)
       knownPhotoIds.clear()
     }
-  }, [albumId, albumSlug, enabled, checkForUpdates])
+  }, [albumId, albumSlug, enabled, checkForUpdates, pollingInterval])
 }
 
 /**
@@ -124,6 +128,12 @@ export function usePhotoRealtimeAdmin({
   enabled?: boolean
   onStatusChange?: (photoId: string, status: Photo['status']) => void
 }) {
+  // 从设置中获取轮询间隔（管理员端使用更短的间隔）
+  const { settings } = useSettings()
+  const adminPollingInterval = settings?.polling_interval 
+    ? Math.min(settings.polling_interval, 2000) // 管理员端最多2秒
+    : parseInt(process.env.NEXT_PUBLIC_ADMIN_POLLING_INTERVAL || '3000', 10)
+
   const callbackRef = useRef(onStatusChange)
   callbackRef.current = onStatusChange
 
@@ -168,9 +178,8 @@ export function usePhotoRealtimeAdmin({
     // 初始化状态映射
     checkForStatusChanges()
 
-    // 设置轮询间隔（管理员端更频繁，默认3秒）
-    const pollingInterval = parseInt(process.env.NEXT_PUBLIC_ADMIN_POLLING_INTERVAL || '3000', 10)
-    const intervalId = setInterval(checkForStatusChanges, pollingInterval)
+    // 设置轮询间隔（管理员端更频繁）
+    const intervalId = setInterval(checkForStatusChanges, adminPollingInterval)
 
     // 在effect开始时复制ref值，避免cleanup时ref已改变
     const photoStatusMap = photoStatusMapRef.current
@@ -179,5 +188,5 @@ export function usePhotoRealtimeAdmin({
       clearInterval(intervalId)
       photoStatusMap.clear()
     }
-  }, [albumId, enabled, checkForStatusChanges])
+  }, [albumId, enabled, checkForStatusChanges, adminPollingInterval])
 }

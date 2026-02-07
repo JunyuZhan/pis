@@ -8,6 +8,8 @@ export interface SystemSettings {
   brand_tagline: string
   brand_logo: string | null
   brand_favicon: string | null
+  logo_url?: string | null       // 新字段
+  favicon_url?: string | null    // 新字段
   copyright_text: string
   icp_number: string
   police_number: string
@@ -17,10 +19,13 @@ export interface SystemSettings {
   site_keywords: string
   // 社交
   social_wechat_qrcode: string | null
+  wechat_qrcode_url?: string | null  // 新字段
   social_weibo: string
   social_instagram: string
   social_email: string
   social_phone: string
+  // 功能
+  polling_interval?: number  // 轮询间隔（毫秒）
   // 主题
   theme_mode: 'light' | 'dark' | 'system'
   theme_primary_color: string
@@ -47,11 +52,12 @@ const defaultSettings: SystemSettings = {
   social_wechat_qrcode: null,
   social_weibo: '',
   social_instagram: '',
-  social_email: '',
-  social_phone: '',
-  theme_mode: 'system',
-  theme_primary_color: '#D4AF37',
-}
+    social_email: '',
+    social_phone: '',
+    polling_interval: parseInt(process.env.NEXT_PUBLIC_POLLING_INTERVAL || '3000', 10),
+    theme_mode: 'system',
+    theme_primary_color: '#D4AF37',
+  }
 
 const SettingsContext = createContext<SettingsContextValue>({
   settings: defaultSettings,
@@ -94,6 +100,23 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchSettings()
+    
+    // 监听设置更新事件（后台保存设置后触发）
+    // 注意：这是客户端组件，window 应该总是存在
+    const handleSettingsUpdate = () => {
+      console.log('[Settings] Settings updated, refreshing...')
+      fetchSettings()
+    }
+    
+    if (typeof window !== 'undefined') {
+      window.addEventListener('settings-updated', handleSettingsUpdate)
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('settings-updated', handleSettingsUpdate)
+      }
+    }
   }, [fetchSettings])
 
   return (

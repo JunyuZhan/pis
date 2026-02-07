@@ -117,6 +117,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const description = (siteSettings.site_description as string) ||
     (messages as { home?: { description?: string } })?.home?.description || 
     (locale === "zh-CN" ? "私有化即时摄影分享系统，让每一刻精彩即时呈现" : "Private Instant photo Sharing system");
+  const keywords = (siteSettings.site_keywords as string) || 
+    (locale === "zh-CN" ? "摄影,相册,分享,活动摄影" : "photography,album,sharing,event photography");
   
   // 获取自定义 favicon
   const faviconUrl = (siteSettings.favicon_url as string) || (siteSettings.brand_favicon as string) || "/favicon.ico";
@@ -125,6 +127,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title,
     description,
+    keywords,
     manifest: "/manifest.json",
     icons: {
       icon: faviconUrl,
@@ -262,17 +265,6 @@ export default async function RootLayout({
           rel="apple-touch-icon"
           sizes="167x167"
           href="/icons/icon-192x192.png"
-        />
-        {/* Splash screens for iOS */}
-        <link
-          rel="apple-touch-startup-image"
-          href="/splash/splash-1170x2532.png"
-          media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)"
-        />
-        <link
-          rel="apple-touch-startup-image"
-          href="/splash/splash-1284x2778.png"
-          media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)"
         />
       </head>
       <body className={inter.className}>

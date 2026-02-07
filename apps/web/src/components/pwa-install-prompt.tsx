@@ -11,6 +11,7 @@ interface BeforeInstallPromptEvent extends Event {
 export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showPrompt, setShowPrompt] = useState(false)
+  const [showInstallGuide, setShowInstallGuide] = useState(false)
   const [isIOS, setIsIOS] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [isStandalone, setIsStandalone] = useState(false)
@@ -253,32 +254,53 @@ export function PWAInstallPrompt() {
                     <Download className="w-4 h-4" />
                     立即安装
                   </button>
+                ) : isMobile ? (
+                  // 移动端：即使没有 deferredPrompt，也显示安装按钮
+                  // 点击后显示安装指引
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowInstallGuide(true)
+                      }}
+                      className="btn-primary text-sm w-full"
+                    >
+                      <Download className="w-4 h-4" />
+                      安装应用
+                    </button>
+                    {showInstallGuide && (
+                      <div className="mt-2 p-3 bg-surface rounded-lg border border-border">
+                        <p className="text-xs text-text-secondary mb-2 font-medium">安装步骤：</p>
+                        <div className="text-xs text-text-muted space-y-1.5">
+                          <p className="flex items-start gap-1.5">
+                            <span className="bg-accent/20 text-accent px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 mt-0.5">1</span>
+                            <span>点击浏览器右上角菜单按钮 <span className="text-accent font-medium">⋮</span></span>
+                          </p>
+                          <p className="flex items-start gap-1.5">
+                            <span className="bg-accent/20 text-accent px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 mt-0.5">2</span>
+                            <span>选择&ldquo;安装应用&rdquo;或&ldquo;添加到主屏幕&rdquo;</span>
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setShowInstallGuide(false)}
+                          className="mt-2 text-xs text-accent hover:text-accent/80"
+                        >
+                          收起
+                        </button>
+                      </div>
+                    )}
+                  </>
                 ) : (
+                  // 桌面端：显示手动安装步骤
                   <div className="text-xs text-text-muted space-y-1">
                     <p className="font-medium text-text-secondary mb-1">手动安装步骤：</p>
-                    {isMobile ? (
-                      <>
-                        <p className="flex items-center gap-1">
-                          <span className="bg-surface px-1.5 py-0.5 rounded">1</span>
-                          点击浏览器菜单（右上角 <span className="text-accent">⋮</span>）
-                        </p>
-                        <p className="flex items-center gap-1">
-                          <span className="bg-surface px-1.5 py-0.5 rounded">2</span>
-                          选择&ldquo;安装应用&rdquo;或&ldquo;添加到主屏幕&rdquo;
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="flex items-center gap-1">
-                          <span className="bg-surface px-1.5 py-0.5 rounded">1</span>
-                          点击浏览器地址栏右侧的 <Download className="w-3.5 h-3.5 inline" /> 图标
-                        </p>
-                        <p className="flex items-center gap-1">
-                          <span className="bg-surface px-1.5 py-0.5 rounded">2</span>
-                          选择&ldquo;安装&rdquo;或&ldquo;添加到主屏幕&rdquo;
-                        </p>
-                      </>
-                    )}
+                    <p className="flex items-center gap-1">
+                      <span className="bg-surface px-1.5 py-0.5 rounded">1</span>
+                      点击浏览器地址栏右侧的 <Download className="w-3.5 h-3.5 inline" /> 图标
+                    </p>
+                    <p className="flex items-center gap-1">
+                      <span className="bg-surface px-1.5 py-0.5 rounded">2</span>
+                      选择&ldquo;安装&rdquo;或&ldquo;添加到主屏幕&rdquo;
+                    </p>
                   </div>
                 )}
               </div>

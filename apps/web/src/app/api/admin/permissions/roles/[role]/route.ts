@@ -19,22 +19,6 @@ interface PermissionRow {
   code: string;
 }
 
-interface RolePermissionRow {
-  permission_id: string;
-  permissions: {
-    id: string;
-    code: string;
-    name: string;
-    description: string;
-    category: string;
-  };
-}
-
-interface PermissionRow {
-  id: string;
-  code: string;
-}
-
 const updateRolePermissionsSchema = z.object({
   permissions: z.array(z.string()),
 });

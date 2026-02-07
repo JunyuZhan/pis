@@ -9,7 +9,9 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/auth/middleware";
+import { getUserFromRequest } from "@/lib/auth/jwt-helpers";
 import { locales, defaultLocale, type Locale } from "./i18n/config";
+import { createAdminClient } from "@/lib/database";
 
 // 扩展 globalThis 类型以支持自定义属性
 declare global {
@@ -64,6 +66,51 @@ export async function middleware(request: NextRequest) {
     }
 
     return authResponse;
+  }
+
+  // 检查首页访问控制（allow_public_home）
+  // 首页路径：/ 或 /zh-CN 或 /en 等
+  const isHomePage = pathname === "/" || locales.some(loc => pathname === `/${loc}`)
+  if (isHomePage) {
+    try {
+      const adminDb = await createAdminClient()
+      const { data: settingData, error: settingError } = await adminDb
+        .from('system_settings')
+        .select('key, value')
+        .eq('key', 'allow_public_home')
+        .single()
+
+      if (!settingError && settingData) {
+        // 解析 JSON 字符串值
+        let allowPublicHome = true // 默认允许
+        const value = (settingData as { key: string; value: unknown }).value
+        if (typeof value === 'string') {
+          try {
+            const parsed = JSON.parse(value)
+            allowPublicHome = parsed === true
+          } catch {
+            allowPublicHome = value === 'true'
+          }
+        } else if (typeof value === 'boolean') {
+          allowPublicHome = value
+        }
+
+        // 如果不允许公开访问首页，检查用户是否已登录
+        if (!allowPublicHome) {
+          // 验证用户是否已登录（使用 getUserFromRequest 验证 token）
+          const user = await getUserFromRequest(request)
+          if (!user) {
+            // 未登录，重定向到登录页
+            const loginUrl = new URL('/admin/login', request.url)
+            loginUrl.searchParams.set('redirect', pathname)
+            return NextResponse.redirect(loginUrl)
+          }
+        }
+      }
+    } catch (error) {
+      // 如果读取设置失败，默认允许访问（优雅降级）
+      console.warn('[Middleware] Failed to check allow_public_home setting:', error)
+    }
   }
 
   // Set locale cookie if not present or different (for non-admin routes)
