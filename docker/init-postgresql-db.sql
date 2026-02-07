@@ -88,6 +88,8 @@ CREATE TABLE IF NOT EXISTS albums (
     selected_count INTEGER DEFAULT 0,
     view_count INTEGER DEFAULT 0,
     metadata JSONB DEFAULT '{}',
+    -- 所有者
+    owner_id UUID REFERENCES users(id),  -- 相册所有者
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     deleted_at TIMESTAMP WITH TIME ZONE
@@ -858,6 +860,16 @@ SELECT 'retoucher', id FROM permissions
 WHERE code IN (
     'album:view',
     'photo:view', 'photo:edit', 'photo:retouch', 'photo:download'
+)
+ON CONFLICT (role, permission_id) DO NOTHING;
+
+-- 查看者权限（只读）
+INSERT INTO role_permissions (role, permission_id)
+SELECT 'viewer', id FROM permissions 
+WHERE code IN (
+    'album:view',
+    'photo:view',
+    'analytics:view'
 )
 ON CONFLICT (role, permission_id) DO NOTHING;
 
