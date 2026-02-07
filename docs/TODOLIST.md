@@ -590,6 +590,25 @@
    - 支持记录操作者信息、资源信息、变更详情
 ```
 
+**数据备份与恢复已完成的技术实现：**
+```
+1. API 端点
+   - GET /api/admin/backup: 获取备份信息（数据库统计、存储统计）
+   - GET /api/admin/backup/export: 导出数据（JSON 格式）
+   - POST /api/admin/backup/import: 导入数据
+
+2. 前端组件
+   - components/admin/backup-manager.tsx: 备份管理器
+   - 页面: /admin/settings/backup
+
+3. 功能特点
+   - 选择性导出/导入数据表
+   - 显示数据库表统计
+   - 显示存储空间使用情况
+   - 显示最近操作记录
+   - 支持 JSON 格式导出/导入
+```
+
 ### 13. 云服务版本
 - [ ] SaaS 多租户支持
 - [ ] 订阅计费
