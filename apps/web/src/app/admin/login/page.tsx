@@ -132,7 +132,7 @@ export default function LoginPage() {
         turnstileContainerRef.current.innerHTML = "";
 
         // 重新渲染
-        window.turnstile.render(turnstileContainerRef.current, {
+        const widgetId = window.turnstile.render(turnstileContainerRef.current, {
           sitekey: siteKey,
           callback: (token: string) => {
             console.log("[Login] Turnstile verified (refreshed)");
@@ -153,6 +153,20 @@ export default function LoginPage() {
           size: "invisible",
           theme: "auto",
         });
+
+        // Invisible 模式需要手动触发验证
+        setTimeout(() => {
+          if (window.turnstile && widgetId) {
+            try {
+              console.log("[Login] Executing Turnstile verification (refreshed)");
+              window.turnstile.execute(widgetId);
+            } catch (error) {
+              console.error("[Login] Failed to execute Turnstile:", error);
+              setTurnstileError(true);
+              setShowRefreshButton(false);
+            }
+          }
+        }, 100);
       }
     } catch (error) {
       console.error("[Login] Failed to refresh Turnstile:", error);
@@ -210,8 +224,8 @@ export default function LoginPage() {
     }
 
     // 如果配置了 Turnstile，等待验证完成
-    // Invisible 模式会在页面加载时自动执行验证
-    // 优化：移动端需要更长的时间
+    // Invisible 模式会在页面加载时自动执行验证（通过 execute() 方法）
+    // 优化：移动端需要更长的时间（网络较慢，脚本加载和验证需要更多时间）
     if (hasTurnstile && !turnstileToken && !turnstileError) {
       // 计算从页面加载到现在已经过去的时间
       const timeSincePageLoad = pageLoadTimeRef.current
@@ -237,15 +251,17 @@ export default function LoginPage() {
           // 继续登录流程，让服务端处理（服务端有降级策略）
         }
       } else {
-        // 如果页面刚加载不久，最多再等待 500ms（大幅减少等待时间）
-        // Turnstile 通常在页面加载后很快完成验证
-        const remainingWait = Math.max(0, 500 - timeSincePageLoad);
+        // 移动端需要更长的等待时间（2秒），因为网络和脚本加载可能较慢
+        // 桌面端等待时间较短（1秒）
+        const maxWaitTime = isMobile ? 2000 : 1000;
+        const remainingWait = Math.max(0, maxWaitTime - timeSincePageLoad);
+        
         if (remainingWait > 0) {
           console.log(
-            `[Login] Waiting for Turnstile (${remainingWait}ms remaining)`,
+            `[Login] Waiting for Turnstile (${remainingWait}ms remaining, mobile: ${isMobile})`,
           );
-          // 使用更短的等待间隔，让 UI 能够及时更新
-          const waitInterval = 50; // 进一步减少到 50ms，让 UI 更流畅
+          // 使用较短的等待间隔，让 UI 能够及时更新
+          const waitInterval = 100; // 100ms 间隔，平衡响应性和性能
           let waited = 0;
           while (!turnstileToken && !turnstileError && waited < remainingWait) {
             await new Promise((resolve) => setTimeout(resolve, waitInterval));
