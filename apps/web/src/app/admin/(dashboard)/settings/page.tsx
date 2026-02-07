@@ -350,6 +350,24 @@ export default async function SettingsPage() {
         </a>
       </div>
 
+      {/* 邮件配置 */}
+      <div className="card">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Mail className="w-5 h-5 text-accent" />
+          邮件通知配置
+        </h2>
+        <p className="text-sm text-text-muted mb-4">
+          配置 SMTP 邮件服务器，用于发送客户通知（如相册就绪通知）
+        </p>
+        <a
+          href="/admin/settings/email-config"
+          className="block p-3 bg-surface rounded-lg hover:bg-surface-elevated transition-colors cursor-pointer"
+        >
+          <p className="font-medium">邮件服务配置</p>
+          <p className="text-sm text-text-muted">配置 SMTP 服务器、测试邮件发送</p>
+        </a>
+      </div>
+
       {/* 数据备份 */}
       <div className="card">
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">

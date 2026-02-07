@@ -602,16 +602,6 @@ EOF
         sed -i '' "s|^WORKER_URL=.*|WORKER_URL=$WORKER_INTERNAL_URL|g" "$env_file" 2>/dev/null || true
         sed -i '' "s|^WORKER_API_URL=.*|WORKER_API_URL=$WORKER_INTERNAL_URL|g" "$env_file" 2>/dev/null || true
         
-        # 更新 MinIO 容器内配置（使用容器名）
-        sed -i '' "s|^STORAGE_ENDPOINT=.*|STORAGE_ENDPOINT=$MINIO_CONTAINER_NAME|g" "$env_file" 2>/dev/null || true
-        sed -i '' "s|^MINIO_ENDPOINT_HOST=.*|MINIO_ENDPOINT_HOST=$MINIO_CONTAINER_NAME|g" "$env_file" 2>/dev/null || true
-        
-        # 更新数据库容器内配置（使用容器名）
-        sed -i '' "s|^DATABASE_HOST=.*|DATABASE_HOST=$POSTGRES_CONTAINER_NAME|g" "$env_file" 2>/dev/null || true
-        
-        # 更新 Redis 容器内配置（使用容器名）
-        sed -i '' "s|^REDIS_HOST=.*|REDIS_HOST=$REDIS_CONTAINER_NAME|g" "$env_file" 2>/dev/null || true
-        
         # 更新数据库配置（standalone 模式）
         # 注意：在 Docker 容器内应使用容器名（postgres），而不是用户输入的 host
         if [ "$DEPLOYMENT_MODE" = "standalone" ]; then
@@ -633,19 +623,15 @@ EOF
             # AUTH_JWT_SECRET 会在下面合并现有值时处理
         fi
         
-        # 更新 MinIO 配置（如果现有值不是默认值，会在下面保留）
-        # 这里先更新非密钥配置
+        # 更新 MinIO 配置（公网访问地址）
         sed -i '' "s|^STORAGE_PUBLIC_URL=.*|STORAGE_PUBLIC_URL=$MEDIA_URL|g" "$env_file" 2>/dev/null || true
         sed -i '' "s|^MINIO_PUBLIC_URL=.*|MINIO_PUBLIC_URL=$MEDIA_URL|g" "$env_file" 2>/dev/null || true
         
-        # 更新 MinIO 容器内配置（使用容器名）
+        # 更新容器内服务地址（Docker 容器间通信必须使用容器名）
+        # 注意：这些配置必须在容器内使用容器名，不能使用 localhost 或外部 IP
         sed -i '' "s|^STORAGE_ENDPOINT=.*|STORAGE_ENDPOINT=$MINIO_CONTAINER_NAME|g" "$env_file" 2>/dev/null || true
         sed -i '' "s|^MINIO_ENDPOINT_HOST=.*|MINIO_ENDPOINT_HOST=$MINIO_CONTAINER_NAME|g" "$env_file" 2>/dev/null || true
-        
-        # 更新数据库容器内配置（使用容器名）
         sed -i '' "s|^DATABASE_HOST=.*|DATABASE_HOST=$POSTGRES_CONTAINER_NAME|g" "$env_file" 2>/dev/null || true
-        
-        # 更新 Redis 容器内配置（使用容器名）
         sed -i '' "s|^REDIS_HOST=.*|REDIS_HOST=$REDIS_CONTAINER_NAME|g" "$env_file" 2>/dev/null || true
         
         # 更新 Worker 配置
@@ -718,18 +704,15 @@ EOF
             # AUTH_JWT_SECRET 会在下面合并现有值时处理
         fi
         
-        # 更新 MinIO 配置
+        # 更新 MinIO 配置（公网访问地址）
         sed -i "s|^STORAGE_PUBLIC_URL=.*|STORAGE_PUBLIC_URL=$MEDIA_URL|g" "$env_file" 2>/dev/null || true
         sed -i "s|^MINIO_PUBLIC_URL=.*|MINIO_PUBLIC_URL=$MEDIA_URL|g" "$env_file" 2>/dev/null || true
         
-        # 更新 MinIO 容器内配置（使用容器名）
+        # 更新容器内服务地址（Docker 容器间通信必须使用容器名）
+        # 注意：这些配置必须在容器内使用容器名，不能使用 localhost 或外部 IP
         sed -i "s|^STORAGE_ENDPOINT=.*|STORAGE_ENDPOINT=$MINIO_CONTAINER_NAME|g" "$env_file" 2>/dev/null || true
         sed -i "s|^MINIO_ENDPOINT_HOST=.*|MINIO_ENDPOINT_HOST=$MINIO_CONTAINER_NAME|g" "$env_file" 2>/dev/null || true
-        
-        # 更新数据库容器内配置（使用容器名）
         sed -i "s|^DATABASE_HOST=.*|DATABASE_HOST=$POSTGRES_CONTAINER_NAME|g" "$env_file" 2>/dev/null || true
-        
-        # 更新 Redis 容器内配置（使用容器名）
         sed -i "s|^REDIS_HOST=.*|REDIS_HOST=$REDIS_CONTAINER_NAME|g" "$env_file" 2>/dev/null || true
         
         # 添加安全配置
@@ -1241,6 +1224,148 @@ show_completion_info() {
     echo ""
 }
 
+# 检查表是否存在
+check_table_exists() {
+    local table_name="$1"
+    docker exec pis-postgres psql -U "$DATABASE_USER" -d "$DATABASE_NAME" -tAc \
+        "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '$table_name');" 2>/dev/null | grep -q "t"
+}
+
+# 检查数据库迁移状态
+check_database_migrations() {
+    if [ "$DEPLOYMENT_MODE" != "standalone" ]; then
+        return 0
+    fi
+    
+    # 检查是否使用 Docker 内的数据库
+    if [ "$DATABASE_HOST" != "postgres" ] && [ "$DATABASE_HOST" != "localhost" ] && [ "$DATABASE_HOST" != "127.0.0.1" ]; then
+        return 0  # 外部数据库，跳过迁移检测
+    fi
+    
+    # 等待 PostgreSQL 容器启动
+    if ! docker ps | grep -q "pis-postgres"; then
+        return 0  # 容器未运行，跳过检测
+    fi
+    
+    echo "等待数据库就绪..."
+    sleep 3
+    
+    # 检查数据库是否已初始化（检查是否存在 users 表）
+    if ! check_table_exists "users"; then
+        return 0  # 数据库未初始化，跳过迁移检测
+    fi
+    
+    # 检查关键表是否存在（用于判断是否需要迁移）
+    local missing_tables=()
+    local critical_tables=(
+        "system_settings"
+        "permissions"
+        "audit_logs"
+        "upgrade_history"
+    )
+    
+    for table in "${critical_tables[@]}"; do
+        if ! check_table_exists "$table"; then
+            missing_tables+=("$table")
+        fi
+    done
+    
+    if [ ${#missing_tables[@]} -gt 0 ]; then
+        echo ""
+        print_warning "检测到数据库缺少以下表（已有系统需要执行迁移）："
+        for table in "${missing_tables[@]}"; do
+            echo "  - $table"
+        done
+        echo ""
+        echo -e "${CYAN}说明：${NC}"
+        echo "  这些表是系统重大更新后新增的，已有系统升级时需要执行迁移脚本。"
+        echo "  迁移脚本位置: docker/migrations/"
+        echo ""
+        echo -e "${GREEN}✓ 首次部署不需要迁移：${NC}"
+        echo "  - 新部署使用 init-postgresql-db.sql（已包含所有最新表结构）"
+        echo ""
+        echo -e "${YELLOW}⚠️  已有系统升级提示：${NC}"
+        echo "  - 迁移脚本是给已有系统（老系统）升级用的"
+        echo "  - 系统升级时，建议使用升级脚本（scripts/deploy/quick-upgrade.sh）"
+        echo "  - 升级脚本会自动执行迁移"
+        echo "  - 执行迁移前请先备份数据库"
+        echo "  - 迁移脚本使用 IF NOT EXISTS，不会破坏现有数据"
+        echo ""
+        
+        if get_confirm "是否现在执行迁移脚本？（建议使用升级脚本）" "n"; then
+            run_database_migrations
+        else
+            echo ""
+            echo -e "${YELLOW}跳过迁移，建议使用升级脚本：${NC}"
+            echo "  cd /opt/pis"
+            echo "  bash scripts/deploy/quick-upgrade.sh"
+            echo ""
+            echo -e "${YELLOW}或手动执行迁移：${NC}"
+            echo "  cd docker"
+            echo "  bash run-migrations.sh"
+            echo ""
+        fi
+    else
+        # 数据库已包含所有关键表，无需迁移
+        print_success "数据库结构已是最新版本，无需迁移"
+    fi
+}
+
+# 执行数据库迁移
+run_database_migrations() {
+    local migrations_dir="$SCRIPT_DIR/migrations"
+    
+    if [ ! -d "$migrations_dir" ]; then
+        print_error "迁移脚本目录不存在: $migrations_dir"
+        return 1
+    fi
+    
+    echo ""
+    echo -e "${CYAN}开始执行数据库迁移...${NC}"
+    echo ""
+    
+    # 按文件名排序执行迁移脚本
+    local migration_files=($(ls -1 "$migrations_dir"/*.sql 2>/dev/null | sort))
+    
+    if [ ${#migration_files[@]} -eq 0 ]; then
+        print_warning "未找到迁移脚本"
+        return 0
+    fi
+    
+    local success_count=0
+    local fail_count=0
+    
+    for migration_file in "${migration_files[@]}"; do
+        local migration_name=$(basename "$migration_file")
+        echo -e "${CYAN}执行迁移: ${NC}$migration_name"
+        
+        if docker exec -i pis-postgres psql -U "$DATABASE_USER" -d "$DATABASE_NAME" < "$migration_file" 2>&1; then
+            print_success "迁移完成: $migration_name"
+            success_count=$((success_count + 1))
+        else
+            print_error "迁移失败: $migration_name"
+            fail_count=$((fail_count + 1))
+            echo ""
+            echo -e "${YELLOW}是否继续执行后续迁移？${NC}"
+            if ! get_confirm "继续" "y"; then
+                break
+            fi
+        fi
+        echo ""
+    done
+    
+    echo ""
+    echo -e "${CYAN}迁移执行完成${NC}"
+    echo "  成功: $success_count"
+    if [ $fail_count -gt 0 ]; then
+        echo "  失败: $fail_count"
+        print_warning "部分迁移失败，请检查日志并手动修复"
+    else
+        print_success "所有迁移执行成功"
+    fi
+    echo ""
+}
+
 # 检查并初始化数据库（仅 Docker 内数据库）
 check_and_init_database() {
     if [ "$DEPLOYMENT_MODE" != "standalone" ]; then
@@ -1260,17 +1385,24 @@ check_and_init_database() {
             sleep 5
             
             # 检查数据库是否已初始化（检查是否存在 users 表）
-            if docker exec pis-postgres psql -U "$DATABASE_USER" -d "$DATABASE_NAME" -tAc "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users');" | grep -q "t"; then
+            if check_table_exists "users"; then
                 print_success "数据库已初始化"
-            else
-                print_warning "数据库未初始化，将在容器启动时自动初始化"
+                
+                # 只有已有数据库才检查是否需要迁移（首次部署不需要）
+                # 首次部署使用 init-postgresql-db.sql，已包含所有最新表结构
                 echo ""
-                echo -e "${YELLOW}注意：${NC}"
+                echo -e "${CYAN}检测数据库迁移状态（已有系统升级用）...${NC}"
+                check_database_migrations
+            else
+                print_success "数据库未初始化（首次部署）"
+                echo ""
+                echo -e "${CYAN}首次部署说明：${NC}"
                 echo "  - PostgreSQL 容器会在首次启动时自动执行初始化脚本"
-                echo "  - 如果数据卷已存在，需要手动执行初始化脚本"
+                echo "  - 初始化脚本（init-postgresql-db.sql）已包含所有最新表结构"
+                echo "  - 首次部署不需要执行迁移脚本"
                 echo ""
                 
-                if get_confirm "是否现在手动初始化数据库？" "n"; then
+                if get_confirm "是否现在手动初始化数据库？（通常不需要，容器会自动初始化）" "n"; then
                     echo ""
                     echo "执行初始化脚本..."
                     if docker exec -i pis-postgres psql -U "$DATABASE_USER" -d "$DATABASE_NAME" < "$SCRIPT_DIR/init-postgresql-db.sql" 2>/dev/null; then

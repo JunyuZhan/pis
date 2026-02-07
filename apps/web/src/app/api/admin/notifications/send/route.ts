@@ -297,7 +297,7 @@ function generateDefaultEmailContent(params: {
 
 /**
  * 发送邮件
- * 使用 nodemailer 或环境变量中配置的 SMTP 服务
+ * 优先使用数据库配置，如果没有则使用环境变量
  */
 async function sendEmail(params: {
   to: string
@@ -306,18 +306,57 @@ async function sendEmail(params: {
 }): Promise<{ success: boolean; error?: string }> {
   const { to, subject, html } = params
 
-  // 检查是否配置了邮件服务
-  const smtpHost = process.env.SMTP_HOST
-  const smtpPort = parseInt(process.env.SMTP_PORT || '587')
-  const smtpUser = process.env.SMTP_USER
-  const smtpPass = process.env.SMTP_PASS
-  const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER
+  // 优先从数据库获取配置，如果没有则使用环境变量
+  const db = await createAdminClient()
+  const { data: configData } = await db
+    .from('email_config')
+    .select('smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, from_email, from_name, is_active')
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+  
+  const dbConfig = configData as {
+    smtp_host: string
+    smtp_port: number
+    smtp_secure: boolean
+    smtp_user: string
+    smtp_pass: string
+    from_email: string
+    from_name: string | null
+    is_active: boolean
+  } | null
+
+  let smtpHost: string
+  let smtpPort: number
+  let smtpUser: string
+  let smtpPass: string
+  let fromEmail: string
+  let smtpSecure: boolean
+
+  if (dbConfig && dbConfig.smtp_host && dbConfig.smtp_user && dbConfig.smtp_pass) {
+    // 使用数据库配置
+    smtpHost = dbConfig.smtp_host
+    smtpPort = dbConfig.smtp_port || 587
+    smtpUser = dbConfig.smtp_user
+    smtpPass = dbConfig.smtp_pass
+    fromEmail = dbConfig.from_email || dbConfig.smtp_user
+    smtpSecure = dbConfig.smtp_secure !== false
+  } else {
+    // 使用环境变量配置（后备）
+    smtpHost = process.env.SMTP_HOST || ''
+    smtpPort = parseInt(process.env.SMTP_PORT || '587')
+    smtpUser = process.env.SMTP_USER || ''
+    smtpPass = process.env.SMTP_PASS || ''
+    fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || ''
+    smtpSecure = smtpPort === 465
+  }
 
   if (!smtpHost || !smtpUser || !smtpPass) {
     console.warn('邮件服务未配置，通知将被标记为待发送状态')
     return {
       success: false,
-      error: '邮件服务未配置。请在环境变量中设置 SMTP_HOST, SMTP_USER, SMTP_PASS',
+      error: '邮件服务未配置。请在邮件配置页面配置 SMTP 服务器，或在环境变量中设置 SMTP_HOST, SMTP_USER, SMTP_PASS',
     }
   }
 
@@ -328,15 +367,19 @@ async function sendEmail(params: {
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
-      secure: smtpPort === 465,
+      secure: smtpSecure || smtpPort === 465,
       auth: {
         user: smtpUser,
         pass: smtpPass,
       },
     })
 
+    // 构建发件人名称（如果有）
+    const fromName = dbConfig?.from_name
+    const from = fromName ? `${fromName} <${fromEmail}>` : fromEmail
+
     await transporter.sendMail({
-      from: fromEmail,
+      from,
       to,
       subject,
       html,

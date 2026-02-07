@@ -17,13 +17,13 @@ interface EmailConfig {
   updated_at: string
 }
 
-// 邮件配置验证
+// 邮件配置验证（密码在更新时可以为空，表示不修改）
 const emailConfigSchema = z.object({
   smtp_host: z.string().min(1, '请输入 SMTP 服务器地址'),
   smtp_port: z.number().min(1).max(65535).default(587),
   smtp_secure: z.boolean().default(true),
   smtp_user: z.string().min(1, '请输入 SMTP 用户名'),
-  smtp_pass: z.string().min(1, '请输入 SMTP 密码'),
+  smtp_pass: z.string().optional(), // 更新时可以为空（不修改密码）
   from_email: z.string().email('请输入有效的发件人邮箱'),
   from_name: z.string().optional(),
   is_active: z.boolean().default(true),
@@ -132,8 +132,8 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       }
       
-      // 只有当密码不是占位符时才更新
-      if (configData.smtp_pass && configData.smtp_pass !== '******') {
+      // 只有当密码不是占位符且不为空时才更新
+      if (configData.smtp_pass && configData.smtp_pass !== '******' && configData.smtp_pass.trim() !== '') {
         updateData.smtp_pass = configData.smtp_pass
       }
 
@@ -144,7 +144,14 @@ export async function POST(request: NextRequest) {
         return ApiError.internal('更新邮件配置失败')
       }
     } else {
-      // 创建新配置
+      // 创建新配置 - 必须提供密码
+      if (!configData.smtp_pass || configData.smtp_pass === '******' || configData.smtp_pass.trim() === '') {
+        return NextResponse.json(
+          { error: '创建新配置时必须提供 SMTP 密码' },
+          { status: 400 }
+        )
+      }
+
       const { error: insertError } = await db.insert('email_config', {
         ...configData,
         created_at: new Date().toISOString(),
@@ -168,7 +175,7 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * DELETE /api/admin/notifications/email-config
+ * PUT /api/admin/notifications/email-config
  * 测试邮件配置
  */
 export async function PUT(request: NextRequest) {
@@ -188,18 +195,48 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // 获取邮件配置
-    const smtpHost = process.env.SMTP_HOST
-    const smtpPort = parseInt(process.env.SMTP_PORT || '587')
-    const smtpUser = process.env.SMTP_USER
-    const smtpPass = process.env.SMTP_PASS
-    const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER
+    // 优先从数据库获取配置，如果没有则使用环境变量
+    const db = await createAdminClient()
+    const { data: configData } = await db
+      .from('email_config')
+      .select('smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, from_email, from_name, is_active')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+    
+    const dbConfig = configData as EmailConfig | null
+
+    let smtpHost: string
+    let smtpPort: number
+    let smtpUser: string
+    let smtpPass: string
+    let fromEmail: string
+    let smtpSecure: boolean
+
+    if (dbConfig && dbConfig.smtp_host && dbConfig.smtp_user && dbConfig.smtp_pass) {
+      // 使用数据库配置
+      smtpHost = dbConfig.smtp_host
+      smtpPort = dbConfig.smtp_port || 587
+      smtpUser = dbConfig.smtp_user
+      smtpPass = dbConfig.smtp_pass
+      fromEmail = dbConfig.from_email || dbConfig.smtp_user
+      smtpSecure = dbConfig.smtp_secure !== false
+    } else {
+      // 使用环境变量配置（后备）
+      smtpHost = process.env.SMTP_HOST || ''
+      smtpPort = parseInt(process.env.SMTP_PORT || '587')
+      smtpUser = process.env.SMTP_USER || ''
+      smtpPass = process.env.SMTP_PASS || ''
+      fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || ''
+      smtpSecure = smtpPort === 465
+    }
 
     if (!smtpHost || !smtpUser || !smtpPass) {
       return NextResponse.json({
         success: false,
         message: '邮件服务未配置',
-        error: '请在环境变量中设置 SMTP_HOST, SMTP_USER, SMTP_PASS',
+        error: '请先在邮件配置页面配置 SMTP 服务器，或在环境变量中设置 SMTP_HOST, SMTP_USER, SMTP_PASS',
       }, { status: 400 })
     }
 
@@ -209,7 +246,7 @@ export async function PUT(request: NextRequest) {
       const transporter = nodemailer.createTransport({
         host: smtpHost,
         port: smtpPort,
-        secure: smtpPort === 465,
+        secure: smtpSecure || smtpPort === 465,
         auth: {
           user: smtpUser,
           pass: smtpPass,

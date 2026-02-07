@@ -52,8 +52,8 @@
 
 | 文档 | 描述 |
 |------|------|
-| [测试指南](./TESTING.md) | 完整的测试使用指南 |
-| [测试覆盖分析](./TEST_COVERAGE_ANALYSIS.md) | 详细的测试覆盖分析报告 |
+| [测试指南](./testing/TESTING.md) | 完整的测试使用指南（包含快速开始、测试流程、调试方法） |
+| [测试覆盖分析](./testing/TEST_COVERAGE_ANALYSIS.md) | 详细的测试覆盖分析报告 |
 
 
 ---
@@ -89,6 +89,15 @@
 |------|------|
 | [架构示例](./ARCHITECTURE.example.md) | 系统架构概览（公开版本） |
 | [架构路径](./ARCHITECTURE_PATHS.md) | 系统路径和路由说明 |
+
+---
+
+## 📋 开发计划
+
+| 文档 | 描述 |
+|------|------|
+| [开发计划](./TODOLIST.md) | 功能开发计划和优先级 |
+| [项目路线图](./project/TODO.md) | 长期路线图与实施计划 |
 
 ---
 
@@ -133,12 +142,17 @@ docs/
 
 文档已进行清理和整合：
 
-- ✅ **测试文档**：已合并 `TESTING.md`, `TESTING_GUIDE.md`, `TESTING_QUICK_START.md` → `TESTING.md`
-- ✅ **开发文档**：已合并 `DEV_ENVIRONMENT.md` → `DEVELOPMENT.md`
-- ✅ **部署文档**：已整合，删除重复文档
-- ✅ **脚本文档**：统一在 `scripts/` 目录下
-- ✅ **文档清理**：已删除所有开发过程中的临时报告和状态文档（2026-02-01）
+**2026-02-07（第二次清理）**：
+- ✅ **临时审查文档**：已删除 `DEPLOYMENT_SCRIPT_REVIEW.md`（部署脚本审查报告）
+- ✅ **临时操作文档**：已删除 `SERVER_GIT_PULL_GUIDE.md`（Git 拉取操作指南，可合并到部署指南）
+
+**2026-02-07（第一次清理）**：
+- ✅ **测试文档**：已合并 `TESTING.md`, `TESTING_GUIDE.md`, `HOW_TO_TEST.md` → `testing/TESTING.md`
+- ✅ **临时文档**：已删除临时分析文档（密码分析、部署配置报告等）
+- ✅ **测试报告**：已清理 `reports/` 目录下的临时报告
+- ✅ **开源文档**：已合并 `OPEN_SOURCE_CHECKLIST.md` 和 `OPEN_SOURCE_READINESS_REPORT.md`
 - ✅ **文档格式**：已统一文档格式和结构
+- ✅ **文档索引**：已更新文档索引，移除过时引用
 
 ---
 

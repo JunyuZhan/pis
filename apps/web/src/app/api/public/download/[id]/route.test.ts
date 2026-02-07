@@ -54,6 +54,7 @@ describe('GET /api/public/download/[id]', () => {
     it('should return 404 if photo does not exist', async () => {
       const mockSelect = vi.fn().mockReturnThis()
       const mockEq = vi.fn().mockReturnThis()
+      const mockIn = vi.fn().mockReturnThis()
       const mockSingle = vi.fn().mockResolvedValue({
         data: null,
         error: { message: 'Not found' },
@@ -62,6 +63,7 @@ describe('GET /api/public/download/[id]', () => {
       mockDb.from.mockReturnValue({
         select: mockSelect,
         eq: mockEq,
+        in: mockIn,
         single: mockSingle,
       })
 
@@ -75,9 +77,10 @@ describe('GET /api/public/download/[id]', () => {
     })
 
     it('should return 404 if photo status is not completed', async () => {
-      // 注意：代码中使用了 .eq('status', 'completed')，所以未完成的照片不会返回
+      // 注意：代码中使用了 .in('status', ['completed', 'failed'])，所以未完成的照片不会返回
       const mockSelect = vi.fn().mockReturnThis()
       const mockEq = vi.fn().mockReturnThis()
+      const mockIn = vi.fn().mockReturnThis()
       const mockSingle = vi.fn().mockResolvedValue({
         data: null,
         error: null,
@@ -86,6 +89,7 @@ describe('GET /api/public/download/[id]', () => {
       mockDb.from.mockReturnValue({
         select: mockSelect,
         eq: mockEq,
+        in: mockIn,
         single: mockSingle,
       })
 
@@ -117,6 +121,7 @@ describe('GET /api/public/download/[id]', () => {
       const mockPhotoQuery = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({ data: mockPhoto, error: null }),
       }
 
@@ -158,6 +163,7 @@ describe('GET /api/public/download/[id]', () => {
       const mockPhotoQuery = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({ data: mockPhoto, error: null }),
       }
 
@@ -202,6 +208,7 @@ describe('GET /api/public/download/[id]', () => {
       const mockPhotoQuery = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({ data: mockPhoto, error: null }),
       }
 
@@ -245,6 +252,7 @@ describe('GET /api/public/download/[id]', () => {
       const mockPhotoQuery = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({ data: mockPhoto, error: null }),
       }
 
@@ -297,6 +305,7 @@ describe('GET /api/public/download/[id]', () => {
       const mockPhotoQuery = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({ data: mockPhoto, error: null }),
       }
 
@@ -324,11 +333,13 @@ describe('GET /api/public/download/[id]', () => {
     it('should return 500 on database error', async () => {
       const mockSelect = vi.fn().mockReturnThis()
       const mockEq = vi.fn().mockReturnThis()
+      const mockIn = vi.fn().mockReturnThis()
       const mockSingle = vi.fn().mockRejectedValue(new Error('Database error'))
 
       mockDb.from.mockReturnValue({
         select: mockSelect,
         eq: mockEq,
+        in: mockIn,
         single: mockSingle,
       })
 

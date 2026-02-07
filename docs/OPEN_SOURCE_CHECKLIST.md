@@ -1,6 +1,6 @@
-# 开源项目检查清单
+# 📋 开源准备检查清单
 
-> 最后更新: 2026-01-31
+> 最后更新: 2026-02-07
 
 ## ✅ 开源配置检查
 
@@ -152,3 +152,4 @@ AUTH_JWT_SECRET=AUTO_GENERATE_32
 - [LEGAL.md](project/LEGAL.md) - 法律信息
 - [CONTRIBUTING.md](project/CONTRIBUTING.md) - 贡献指南
 - [SECURITY.md](./SECURITY.md) - 安全指南
+- [OPEN_SOURCE_READINESS_REPORT.md](./OPEN_SOURCE_READINESS_REPORT.md) - 详细检查报告

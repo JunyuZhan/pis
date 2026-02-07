@@ -6,22 +6,13 @@
 
 ### 📖 主要文档
 
-- **[TESTING_GUIDE.md](./TESTING_GUIDE.md)** - 完整测试指南
-  - 详细的测试流程和步骤
-  - 测试层次结构说明
-  - 业务逻辑测试详解
+- **[TESTING.md](./TESTING.md)** - 完整测试指南
+  - 快速开始和前置条件
+  - 测试层次结构（单元测试、集成测试、E2E 测试）
+  - 运行测试的方法和命令
+  - 测试脚本说明
   - 测试报告解读
-
-- **[HOW_TO_TEST.md](./HOW_TO_TEST.md)** - 快速参考指南
-  - 快速开始步骤
-  - 测试层次说明
-  - 常见测试场景
-  - 问题排查
-
-- **[TESTING.md](./TESTING.md)** - 测试配置和说明
-  - 测试环境配置
-  - 测试工具使用
-  - 测试最佳实践
+  - 调试和常见问题
 
 ### 📊 分析和报告
 
@@ -30,36 +21,25 @@
   - 覆盖情况分析
   - 改进建议
 
-- **[TESTING_GUIDE_REVIEW.md](./TESTING_GUIDE_REVIEW.md)** - 测试指南审查
-  - 指南审查记录
-  - 改进建议
-
 ## 🚀 快速开始
 
 ### 新用户
 
-1. 阅读 [HOW_TO_TEST.md](./HOW_TO_TEST.md) 了解快速开始
+1. 阅读 [TESTING.md](./TESTING.md) 了解快速开始
 2. 运行快速验证: `pnpm test:quick`
-3. 查看 [TESTING_GUIDE.md](./TESTING_GUIDE.md) 了解详细流程
+3. 运行完整测试: `bash scripts/test/comprehensive-test.sh`
 
 ### 开发者
 
-1. 查看 [TESTING.md](./TESTING.md) 了解测试配置
+1. 查看 [TESTING.md](./TESTING.md) 了解测试配置和详细流程
 2. 运行相关测试脚本（见 `scripts/test/README.md`）
 3. 查看覆盖率报告: [TEST_COVERAGE_ANALYSIS.md](./TEST_COVERAGE_ANALYSIS.md)
 
 ## 📚 相关资源
 
 - **测试脚本**: `scripts/test/` - 所有测试脚本
-- **测试报告**: `reports/test-reports/` - 测试执行报告
-- **测试分析**: `reports/analysis/` - 代码分析和审查文档
 - **单元测试**: 代码中的 `.test.ts` 和 `.test.tsx` 文件
 - **E2E 测试**: `e2e/` 目录
-
-## 📑 文档索引
-
-- **[TEST_REPORTS_INDEX.md](./TEST_REPORTS_INDEX.md)** - 测试报告索引（所有报告的完整列表）
-- **[CLEANUP_SUMMARY.md](./CLEANUP_SUMMARY.md)** - 文档清理总结
 
 ## 🔗 外部链接
 
@@ -69,4 +49,4 @@
 
 ---
 
-**最后更新**: 2026-02-06
+**最后更新**: 2026-02-07

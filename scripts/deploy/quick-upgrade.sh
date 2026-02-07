@@ -5,6 +5,7 @@
 # 
 # 特性：
 #   - 快速升级，更新代码和配置
+#   - 自动执行数据库迁移（如有需要）
 #   - 自动重启 Docker 容器以应用更改
 #   - 保留现有配置和数据
 #   - 支持强制更新
@@ -454,6 +455,149 @@ check_docker() {
     return 0
 }
 
+# 检查表是否存在
+check_table_exists() {
+    local table_name="$1"
+    local db_user="${DATABASE_USER:-pis}"
+    local db_name="${DATABASE_NAME:-pis}"
+    
+    docker exec pis-postgres psql -U "$db_user" -d "$db_name" -tAc \
+        "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '$table_name');" 2>/dev/null | grep -q "t"
+}
+
+# 执行数据库迁移（系统升级时）
+run_database_migrations() {
+    info "检查数据库迁移..."
+    
+    # 检查 PostgreSQL 容器是否运行
+    if ! docker ps | grep -q "pis-postgres"; then
+        warn "PostgreSQL 容器未运行，跳过数据库迁移检查"
+        return 0
+    fi
+    
+    # 检查数据库是否已初始化
+    if ! check_table_exists "users"; then
+        warn "数据库未初始化，跳过迁移检查（新部署应使用 init-postgresql-db.sql）"
+        return 0
+    fi
+    
+    # 检查关键表是否存在（判断是否需要迁移）
+    local missing_tables=()
+    local critical_tables=(
+        "system_settings"
+        "permissions"
+        "audit_logs"
+        "upgrade_history"
+    )
+    
+    for table in "${critical_tables[@]}"; do
+        if ! check_table_exists "$table"; then
+            missing_tables+=("$table")
+        fi
+    done
+    
+    if [ ${#missing_tables[@]} -eq 0 ]; then
+        success "数据库结构已是最新版本，无需迁移"
+        return 0
+    fi
+    
+    # 检测到缺失的表，需要执行迁移
+    warn "检测到数据库缺少以下表（系统更新后需要迁移）："
+    for table in "${missing_tables[@]}"; do
+        echo "  - $table"
+    done
+    echo ""
+    
+    echo -e "${CYAN}说明：${NC}"
+    echo "  迁移脚本用于已有系统的数据库结构升级，添加新功能所需的表。"
+    echo "  迁移脚本位置: docker/migrations/"
+    echo ""
+    echo -e "${YELLOW}⚠️  重要提示：${NC}"
+    echo "  - 执行迁移前请先备份数据库"
+    echo "  - 迁移脚本使用 IF NOT EXISTS，不会破坏现有数据"
+    echo "  - 建议在测试环境先验证迁移脚本"
+    echo ""
+    
+    read -p "是否现在执行数据库迁移？(y/N): " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        warn "跳过数据库迁移"
+        echo ""
+        echo -e "${YELLOW}您可以稍后手动执行迁移：${NC}"
+        echo "  cd docker"
+        echo "  bash run-migrations.sh"
+        echo ""
+        return 0
+    fi
+    
+    # 执行迁移
+    local migrations_dir="${PROJECT_ROOT}/docker/migrations"
+    
+    if [ ! -d "$migrations_dir" ]; then
+        error "迁移脚本目录不存在: $migrations_dir"
+        return 1
+    fi
+    
+    info "开始执行数据库迁移..."
+    echo ""
+    
+    # 按文件名排序执行迁移脚本
+    local migration_files=($(ls -1 "$migrations_dir"/*.sql 2>/dev/null | sort))
+    
+    if [ ${#migration_files[@]} -eq 0 ]; then
+        warn "未找到迁移脚本"
+        return 0
+    fi
+    
+    local success_count=0
+    local fail_count=0
+    
+    for migration_file in "${migration_files[@]}"; do
+        local migration_name=$(basename "$migration_file")
+        info "执行迁移: $migration_name"
+        
+        local db_user="${DATABASE_USER:-pis}"
+        local db_name="${DATABASE_NAME:-pis}"
+        
+        if docker exec -i pis-postgres psql -U "$db_user" -d "$db_name" < "$migration_file" 2>&1 | tee /tmp/migration-output.log; then
+            # 检查是否有错误
+            if grep -qi "error\|fatal" /tmp/migration-output.log 2>/dev/null; then
+                error "迁移失败: $migration_name"
+                fail_count=$((fail_count + 1))
+                echo ""
+                read -p "是否继续执行后续迁移？(y/N): " continue_confirm
+                if [[ ! "$continue_confirm" =~ ^[Yy]$ ]]; then
+                    break
+                fi
+            else
+                success "迁移完成: $migration_name"
+                success_count=$((success_count + 1))
+            fi
+        else
+            error "迁移失败: $migration_name"
+            fail_count=$((fail_count + 1))
+            echo ""
+            read -p "是否继续执行后续迁移？(y/N): " continue_confirm
+            if [[ ! "$continue_confirm" =~ ^[Yy]$ ]]; then
+                break
+            fi
+        fi
+        echo ""
+    done
+    
+    # 清理临时文件
+    rm -f /tmp/migration-output.log
+    
+    # 显示结果
+    echo ""
+    if [ $fail_count -eq 0 ]; then
+        success "数据库迁移完成（成功: $success_count）"
+    else
+        warn "数据库迁移部分完成（成功: $success_count，失败: $fail_count）"
+        warn "请检查失败的迁移脚本并手动修复"
+    fi
+    echo ""
+}
+
 # 重启容器
 restart_containers() {
     if [ "$RESTART_CONTAINERS" != true ]; then
@@ -594,6 +738,7 @@ main() {
     check_git_status
     pull_latest_code
     update_config_files
+    run_database_migrations  # 执行数据库迁移（系统升级时）
     restart_containers
     show_upgrade_info
 }
