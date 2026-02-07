@@ -145,26 +145,45 @@
     @apply btn bg-red-500 text-white hover:bg-red-600 active:scale-[0.98];
   }
 
-  /* 金色文字发光效果（暗色模式/有背景图片时使用） */
+  /* 金色文字发光效果 - 仅在亮色模式下生效 */
   .text-glow-gold {
+    /* 深色模式下无阴影和发光 */
+  }
+
+  .light .text-glow-gold {
     text-shadow: 
-      0 2px 8px rgba(212, 175, 55, 0.8),
-      0 0 20px rgba(212, 175, 55, 0.6);
+      0 2px 8px rgba(212, 175, 55, 0.6),
+      0 0 20px rgba(212, 175, 55, 0.4),
+      0 1px 2px rgba(0, 0, 0, 0.1);
   }
 
   .text-glow-gold-lg {
+    /* 深色模式下无阴影和发光 */
+  }
+
+  .light .text-glow-gold-lg {
     text-shadow: 
-      0 4px 12px rgba(212, 175, 55, 0.9),
-      0 0 30px rgba(212, 175, 55, 0.7);
+      0 4px 12px rgba(212, 175, 55, 0.7),
+      0 0 30px rgba(212, 175, 55, 0.5),
+      0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   .text-glow-gold-md {
+    /* 深色模式下无阴影和发光 */
+  }
+
+  .light .text-glow-gold-md {
     text-shadow: 
-      0 2px 6px rgba(212, 175, 55, 0.7),
-      0 0 15px rgba(212, 175, 55, 0.5);
+      0 2px 6px rgba(212, 175, 55, 0.6),
+      0 0 15px rgba(212, 175, 55, 0.4),
+      0 1px 2px rgba(0, 0, 0, 0.05);
   }
 
   /* 亮色模式下的金色发光效果（深色文字 + 金色发光） */
+  .text-glow-gold-light {
+    /* 深色模式下无阴影和发光 */
+  }
+
   .light .text-glow-gold-light {
     text-shadow: 
       0 2px 8px rgba(212, 175, 55, 0.6),
@@ -172,11 +191,19 @@
       0 1px 2px rgba(0, 0, 0, 0.1);
   }
 
+  .text-glow-gold-light-lg {
+    /* 深色模式下无阴影和发光 */
+  }
+
   .light .text-glow-gold-light-lg {
     text-shadow: 
       0 4px 12px rgba(212, 175, 55, 0.7),
       0 0 30px rgba(212, 175, 55, 0.5),
       0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .text-glow-gold-light-md {
+    /* 深色模式下无阴影和发光 */
   }
 
   .light .text-glow-gold-light-md {

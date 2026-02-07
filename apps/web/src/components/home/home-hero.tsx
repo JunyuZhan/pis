@@ -6,6 +6,7 @@ import { motion, useScroll, useTransform } from 'framer-motion'
 import { ChevronDown, Aperture } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { getSafeMediaUrl } from '@/lib/utils'
+import { useTheme } from '@/components/theme-provider'
 import type { Album, Photo } from '@/types/database'
 
 interface HomeHeroProps {
@@ -15,6 +16,7 @@ interface HomeHeroProps {
 
 export function HomeHero({ featuredAlbum, coverPhoto }: HomeHeroProps) {
   const t = useTranslations('home.hero')
+  const { resolvedTheme } = useTheme()
   const [isLoaded, setIsLoaded] = useState(false)
   // 默认假设用户偏好减少动画，确保文字初始可见
   // 如果检测到用户不偏好减少动画，再启用动画效果
@@ -22,6 +24,9 @@ export function HomeHero({ featuredAlbum, coverPhoto }: HomeHeroProps) {
   // 使用安全的媒体 URL（自动修复 localhost HTTPS 问题）
   const mediaUrl = getSafeMediaUrl()
   const { scrollY } = useScroll()
+  
+  // 判断是否为亮色模式
+  const isLightMode = resolvedTheme === 'light'
 
   // 检测用户是否偏好减少动画
   useEffect(() => {
@@ -89,9 +94,20 @@ export function HomeHero({ featuredAlbum, coverPhoto }: HomeHeroProps) {
       {/* 渐变遮罩 - 多层叠加创造深度（仅在有背景图片时显示） */}
       {coverUrl && (
         <>
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/60 via-transparent to-background/60" />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/40" />
+          {/* 深色模式下增强遮罩，确保文字可见 */}
+          {!isLightMode ? (
+            <>
+              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/50" />
+              <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-background/80" />
+              <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-background/70 to-background/90" />
+            </>
+          ) : (
+            <>
+              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-background/60 via-transparent to-background/60" />
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/40" />
+            </>
+          )}
         </>
       )}
 
@@ -107,9 +123,11 @@ export function HomeHero({ featuredAlbum, coverPhoto }: HomeHeroProps) {
           >
             <Aperture className="w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 text-accent" />
             <span className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-serif font-bold tracking-wider ${
-              coverUrl 
+              isLightMode && coverUrl
                 ? 'text-white text-glow-gold' 
-                : 'text-text-primary text-glow-gold-light'
+                : isLightMode
+                ? 'text-text-primary text-glow-gold-light'
+                : 'text-text-primary'
             }`}>
               PIS
             </span>
@@ -121,14 +139,16 @@ export function HomeHero({ featuredAlbum, coverPhoto }: HomeHeroProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: prefersReducedMotion ? 0 : 0.7, delay: prefersReducedMotion ? 0 : 0.1, ease: 'easeOut' }}
             className={`text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-serif font-bold leading-tight px-2 ${
-              coverUrl 
+              isLightMode && coverUrl
                 ? 'text-white text-glow-gold-lg' 
-                : 'text-text-primary text-glow-gold-light-lg'
+                : isLightMode
+                ? 'text-text-primary text-glow-gold-light-lg'
+                : 'text-text-primary'
             }`}
           >
             {t('title')}
             <br />
-            <span className={`text-accent ${coverUrl ? 'text-glow-gold' : 'text-glow-gold-light'}`}>{t('subtitle')}</span>
+            <span className={`text-accent ${isLightMode && coverUrl ? 'text-glow-gold' : isLightMode ? 'text-glow-gold-light' : ''}`}>{t('subtitle')}</span>
           </motion.h1>
 
           {/* 副标题 */}
@@ -137,9 +157,11 @@ export function HomeHero({ featuredAlbum, coverPhoto }: HomeHeroProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: prefersReducedMotion ? 0 : 0.7, delay: prefersReducedMotion ? 0 : 0.2, ease: 'easeOut' }}
             className={`text-sm sm:text-base md:text-lg lg:text-xl font-light tracking-wide max-w-2xl mx-auto px-2 ${
-              coverUrl 
+              isLightMode && coverUrl
                 ? 'text-white/90 text-glow-gold-md' 
-                : 'text-text-secondary text-glow-gold-light-md'
+                : isLightMode
+                ? 'text-text-secondary text-glow-gold-light-md'
+                : 'text-text-secondary'
             }`}
           >
             {t('tagline')}
@@ -154,16 +176,26 @@ export function HomeHero({ featuredAlbum, coverPhoto }: HomeHeroProps) {
               className="pt-2 sm:pt-4"
             >
               <div className={`inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 backdrop-blur-md rounded-full ${
-                coverUrl 
+                isLightMode && coverUrl
                   ? 'bg-white/10 border border-white/20' 
+                  : isLightMode
+                  ? 'bg-surface-elevated/80 border border-border'
+                  : coverUrl
+                  ? 'bg-background/60 border border-white/10'
                   : 'bg-surface-elevated/80 border border-border'
               }`}>
                 <span className={`text-[10px] sm:text-xs ${
-                  coverUrl ? 'text-white/80' : 'text-text-secondary'
+                  isLightMode && coverUrl 
+                    ? 'text-white/80' 
+                    : isLightMode
+                    ? 'text-text-secondary'
+                    : 'text-text-secondary'
                 }`}>{t('latest')}</span>
                 <span className="w-1 h-1 bg-accent rounded-full" />
                 <span className={`text-xs sm:text-sm font-medium line-clamp-1 max-w-[200px] sm:max-w-none ${
-                  coverUrl ? 'text-white' : 'text-text-primary'
+                  isLightMode && coverUrl 
+                    ? 'text-white' 
+                    : 'text-text-primary'
                 }`}>
                   {featuredAlbum.title}
                 </span>
@@ -180,7 +212,7 @@ export function HomeHero({ featuredAlbum, coverPhoto }: HomeHeroProps) {
         animate={{ opacity: 1 }}
         transition={{ delay: prefersReducedMotion ? 0 : 1.2, duration: prefersReducedMotion ? 0 : 0.5 }}
         className={`absolute bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center cursor-pointer transition-colors touch-manipulation ${
-          coverUrl 
+          isLightMode && coverUrl
             ? 'text-white/70 hover:text-white' 
             : 'text-text-secondary hover:text-text-primary'
         }`}
