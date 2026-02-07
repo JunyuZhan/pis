@@ -287,8 +287,16 @@ export class PhotoProcessor {
 
     // ========== 步骤 3: Apply gamma correction ==========
     // 伽马校正，必须在 contrast 之后执行
+    // Sharp要求gamma值在1.0-3.0之间，超出范围会导致错误
     if (config.gamma !== undefined && config.gamma !== 1.0) {
-      processedImage = processedImage.gamma(config.gamma);
+      // 验证并限制gamma值在有效范围内
+      const validGamma = Math.max(1.0, Math.min(3.0, config.gamma));
+      if (validGamma !== config.gamma) {
+        console.warn(
+          `[StylePreset] Gamma value ${config.gamma} out of range (1.0-3.0), clamped to ${validGamma}`
+        );
+      }
+      processedImage = processedImage.gamma(validGamma);
     }
 
     // ========== 步骤 4: Skip tint ==========
