@@ -104,14 +104,13 @@ export async function PATCH(request: NextRequest) {
 
     // 批量更新设置
     for (const [key, value] of Object.entries(settings)) {
-      const { error } = await db.update(
-        'system_settings',
-        { 
+      const { error } = await db
+        .from('system_settings')
+        .update({ 
           value: JSON.stringify(value),
           updated_at: new Date().toISOString(),
-        },
-        { key }
-      )
+        })
+        .eq('key', key)
 
       if (error) {
         console.error(`更新设置 ${key} 失败:`, error)

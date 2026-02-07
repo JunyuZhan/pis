@@ -77,7 +77,7 @@
 ```
 1. 数据库表: system_settings
    - docker/init-postgresql-db.sql (新增表和初始数据)
-   - docker/migrations/001_add_system_settings.sql (迁移脚本)
+   - docker/migrations/013_add_system_settings.sql (迁移脚本)
 
 2. API 接口
    - GET /api/admin/settings - 获取所有设置
