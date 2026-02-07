@@ -91,10 +91,10 @@ export function HomeHero({ featuredAlbum, coverPhoto }: HomeHeroProps) {
             initial={{ opacity: prefersReducedMotion ? 1 : 0, y: prefersReducedMotion ? 0 : 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: prefersReducedMotion ? 0 : 0.6, ease: 'easeOut' }}
-            className="flex items-center justify-center gap-1.5 sm:gap-2 mb-1 sm:mb-2"
+            className="flex items-center justify-center gap-2 sm:gap-3 mb-2 sm:mb-3"
           >
-            <Aperture className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
-            <span className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-white tracking-wider">
+            <Aperture className="w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 text-accent" />
+            <span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-serif font-bold text-white tracking-wider">
               PIS
             </span>
           </motion.div>

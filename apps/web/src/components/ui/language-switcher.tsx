@@ -64,12 +64,12 @@ export function LanguageSwitcher() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-surface transition-colors min-h-[44px] active:scale-[0.98] touch-manipulation"
+          className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg hover:bg-surface transition-colors min-h-[44px] active:scale-[0.98] touch-manipulation"
           aria-label={t("changeLanguage")}
           suppressHydrationWarning
         >
-          <Languages className="w-4 h-4" />
-          <span className="text-sm font-medium">{localeNames[locale]}</span>
+          <Languages className="w-4 h-4 shrink-0" />
+          <span className="text-sm font-medium whitespace-nowrap">{localeNames[locale]}</span>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[120px]">
