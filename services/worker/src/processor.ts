@@ -821,41 +821,121 @@ export class PhotoProcessor {
   }
 
   /**
-   * 清理字符串中的 NULL 字符（\u0000）
+   * 清理 EXIF 值，确保可以安全存储到 PostgreSQL JSON 字段
    *
    * @description
-   * PostgreSQL 不支持在 JSON/text 字段中存储 \u0000 字符
-   * 相机 EXIF 数据（如 BodySerialNumber）可能包含 C 语言风格的 null 结尾字符串
+   * 处理以下问题：
+   * - \u0000 (NULL 字符)：相机 EXIF 中的 C 风格字符串结尾
+   * - 控制字符 (\u0001-\u001F)：某些相机固件的非标准数据
+   * - Buffer/Uint8Array：二进制数据转为 Base64 或移除
+   * - 无效 UTF-8：非 UTF-8 编码的字符串（如 Shift-JIS）
+   * - 超长字符串：某些 MakerNote 可能非常大
    *
    * @param value - 任意值
+   * @param depth - 递归深度（防止无限递归）
    * @returns 清理后的值
    *
    * @internal
    */
-  private removeNullChars(value: unknown): unknown {
+  private sanitizeValue(value: unknown, depth: number = 0): unknown {
+    // 防止无限递归
+    if (depth > 10) {
+      return '[max depth exceeded]';
+    }
+
+    // 处理 null/undefined
+    if (value === null || value === undefined) {
+      return value;
+    }
+
+    // 处理 Buffer/Uint8Array（某些 EXIF 字段是二进制数据）
+    if (Buffer.isBuffer(value) || value instanceof Uint8Array) {
+      // 小于 1KB 的二进制数据转为 Base64，否则忽略
+      if (value.length < 1024) {
+        return `[binary:${value.length}bytes]`;
+      }
+      return '[binary:truncated]';
+    }
+
+    // 处理字符串
     if (typeof value === 'string') {
-      // 移除所有 \u0000 字符
-      return value.replace(/\u0000/g, '');
+      // 移除所有控制字符（\u0000-\u001F），保留换行和制表符
+      let cleaned = value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+      
+      // 限制字符串长度（某些 MakerNote 可能非常大）
+      if (cleaned.length > 10000) {
+        cleaned = cleaned.substring(0, 10000) + '...[truncated]';
+      }
+      
+      // 验证是否为有效 UTF-8（移除无效字符）
+      // 使用 encodeURIComponent/decodeURIComponent 验证
+      try {
+        decodeURIComponent(encodeURIComponent(cleaned));
+      } catch {
+        // 如果编码失败，尝试移除非 ASCII 字符
+        cleaned = cleaned.replace(/[^\x20-\x7E]/g, '?');
+      }
+      
+      return cleaned;
     }
+
+    // 处理数组
     if (Array.isArray(value)) {
-      return value.map(item => this.removeNullChars(item));
+      // 限制数组长度
+      const maxLength = 100;
+      const arr = value.slice(0, maxLength).map(item => this.sanitizeValue(item, depth + 1));
+      if (value.length > maxLength) {
+        arr.push(`[...${value.length - maxLength} more items]`);
+      }
+      return arr;
     }
-    if (value && typeof value === 'object') {
+
+    // 处理 Date 对象
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+
+    // 处理普通对象
+    if (typeof value === 'object') {
       const cleaned: Record<string, unknown> = {};
-      for (const [key, val] of Object.entries(value)) {
-        cleaned[key] = this.removeNullChars(val);
+      const entries = Object.entries(value);
+      
+      // 限制对象属性数量
+      const maxKeys = 200;
+      let count = 0;
+      
+      for (const [key, val] of entries) {
+        if (count >= maxKeys) {
+          cleaned['__truncated__'] = `${entries.length - maxKeys} more keys`;
+          break;
+        }
+        // 跳过无法 JSON 序列化的键
+        if (typeof key !== 'string') continue;
+        cleaned[key] = this.sanitizeValue(val, depth + 1);
+        count++;
       }
       return cleaned;
     }
+
+    // 处理数字（检查 NaN 和 Infinity）
+    if (typeof value === 'number') {
+      if (Number.isNaN(value)) return null;
+      if (!Number.isFinite(value)) return null;
+      return value;
+    }
+
+    // 其他基本类型直接返回
     return value;
   }
 
   /**
-   * 清理 EXIF 数据，移除敏感信息（GPS）和不安全字符
+   * 清理 EXIF 数据，移除敏感信息和不安全字符
    *
    * @description
    * - 移除 GPS 位置信息以保护隐私
-   * - 移除 \u0000 字符（PostgreSQL 不支持）
+   * - 清理不安全字符（NULL、控制字符等）
+   * - 处理二进制数据、超长字符串等边缘情况
+   * - 确保数据可以安全存储到 PostgreSQL JSON 字段
    *
    * @param {any} rawExif - 原始 EXIF 对象
    * @returns {any} 清理后的 EXIF 对象
@@ -903,8 +983,8 @@ export class PhotoProcessor {
       }
     });
 
-    // 清理所有 \u0000 字符（PostgreSQL 不支持）
-    return this.removeNullChars(sanitized);
+    // 清理所有不安全字符，确保可以存储到 PostgreSQL JSON 字段
+    return this.sanitizeValue(sanitized);
   }
 
   /**
