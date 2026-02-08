@@ -365,7 +365,17 @@ function getHoverClasses(template?: AlbumTemplateStyle | null): string {
 function getEntranceAnimation(template?: AlbumTemplateStyle | null, index?: number) {
   const delay = ((index || 0) % 10) * 0.05
   
-  if (!template || template.animation.entrance === 'none') {
+  // 没有模板时，使用原来的默认动画（淡入+上滑）
+  if (!template) {
+    return {
+      initial: { opacity: 0, y: 20 },
+      animate: { opacity: 1, y: 0 },
+      transition: { duration: 0.5, delay },
+    }
+  }
+  
+  // 模板配置为无动画
+  if (template.animation.entrance === 'none') {
     return {
       initial: { opacity: 1 },
       animate: { opacity: 1 },
