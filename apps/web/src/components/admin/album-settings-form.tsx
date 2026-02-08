@@ -10,6 +10,7 @@ import { StorageChecker } from './storage-checker'
 import { TemplateSelector } from './template-selector'
 import { CustomerSelector } from './customer-selector'
 import { TranslationEditor } from './translation-editor'
+import { ConfigTemplateActions, type TemplateConfig } from './config-template-actions'
 import { showSuccess, handleApiError } from '@/lib/toast'
 import { getSafeMediaUrl, getFtpServerHost, getFtpServerPort } from '@/lib/utils'
 
@@ -238,6 +239,54 @@ export function AlbumSettingsForm({
       ...prev,
       watermark_config: { watermarks } as typeof prev.watermark_config,
     }))
+  }
+
+  // 获取当前配置（用于保存为模板）
+  const getCurrentConfig = (): TemplateConfig => {
+    return {
+      is_public: formData.is_public,
+      layout: formData.layout as 'masonry' | 'grid' | 'carousel',
+      sort_rule: formData.sort_rule as 'capture_desc' | 'capture_asc' | 'manual',
+      allow_download: formData.allow_download,
+      allow_batch_download: formData.allow_batch_download,
+      show_exif: formData.show_exif,
+      password: formData.password || null,
+      expires_at: formData.expires_at || null,
+      watermark_enabled: formData.watermark_enabled,
+      watermark_config: formData.watermark_config as Record<string, unknown>,
+    }
+  }
+
+  // 应用模板配置到表单
+  const handleApplyConfig = (config: Partial<TemplateConfig>) => {
+    setFormData((prev) => {
+      const updated = { ...prev }
+      
+      if (config.is_public !== undefined) updated.is_public = config.is_public
+      if (config.layout !== undefined) updated.layout = config.layout
+      if (config.sort_rule !== undefined) updated.sort_rule = config.sort_rule
+      if (config.allow_download !== undefined) updated.allow_download = config.allow_download
+      if (config.allow_batch_download !== undefined) updated.allow_batch_download = config.allow_batch_download
+      if (config.show_exif !== undefined) updated.show_exif = config.show_exif
+      if (config.password !== undefined) updated.password = config.password || ''
+      if (config.expires_at !== undefined) {
+        updated.expires_at = config.expires_at 
+          ? new Date(config.expires_at).toISOString().slice(0, 16)
+          : ''
+      }
+      if (config.watermark_enabled !== undefined) updated.watermark_enabled = config.watermark_enabled
+      if (config.watermark_config !== undefined) {
+        // 解析水印配置
+        const watermarkConfig = config.watermark_config
+        if (watermarkConfig && typeof watermarkConfig === 'object' && 'watermarks' in watermarkConfig) {
+          updated.watermark_config = watermarkConfig as typeof prev.watermark_config
+        } else {
+          updated.watermark_config = { watermarks: [] } as typeof prev.watermark_config
+        }
+      }
+      
+      return updated
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -940,7 +989,7 @@ export function AlbumSettingsForm({
         )}
       </section>
 
-      {/* 模板设置 */}
+      {/* 外观模板 */}
       <section className="card space-y-4">
         <TemplateSelector
           value={formData.template_id}
@@ -952,8 +1001,16 @@ export function AlbumSettingsForm({
           }
         />
         <p className="text-xs text-text-muted">
-          模板决定相册的整体视觉风格，包括配色、布局、字体等。选择模板后，访客查看相册时将使用该模板的样式。
+          外观模板决定相册的整体视觉风格，包括配色、布局、字体等。选择模板后，访客查看相册时将使用该模板的样式。
         </p>
+      </section>
+
+      {/* 配置模板 */}
+      <section className="card space-y-4">
+        <ConfigTemplateActions
+          getCurrentConfig={getCurrentConfig}
+          onApplyConfig={handleApplyConfig}
+        />
       </section>
 
       {/* 风格设置 */}

@@ -1,11 +1,28 @@
 'use client'
 
-import { useEffect, ReactNode } from 'react'
+import { useEffect, ReactNode, createContext, useContext, useMemo } from 'react'
 import { 
   ALBUM_TEMPLATES, 
   type AlbumTemplateStyle,
   getTemplateCSSVariables 
 } from '@/lib/album-templates'
+
+// 模板上下文类型
+interface TemplateContextValue {
+  template: AlbumTemplateStyle | null
+  templateId: string | null
+}
+
+// 创建上下文
+const TemplateContext = createContext<TemplateContextValue>({
+  template: null,
+  templateId: null,
+})
+
+// 导出 hook 用于获取模板配置
+export function useTemplate() {
+  return useContext(TemplateContext)
+}
 
 interface TemplateStyleProviderProps {
   templateId: string | null | undefined
@@ -14,14 +31,23 @@ interface TemplateStyleProviderProps {
 
 /**
  * 模板样式提供者
- * 在客户端应用模板的CSS变量和样式
+ * 在客户端应用模板的CSS变量和样式，并提供模板配置上下文
  */
 export function TemplateStyleProvider({ templateId, children }: TemplateStyleProviderProps) {
+  // 获取模板配置
+  const template = useMemo(() => {
+    if (!templateId) return null
+    return ALBUM_TEMPLATES[templateId] || null
+  }, [templateId])
+
+  // 上下文值
+  const contextValue = useMemo(() => ({
+    template,
+    templateId: templateId || null,
+  }), [template, templateId])
+
   // 应用模板的 CSS 变量
   useEffect(() => {
-    if (!templateId) return
-    
-    const template = ALBUM_TEMPLATES[templateId]
     if (!template) return
 
     const root = document.documentElement
@@ -84,9 +110,13 @@ export function TemplateStyleProvider({ templateId, children }: TemplateStylePro
       // 恢复body背景色
       document.body.style.backgroundColor = ''
     }
-  }, [templateId])
+  }, [template])
 
-  return <>{children}</>
+  return (
+    <TemplateContext.Provider value={contextValue}>
+      {children}
+    </TemplateContext.Provider>
+  )
 }
 
 /**

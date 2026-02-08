@@ -8,6 +8,7 @@ import { MasonryGrid } from './masonry'
 import { Loader2, ImageIcon, RefreshCw, X, ScanFace } from 'lucide-react'
 import { usePhotoRealtime } from '@/hooks/use-photo-realtime'
 import { useTrackAlbumView } from '@/hooks/use-analytics'
+import { useTemplate } from './template-style-provider'
 import type { Album, Photo } from '@/types/database'
 import type { LayoutMode } from './layout-toggle'
 
@@ -41,6 +42,9 @@ export function AlbumClient({ album, initialPhotos, layout = 'masonry' }: AlbumC
   const from = searchParams.get('from')
   const queryClient = useQueryClient()
   const t = useTranslations('album')
+  
+  // 获取模板配置
+  const { template } = useTemplate()
   
   // 追踪相册访问
   useTrackAlbumView(album.id)
@@ -277,6 +281,7 @@ export function AlbumClient({ album, initialPhotos, layout = 'masonry' }: AlbumC
           hasMore={hasNextPage}
           isLoading={isFetchingNextPage}
           onLoadMore={() => fetchNextPage()}
+          template={template}
         />
       ) : (
         <div className="text-center py-20">

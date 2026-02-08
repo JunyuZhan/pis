@@ -12,6 +12,7 @@ import { FloatingActions } from '@/components/album/floating-actions'
 import { SortToggle, type SortRule } from '@/components/album/sort-toggle'
 import { LayoutToggle, type LayoutMode } from '@/components/album/layout-toggle'
 import { TemplateStyleProvider } from '@/components/album/template-style-provider'
+import { ALBUM_TEMPLATES } from '@/lib/album-templates'
 import { getAlbumShareUrl, getAppBaseUrl, getSafeMediaUrl } from '@/lib/utils'
 import type { Database } from '@/types/database'
 
@@ -204,9 +205,26 @@ export default async function AlbumPage({ params, searchParams }: AlbumPageProps
   // 注意：密码验证应该在客户端组件中处理
   // 如果相册设置了密码，需要在客户端验证后才能显示照片
   
+  // 获取相册的模板 ID 和模板配置
+  const templateId = (album as { template_id?: string | null }).template_id || null
+  const template = templateId ? ALBUM_TEMPLATES[templateId] : null
+  
   // 确定排序和布局规则
+  // 优先级：URL 参数 > 模板配置 > 相册设置 > 默认值
   const currentSort: SortRule = (sort as SortRule) || (album.sort_rule as SortRule) || 'capture_desc'
-  const currentLayout = (layout as LayoutMode) || album.layout || 'masonry'
+  
+  // 将模板布局类型映射到支持的布局模式
+  const getTemplateLayout = (): LayoutMode | null => {
+    if (!template) return null
+    const templateLayoutType = template.layout.type
+    // story 和 timeline 暂时映射到 masonry
+    if (templateLayoutType === 'story' || templateLayoutType === 'timeline') {
+      return 'masonry'
+    }
+    return templateLayoutType as LayoutMode
+  }
+  
+  const currentLayout = (layout as LayoutMode) || getTemplateLayout() || album.layout || 'masonry'
   
   let orderBy = 'captured_at'
   let ascending = false
@@ -303,9 +321,6 @@ export default async function AlbumPage({ params, searchParams }: AlbumPageProps
   // - 如果是分享链接（没有 from 参数），显示启动页
   // - 如果 skip_splash=1，不显示启动页
   const showSplash = from !== 'home' && skip_splash !== '1'
-  
-  // 获取相册的模板 ID
-  const templateId = (album as { template_id?: string | null }).template_id || null
 
   return (
     <TemplateStyleProvider templateId={templateId}>

@@ -282,9 +282,12 @@ export function TemplateManager() {
             <div className="text-sm text-text-muted bg-surface p-3 rounded-lg">
               <p className="font-medium mb-1">提示：</p>
               <p>
-                模板创建后，您可以在相册设置页面将当前配置保存为模板，或从模板加载配置。
-                模板的详细设置（布局、水印等）需要在相册设置页面配置。
+                创建模板后，您可以在任意相册的设置页面中使用「配置模板」功能：
               </p>
+              <ul className="list-disc list-inside mt-2 space-y-1 text-xs">
+                <li><span className="font-medium">保存为模板</span> - 将当前相册的配置（布局、水印、权限等）保存到模板</li>
+                <li><span className="font-medium">从模板加载</span> - 将模板的配置快速应用到当前相册</li>
+              </ul>
             </div>
           </div>
 
