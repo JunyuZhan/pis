@@ -58,6 +58,8 @@ export function usePhotoRealtime({
 
   // 存储已知的照片ID，用于检测新照片
   const knownPhotoIdsRef = useRef<Set<string>>(new Set())
+  // 标记是否已完成首次初始化（首次不触发 onInsert）
+  const isInitializedRef = useRef(false)
 
   const checkForUpdates = useCallback(async () => {
     if (!albumId || !albumSlug) return
@@ -73,25 +75,34 @@ export function usePhotoRealtime({
 
       // 检测新照片
       const currentPhotoIds = new Set<string>(currentPhotos.map((p: Photo) => p.id))
-      const newPhotos = currentPhotos.filter((p: Photo) => !knownPhotoIdsRef.current.has(p.id))
+      
+      // 只有在初始化完成后才检测新照片
+      if (isInitializedRef.current) {
+        const newPhotos = currentPhotos.filter((p: Photo) => !knownPhotoIdsRef.current.has(p.id))
 
-      newPhotos.forEach((photo: Photo) => {
-        if (photo.status === 'completed' && !photo.deleted_at) {
-          callbacksRef.current.onInsert?.(photo)
-          knownPhotoIdsRef.current.add(photo.id)
-        }
-      })
+        newPhotos.forEach((photo: Photo) => {
+          if (photo.status === 'completed' && !photo.deleted_at) {
+            callbacksRef.current.onInsert?.(photo)
+            knownPhotoIdsRef.current.add(photo.id)
+          }
+        })
+      } else {
+        // 首次运行，只初始化已知照片ID，不触发回调
+        isInitializedRef.current = true
+      }
 
       // 更新已知照片ID集合
       currentPhotoIds.forEach((id) => knownPhotoIdsRef.current.add(id))
 
-      // 清理已删除的照片ID
-      knownPhotoIdsRef.current.forEach((id: string) => {
-        if (!currentPhotoIds.has(id)) {
-          callbacksRef.current.onDelete?.(id)
-          knownPhotoIdsRef.current.delete(id)
-        }
-      })
+      // 清理已删除的照片ID（只在初始化后执行）
+      if (isInitializedRef.current) {
+        knownPhotoIdsRef.current.forEach((id: string) => {
+          if (!currentPhotoIds.has(id)) {
+            callbacksRef.current.onDelete?.(id)
+            knownPhotoIdsRef.current.delete(id)
+          }
+        })
+      }
     } catch (error) {
       console.error('Failed to check for photo updates:', error)
     }
@@ -112,6 +123,7 @@ export function usePhotoRealtime({
     return () => {
       clearInterval(intervalId)
       knownPhotoIds.clear()
+      isInitializedRef.current = false // 重置初始化状态
     }
   }, [albumId, albumSlug, enabled, checkForUpdates, pollingInterval])
 }
