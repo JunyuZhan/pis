@@ -241,6 +241,7 @@ export function PhotoUploader({ albumId, onComplete }: PhotoUploaderProps) {
 
   const addFiles = useCallback(async (newFiles: FileList | File[]) => {
     const fileArray = Array.from(newFiles)
+    console.log('Processing files:', fileArray.map(f => ({ name: f.name, type: f.type, size: f.size })))
     const allowedImageTypes = ['image/jpeg', 'image/png', 'image/heic', 'image/webp', 'image/gif', 'image/tiff']
     const invalidFiles: string[] = []
     
@@ -1603,6 +1604,7 @@ export function PhotoUploader({ albumId, onComplete }: PhotoUploaderProps) {
           multiple
           accept="image/jpeg,image/png,image/heic,image/webp,image/gif,image/tiff,.jpg,.jpeg,.png,.heic,.webp,.gif,.tiff,.tif"
           onChange={(e) => {
+            console.log('onChange triggered', e.target.files?.length)
             if (e.target.files && e.target.files.length > 0) {
               addFiles(e.target.files)
               // 重置 input，允许重复选择相同文件
