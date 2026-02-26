@@ -216,8 +216,15 @@ class PISFileSystem extends FileSystem {
       }
     };
 
-    stream.once("close", () => {
-      processUpload();
+    stream.once("close", async () => {
+      try {
+        await processUpload();
+      } catch (err) {
+        logger.error(
+          { err, fileName },
+          "❌ Unexpected error in stream close handler",
+        );
+      }
     });
 
     stream.on("error", async (err: Error) => {
@@ -226,14 +233,43 @@ class PISFileSystem extends FileSystem {
         "❌ Stream error during FTP upload",
       );
       processingFailed = true;
-      await cleanupFile("stream error");
+      try {
+        await cleanupFile("stream error");
+      } catch (cleanupErr) {
+        logger.error(
+          { cleanupErr, fileName },
+          "❌ Failed to cleanup on stream error",
+        );
+      }
     });
 
     stream.on("aborted", async () => {
       logger.warn({ fileName, fsPath }, "⚠️ Client aborted FTP upload");
       processingFailed = true;
-      await cleanupFile("client aborted");
+      try {
+        await cleanupFile("client aborted");
+      } catch (cleanupErr) {
+        logger.error({ cleanupErr, fileName }, "❌ Failed to cleanup on abort");
+      }
     });
+
+    // 超时保护：防止客户端连接后不传输数据
+    const timeoutId = setTimeout(() => {
+      if (!processingFailed) {
+        logger.warn({ fileName, fsPath }, "⏱️ Upload timeout, cleaning up");
+        processingFailed = true;
+        cleanupFile("timeout").catch((err) => {
+          logger.error({ err, fileName }, "❌ Timeout cleanup failed");
+        });
+      }
+    }, 120000); // 2分钟超时
+
+    // 清理超时计时器
+    const originalProcessUpload = processUpload;
+    processUpload = async () => {
+      clearTimeout(timeoutId);
+      await originalProcessUpload();
+    };
 
     // 返回原始的 { stream, clientPath } 结构
     return result;
