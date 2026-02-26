@@ -146,8 +146,22 @@ class PISFileSystem extends FileSystem {
 
     let processingFailed = false;
 
-    const processUpload = async () => {
+    // 超时保护：防止客户端连接后不传输数据（2分钟超时）
+    const timeoutId = setTimeout(() => {
+      if (!processingFailed) {
+        logger.warn({ fileName, fsPath }, "⏱️ Upload timeout, cleaning up");
+        processingFailed = true;
+        cleanupFile("timeout").catch((err) => {
+          logger.error({ err, fileName }, "❌ Timeout cleanup failed");
+        });
+      }
+    }, 120000);
+
+    // 处理上传的包装函数，用于清理超时计时器
+    const wrappedProcessUpload = async () => {
+      clearTimeout(timeoutId);
       try {
+        // 上传处理逻辑
         logger.info(
           { fileName, fsPath, albumId: this.albumId },
           "📸 FTP Upload completed, starting processing...",
@@ -216,6 +230,9 @@ class PISFileSystem extends FileSystem {
       }
     };
 
+    // 旧的 processUpload 函数不再需要，保留它作为别名以保持兼容性
+    const processUpload = wrappedProcessUpload;
+
     stream.once("close", async () => {
       try {
         await processUpload();
@@ -252,24 +269,6 @@ class PISFileSystem extends FileSystem {
         logger.error({ cleanupErr, fileName }, "❌ Failed to cleanup on abort");
       }
     });
-
-    // 超时保护：防止客户端连接后不传输数据
-    const timeoutId = setTimeout(() => {
-      if (!processingFailed) {
-        logger.warn({ fileName, fsPath }, "⏱️ Upload timeout, cleaning up");
-        processingFailed = true;
-        cleanupFile("timeout").catch((err) => {
-          logger.error({ err, fileName }, "❌ Timeout cleanup failed");
-        });
-      }
-    }, 120000); // 2分钟超时
-
-    // 清理超时计时器
-    const originalProcessUpload = processUpload;
-    processUpload = async () => {
-      clearTimeout(timeoutId);
-      await originalProcessUpload();
-    };
 
     // 返回原始的 { stream, clientPath } 结构
     return result;
