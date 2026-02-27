@@ -457,6 +457,7 @@ update_config_files() {
             success "数据库密码已重新生成"
             secrets_regenerated=$((secrets_regenerated + 1))
         fi
+    fi
     
     # 2. 检查 MinIO 密钥
     MINIO_USER=$(grep '^MINIO_ROOT_USER=' "$env_file" 2>/dev/null | cut -d'=' -f2- | xargs)
