@@ -3,10 +3,49 @@
 @tailwind utilities;
 
 @layer base {
+  /* 暗色主题（默认） */
   :root {
-    --background: 5 5 5;
-    --surface: 10 10 10;
-    --accent: 212 175 55;
+    --color-background: 5 5 5;
+    --color-surface: 10 10 10;
+    --color-surface-elevated: 17 17 17;
+    --color-border: 26 26 26;
+    --color-border-light: 34 34 34;
+    --color-accent: 212 175 55; /* #D4AF37 默认金色 */
+    --color-accent-hover: 59 50 209;
+    --color-text-primary: 255 255 255;
+    --color-text-secondary: 136 136 136;
+    --color-text-muted: 85 85 85;
+
+    /* 圆角变量 */
+    --radius-base: 0.5rem;
+    --radius-sm: 0.25rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+  }
+
+  /* 亮色主题 */
+  .light {
+    --color-background: 255 255 255;
+    --color-surface: 249 250 251;
+    --color-surface-elevated: 243 244 246;
+    --color-border: 229 231 235;
+    --color-border-light: 209 213 219;
+    --color-text-primary: 17 24 39;
+    --color-text-secondary: 107 114 128;
+    --color-text-muted: 156 163 175;
+    /* accent 颜色保持用户选择的值 */
+  }
+
+  /* 暗色主题（显式定义） */
+  .dark {
+    --color-background: 5 5 5;
+    --color-surface: 10 10 10;
+    --color-surface-elevated: 17 17 17;
+    --color-border: 26 26 26;
+    --color-border-light: 34 34 34;
+    --color-text-primary: 255 255 255;
+    --color-text-secondary: 136 136 136;
+    --color-text-muted: 85 85 85;
   }
 
   html {
@@ -17,7 +56,7 @@
     html {
       scroll-behavior: auto;
     }
-    
+
     *,
     *::before,
     *::after {
@@ -74,17 +113,19 @@
   /* 金色渐变按钮 */
   .btn-accent {
     @apply bg-gradient-to-r from-accent to-yellow-500 text-background font-semibold 
-           px-6 py-2 rounded-lg transition-all duration-200
+           px-6 py-2 transition-all duration-200
            hover:shadow-lg hover:shadow-accent/25 hover:scale-[1.02]
            active:scale-[0.98];
+    border-radius: var(--radius-base);
   }
 
   /* 基础按钮 */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 
            font-medium transition-all duration-200 disabled:opacity-50 
            disabled:cursor-not-allowed focus:outline-none focus:ring-2 
            focus:ring-accent/50 focus:ring-offset-2 min-h-[44px];
+    border-radius: var(--radius-base);
   }
 
   .btn-primary {
@@ -104,17 +145,93 @@
     @apply btn bg-red-500 text-white hover:bg-red-600 active:scale-[0.98];
   }
 
+  /* 金色文字发光效果 - 仅在亮色模式下生效 */
+  .text-glow-gold {
+    /* 深色模式下无阴影和发光 */
+  }
+
+  .light .text-glow-gold {
+    text-shadow:
+      0 2px 8px rgba(212, 175, 55, 1),
+      0 0 20px rgba(212, 175, 55, 0.8),
+      0 0 40px rgba(212, 175, 55, 0.6),
+      0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  .text-glow-gold-lg {
+    /* 深色模式下无阴影和发光 */
+  }
+
+  .light .text-glow-gold-lg {
+    text-shadow:
+      0 4px 12px rgba(212, 175, 55, 1),
+      0 0 30px rgba(212, 175, 55, 0.9),
+      0 0 60px rgba(212, 175, 55, 0.7),
+      0 2px 4px rgba(0, 0, 0, 0.4);
+  }
+
+  .text-glow-gold-md {
+    /* 深色模式下无阴影和发光 */
+  }
+
+  .light .text-glow-gold-md {
+    text-shadow:
+      0 2px 6px rgba(212, 175, 55, 1),
+      0 0 15px rgba(212, 175, 55, 0.8),
+      0 0 30px rgba(212, 175, 55, 0.6),
+      0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  /* 亮色模式下的金色发光效果（深色文字 + 金色发光） */
+  .text-glow-gold-light {
+    /* 深色模式下无阴影和发光 */
+  }
+
+  .light .text-glow-gold-light {
+    text-shadow:
+      0 2px 8px rgba(212, 175, 55, 1),
+      0 0 20px rgba(212, 175, 55, 0.8),
+      0 0 40px rgba(212, 175, 55, 0.6),
+      0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  .text-glow-gold-light-lg {
+    /* 深色模式下无阴影和发光 */
+  }
+
+  .light .text-glow-gold-light-lg {
+    text-shadow:
+      0 4px 12px rgba(212, 175, 55, 1),
+      0 0 30px rgba(212, 175, 55, 0.9),
+      0 0 60px rgba(212, 175, 55, 0.7),
+      0 2px 4px rgba(0, 0, 0, 0.4);
+  }
+
+  .text-glow-gold-light-md {
+    /* 深色模式下无阴影和发光 */
+  }
+
+  .light .text-glow-gold-light-md {
+    text-shadow:
+      0 2px 6px rgba(212, 175, 55, 1),
+      0 0 15px rgba(212, 175, 55, 0.8),
+      0 0 30px rgba(212, 175, 55, 0.6),
+      0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
   /* 输入框 */
   .input {
-    @apply w-full px-4 py-2 bg-surface-elevated border border-border rounded-lg
+    @apply w-full px-4 py-2 bg-surface-elevated border border-border
            text-text-primary placeholder:text-text-muted
            focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent
            transition-all duration-200;
+    border-radius: var(--radius-base);
   }
 
   /* 卡片 */
   .card {
-    @apply bg-surface-elevated border border-border rounded-xl p-6;
+    @apply bg-surface-elevated border border-border p-6;
+    border-radius: var(--radius-lg);
   }
 }
 
@@ -160,6 +277,35 @@
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* 模板动画效果 */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.4s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
 
   /* 移动端输入框字体大小优化（防止自动缩放） */

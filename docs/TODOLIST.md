@@ -1,6 +1,6 @@
 # PIS 开发计划
 
-> 最后更新：2026-02-06
+> 最后更新：2026-02-08
 
 ## 目录
 
@@ -37,189 +37,378 @@
 - [x] 页面加载动画
 - [x] 复制功能兼容性（HTTP 环境）
 - [x] ICP 备案号配置支持
+- [x] 数据备份与恢复（导出/导入 JSON）
+
+### 法律页面
+- [x] 隐私政策页面 (`/privacy`)
+- [x] 使用条款页面 (`/terms`)
+- [x] 页脚链接更新（由 PIS → 由 PIS 提供支持）
+- [x] 中英文翻译支持
 
 ---
 
 ## 高优先级
 
-### 1. 后台系统设置界面
+### 1. 后台系统设置界面 ✅ 已完成
 > 让用户通过网页配置系统，无需编辑 .env 文件
 
 **功能点：**
-- [ ] 创建 `system_settings` 数据库表
-- [ ] 品牌设置
-  - [ ] 摄影师/工作室名称
-  - [ ] 品牌标语
-  - [ ] Logo 上传
-  - [ ] Favicon 上传
-- [ ] 版权与备案
-  - [ ] 版权声明文字
-  - [ ] ICP 备案号
-  - [ ] 公安备案号
-- [ ] 站点配置
-  - [ ] 站点标题
-  - [ ] 站点描述
-  - [ ] SEO 关键词
-- [ ] 功能开关
-  - [ ] 是否允许游客访问首页
-  - [ ] 默认是否启用水印
-  - [ ] 默认是否允许下载
-  - [ ] 是否显示 EXIF 信息
-- [ ] 社交链接
-  - [ ] 微信二维码
-  - [ ] 微博/Instagram 等链接
-  - [ ] 联系方式
+- [x] 创建 `system_settings` 数据库表
+- [x] 品牌设置
+  - [x] 摄影师/工作室名称
+  - [x] 品牌标语
+  - [x] Logo 上传
+  - [x] Favicon 上传
+- [x] 版权与备案
+  - [x] 版权声明文字
+  - [x] ICP 备案号
+  - [x] 公安备案号
+- [x] 站点配置
+  - [x] 站点标题
+  - [x] 站点描述
+  - [x] SEO 关键词
+- [x] 功能开关
+  - [x] 是否允许游客访问首页
+  - [x] 默认是否启用水印
+  - [x] 默认是否允许下载
+  - [x] 是否显示 EXIF 信息
+- [x] 社交链接
+  - [x] 微信二维码上传
+  - [x] 微博/Instagram 等链接
+  - [x] 联系方式
+- [x] 主题设置
+  - [x] 主题模式（亮色/暗色/跟随系统）
+  - [x] 主色调选择
 
-**技术实现：**
+**已完成的技术实现：**
 ```
-1. 数据库表设计
-   - key (VARCHAR): 设置键名
-   - value (JSONB): 设置值
-   - category (VARCHAR): 分类
-   - updated_at (TIMESTAMP): 更新时间
+1. 数据库表: system_settings
+   - docker/init-postgresql-db.sql (新增表和初始数据)
+   - docker/migrations/013_add_system_settings.sql (迁移脚本)
 
 2. API 接口
    - GET /api/admin/settings - 获取所有设置
    - PATCH /api/admin/settings - 更新设置
-   - GET /api/public/settings - 获取公开设置（品牌、备案等）
+   - GET /api/public/settings - 获取公开设置
 
 3. 前端组件
-   - SettingsPage: 设置页面
-   - SettingsForm: 各分类的表单组件
-   - useSettings: 全局设置 Hook
+   - components/admin/system-settings-section.tsx
+   - hooks/use-settings.ts (useSettings, useAdminSettings, SettingsProvider)
+   - lib/settings.ts (服务端获取设置)
+
+4. Footer 组件更新
+   - site-footer.tsx / album-footer.tsx 使用数据库设置
 ```
 
-### 2. GitHub Releases 升级系统
+### 2. GitHub Releases 升级系统 ✅ 已完成
 > 基于版本号的自动升级，替代当前的 Git commit 对比
 
 **功能点：**
-- [ ] 版本检查
-  - [ ] 调用 GitHub Releases API 获取最新版本
-  - [ ] 对比当前版本与最新版本
-  - [ ] 显示版本号（如 v1.2.0）
-- [ ] 更新详情
-  - [ ] 显示 Release Notes（更新日志）
-  - [ ] 显示发布时间
-  - [ ] 显示重要更新标记
-- [ ] 一键升级
-  - [ ] 自动备份当前配置
-  - [ ] 拉取指定版本 Tag
-  - [ ] 重新构建镜像（可选）
-  - [ ] 重启服务
-  - [ ] 显示升级进度
-- [ ] 升级历史
-  - [ ] 记录每次升级
-  - [ ] 支持回滚到历史版本
+- [x] 版本检查
+  - [x] 调用 GitHub Releases API 获取最新版本
+  - [x] 对比当前版本与最新版本
+  - [x] 显示版本号（如 v1.2.0）
+- [x] 更新详情
+  - [x] 显示 Release Notes（更新日志）
+  - [x] 显示发布时间
+  - [x] 显示预发布版本标记
+- [x] 一键升级
+  - [x] 拉取指定版本 Tag
+  - [x] 重新构建镜像（可选）
+  - [x] 重启服务
+  - [x] 显示升级进度（流式日志）
+- [x] 升级历史
+  - [x] 记录每次升级
+  - [x] 支持回滚到历史版本
 
-**技术实现：**
+**已完成的技术实现：**
 ```
-1. API 接口
-   GET /api/admin/upgrade/check
-   - 调用 https://api.github.com/repos/JunyuZhan/pis/releases/latest
-   - 返回: { currentVersion, latestVersion, hasUpdate, releaseNotes, publishedAt }
+1. 版本管理
+   - lib/version.ts: 版本号常量和比较工具
+   - package.json version: 1.0.0
 
-   POST /api/admin/upgrade/execute
-   - 执行: git fetch --tags && git checkout v1.2.0
-   - 可选: docker compose build --no-cache
-   - 重启: docker compose up -d
+2. API 接口
+   - GET /api/admin/upgrade/check
+     调用 GitHub Releases API
+     返回: currentVersion, latestVersion, hasUpdate, releaseNotes, publishedAt
+   
+   - POST /api/admin/upgrade/execute
+     支持 targetVersion 参数
+     执行: git fetch --tags && git checkout <tag>
+     可选: --rebuild (无缓存构建)
+     自动记录升级历史
+   
+   - GET /api/admin/upgrade/history
+     获取升级历史记录（分页）
+     包含执行人、状态、耗时等信息
+   
+   - POST /api/admin/upgrade/rollback
+     执行版本回滚
+     支持 target_version 参数
+     流式日志输出
+     自动记录回滚历史
 
-2. 版本管理
-   - 使用 package.json 中的 version 字段
-   - 每次发布时创建 Git Tag 和 GitHub Release
+3. 升级脚本
+   - scripts/deploy/quick-upgrade.sh
+     新增 --tag <version> 参数
+     支持切换到指定版本 Tag
 
-3. 前端界面
-   - 当前版本显示
-   - 新版本提示徽章
-   - 更新日志展示（Markdown 渲染）
-   - 升级按钮和进度条
+4. 数据库表
+   - upgrade_history: 升级/回滚历史记录
+     记录版本变更、状态、执行人、耗时等
+
+5. 前端组件
+   - components/admin/upgrade-manager.tsx
+     版本信息展示
+     更新日志 Markdown 渲染
+     一键升级按钮
+     流式升级日志显示
+     升级历史列表
+     版本回滚功能
 ```
 
-### 3. 海报预览图优化
+### 3. 海报预览图优化 ✅ 已完成
 > 为海报模板添加真实的预览效果
 
 **功能点：**
-- [ ] 海报模板预览图
-  - [ ] 经典模板预览
-  - [ ] 简约模板预览
-  - [ ] 优雅模板预览
-  - [ ] 商务模板预览
-- [ ] 实时预览
-  - [ ] 调整参数时实时更新预览
-  - [ ] 使用相册封面作为背景
-- [ ] 预设缩略图
-  - [ ] 生成静态预览图
-  - [ ] 存储到 public 目录
+- [x] 海报模板预览图
+  - [x] 经典模板预览
+  - [x] 简约模板预览
+  - [x] 优雅模板预览
+  - [x] 商务模板预览
+- [x] 实时预览
+  - [x] 调整参数时实时更新预览
+  - [x] 使用相册封面作为背景
+- [x] Canvas 动态渲染
+  - [x] 使用 Canvas API 实时渲染预览
+  - [x] 支持文字、遮罩、二维码预览
+
+**已完成的技术实现：**
+```
+1. 预览组件
+   - components/admin/poster-preview.tsx
+     - PosterPreview: Canvas 实时渲染预览
+     - PosterTemplatePreview: 模板选择卡片
+
+2. 配置对话框增强
+   - poster-config-dialog.tsx
+     - 添加实时预览面板（可切换）
+     - 支持传入相册标题、描述、封面
+
+3. 技术特点
+   - Canvas API 渲染海报效果
+   - 支持背景图片居中裁剪
+   - 动态文字定位（顶部/居中/底部）
+   - 二维码位置模拟
+   - 响应式预览尺寸（sm/md/lg）
+```
 
 ---
 
 ## 中优先级
 
-### 4. 主题系统
+### 4. 主题系统 ✅ 已完成
 > 支持多种主题风格
 
 **功能点：**
-- [ ] 内置主题
-  - [ ] 亮色主题（默认）
-  - [ ] 暗色主题
-  - [ ] 自动跟随系统
-- [ ] 自定义主题
-  - [ ] 主色调选择
-  - [ ] 背景色
-  - [ ] 文字颜色
-  - [ ] 圆角大小
-- [ ] 主题切换
-  - [ ] 前台主题切换按钮
-  - [ ] 后台主题设置
+- [x] 内置主题
+  - [x] 亮色主题
+  - [x] 暗色主题（默认）
+  - [x] 自动跟随系统
+- [x] 自定义主题
+  - [x] 主色调选择
+  - [x] 背景色（随主题自动切换）
+  - [x] 文字颜色（随主题自动切换）
+  - [x] 圆角大小
+- [x] 主题切换
+  - [x] 前台主题切换按钮
+  - [x] 后台主题设置
 
-### 5. 相册模板系统
+**已完成的技术实现：**
+```
+1. CSS 变量系统
+   - globals.css: 亮色/暗色主题 CSS 变量定义
+   - tailwind.config.ts: 使用 CSS 变量实现动态颜色
+
+2. 主题提供者
+   - components/theme-provider.tsx: ThemeProvider 和 useTheme
+   - 支持 localStorage 持久化
+   - 支持系统主题偏好检测
+
+3. 主题切换组件
+   - components/theme-toggle.tsx: 主题切换按钮
+   - 循环切换：亮色 -> 暗色 -> 跟随系统
+
+4. 主色调动态应用
+   - 保存设置时同步更新 CSS 变量
+   - 支持任意 HEX 颜色
+
+5. 防闪烁优化
+   - layout.tsx 内联初始化脚本
+   - 页面加载前即应用正确主题
+```
+
+### 5. 相册模板系统 ✅ 已完成
 > 预设相册样式模板
 
 **功能点：**
-- [ ] 内置模板
-  - [ ] 婚礼相册模板
-  - [ ] 活动相册模板
-  - [ ] 人像相册模板
-  - [ ] 产品相册模板
-- [ ] 模板配置
-  - [ ] 布局样式
-  - [ ] 配色方案
-  - [ ] 字体选择
-- [ ] 自定义模板
-  - [ ] 模板编辑器
-  - [ ] 模板导入/导出
+- [x] 内置模板
+  - [x] 婚礼相册模板（经典婚礼、现代婚礼）
+  - [x] 活动相册模板（活力活动、商务活动）
+  - [x] 人像相册模板（艺术人像、清新人像）
+  - [x] 产品相册模板（产品展示）
+  - [x] 旅行相册模板（旅行探险）
+- [x] 模板配置
+  - [x] 布局样式（瀑布流、网格、故事流、时间线）
+  - [x] 配色方案（主题色、背景色、文字色、强调色）
+  - [x] 字体选择（衬线/无衬线字体）
+  - [x] 动画效果（淡入、滑入、缩放）
+  - [x] 悬停效果（缩放、浮起、发光、遮罩）
+- [x] 自定义模板
+  - [x] 模板编辑器（TemplateStyleEditor 组件）
+  - [x] 模板导入/导出（API + 管理界面）
 
-### 6. 客户管理
+**已完成的技术实现：**
+```
+1. 模板定义
+   - lib/album-templates.ts: 模板类型和内置模板配置
+   - 8 个内置模板覆盖婚礼、活动、人像、产品、旅行场景
+   - 完整的模板样式配置（主题、字体、布局、动画等）
+
+2. 数据库支持
+   - albums.template_id: 存储选择的模板 ID
+   - albums.template_config: 存储自定义模板配置
+   - 迁移脚本: 004_add_album_template.sql
+
+3. 模板选择器
+   - components/admin/template-selector.tsx: 模板选择组件
+   - 按分类筛选（婚礼、活动、人像等）
+   - 模板预览卡片（实时预览效果）
+   - 模板详情展示（布局、字体、动画、配色）
+
+4. 样式应用
+   - components/album/template-style-provider.tsx: 客户端样式提供者
+   - hooks/use-template-styles.ts: 模板样式 Hook
+   - 动态 CSS 变量注入
+   - 主题模式自动切换
+
+5. 集成
+   - 相册设置页面添加模板选择
+   - 相册浏览页面自动应用模板样式
+   - API 支持模板字段更新
+
+6. 自定义模板编辑器
+   - 数据库表: style_templates（存储自定义样式模板）
+   - API: /api/admin/style-templates (GET/POST)
+   - API: /api/admin/style-templates/[id] (GET/PATCH/DELETE)
+   - API: /api/admin/style-templates/export (GET)
+   - API: /api/admin/style-templates/import (POST)
+   - 组件: components/admin/template-style-editor.tsx（模板编辑器）
+   - 组件: components/admin/style-template-manager.tsx（模板管理器）
+   - 页面: /admin/settings/style-templates
+   - 功能: 主题颜色、字体排版、布局设置、封面样式、动效悬停
+```
+
+### 6. 客户管理 ✅ 已完成
 > 管理客户信息和相册关联
 
 **功能点：**
-- [ ] 客户信息
-  - [ ] 姓名、电话、邮箱
-  - [ ] 备注信息
-  - [ ] 标签分类
-- [ ] 相册关联
-  - [ ] 一个客户多个相册
-  - [ ] 快速筛选客户相册
-- [ ] 通知功能
-  - [ ] 相册就绪通知
-  - [ ] 短信/邮件通知（可选）
+- [x] 客户信息
+  - [x] 姓名、电话、邮箱、微信
+  - [x] 公司/单位、地址
+  - [x] 备注信息
+  - [x] 标签分类（支持多标签）
+  - [x] 客户来源（转介绍/网站/社交媒体/其他）
+  - [x] 客户状态（活跃/非活跃/已归档）
+- [x] 相册关联
+  - [x] 一个客户多个相册
+  - [x] 客户-相册关联 API
+  - [x] 相册页面关联客户选择器
+- [x] 通知功能
+  - [x] 相册就绪通知
+  - [x] 邮件通知（SMTP）
+  - [ ] 短信通知（待实现，需要第三方短信服务）
 
-### 7. 数据统计
+**已完成的技术实现：**
+```
+1. 数据库表
+   - customers: 客户信息表
+   - customer_albums: 客户-相册关联表
+   - notifications: 通知记录表
+   - email_config: 邮件配置表
+
+2. API 接口
+   - GET /api/admin/customers: 获取客户列表（支持搜索、筛选、分页）
+   - POST /api/admin/customers: 创建客户
+   - GET /api/admin/customers/[id]: 获取客户详情及关联相册
+   - PATCH /api/admin/customers/[id]: 更新客户
+   - DELETE /api/admin/customers/[id]: 删除客户（软删除）
+   - POST /api/admin/customers/[id]/albums: 关联相册
+   - DELETE /api/admin/customers/[id]/albums: 取消关联
+   - POST /api/admin/notifications/send: 发送客户通知
+   - GET /api/admin/notifications: 获取通知历史
+   - GET/POST /api/admin/notifications/email-config: 邮件配置管理
+
+3. 前端组件
+   - components/admin/customer-list.tsx: 客户列表页
+   - components/admin/customer-dialog.tsx: 客户编辑对话框
+   - components/admin/send-notification-dialog.tsx: 发送通知对话框
+   - app/admin/(dashboard)/customers/page.tsx: 客户管理页面
+
+4. 功能特点
+   - 支持姓名、电话、邮箱、公司搜索
+   - 按状态、标签筛选
+   - 显示关联相册数量
+   - 标签管理（添加/删除）
+   - 相册就绪邮件通知（精美模板）
+   - 支持自定义邮件主题和内容
+   - 通知历史记录
+```
+
+### 7. 数据统计 ✅ 已完成
 > 相册访问和下载统计
 
 **功能点：**
-- [ ] 访问统计
-  - [ ] 相册浏览量
-  - [ ] 照片查看量
-  - [ ] 访问来源
-  - [ ] 访问设备
-- [ ] 下载统计
-  - [ ] 单张下载次数
-  - [ ] 批量下载次数
-  - [ ] 下载用户统计
-- [ ] 数据可视化
-  - [ ] 趋势图表
-  - [ ] 热门相册排行
-  - [ ] 导出报表
+- [x] 访问统计
+  - [x] 相册浏览量
+  - [x] 照片查看量
+  - [x] 访问来源
+  - [x] 访问设备（电脑/手机/平板）
+  - [x] 浏览器统计
+- [x] 下载统计
+  - [x] 单张下载次数
+  - [x] 下载文件数量
+  - [x] 下载数据大小
+- [x] 数据可视化
+  - [x] 访问趋势图表
+  - [x] 热门相册排行
+  - [x] 设备类型分布
+  - [x] 导出报表（CSV/JSON）
+
+**已完成的技术实现：**
+```
+1. 数据库表
+   - album_views: 相册访问记录
+   - photo_views: 照片查看记录
+   - download_logs: 下载记录
+   - daily_stats: 每日统计汇总（用于快速查询）
+
+2. API 接口
+   - POST /api/analytics/track: 记录访问事件
+   - GET /api/admin/analytics: 获取统计概览
+   - GET /api/admin/analytics/albums/[id]: 获取相册详细统计
+
+3. 前端组件
+   - components/admin/analytics-dashboard.tsx: 统计仪表盘
+   - hooks/use-analytics.ts: 访问追踪 hooks
+
+4. 功能特点
+   - 自动追踪相册访问（AlbumClient）
+   - 自动追踪照片查看（Lightbox）
+   - 自动追踪下载事件
+   - 会话去重（避免重复计数）
+   - 多时间范围支持（7天/30天/90天/全部）
+```
 
 ---
 
@@ -229,9 +418,56 @@
 > 完善国际化支持
 
 **功能点：**
-- [ ] 后台语言切换
-- [ ] 相册多语言标题/描述
-- [ ] 语言包管理界面
+- [x] 后台语言切换
+  - [x] 语言切换组件（已集成到侧边栏）
+  - [x] 后台管理翻译字符串（中/英）
+  - [x] 侧边栏菜单国际化
+- [x] 相册多语言标题/描述
+  - [x] 数据库字段支持（title_translations, description_translations 等 JSONB 字段）
+  - [x] API 支持（createAlbumSchema, updateAlbumSchema 添加多语言字段）
+  - [x] 前端编辑组件（TranslationEditor 组件）
+- [x] 语言包管理界面
+  - [x] 数据库表支持（custom_translations）
+  - [x] API 端点（GET/POST/DELETE 翻译、导入/导出）
+  - [x] 管理界面组件（TranslationManager）
+
+**已完成的技术实现：**
+```
+1. i18n 配置
+   - i18n/config.ts: 语言配置（zh-CN, en）
+   - lib/i18n.ts: 语言工具函数
+   - messages/zh-CN.json: 中文翻译
+   - messages/en.json: 英文翻译
+
+2. 组件
+   - components/ui/language-switcher.tsx: 语言切换组件
+   - components/admin/sidebar.tsx: 使用 useTranslations
+   - components/admin/translation-editor.tsx: 多语言编辑器组件
+   - components/admin/translation-manager.tsx: 语言包管理组件
+
+3. 翻译内容
+   - 后台侧边栏菜单
+   - 客户管理相关
+   - 通知功能相关
+   - 数据统计相关
+   - 系统升级相关
+   - 系统设置相关
+
+4. 相册多语言编辑
+   - 标题多语言编辑（title_translations）
+   - 描述多语言编辑（description_translations）
+   - 分享标题多语言编辑（share_title_translations）
+   - 分享描述多语言编辑（share_description_translations）
+   - 已集成到 album-settings-form.tsx
+
+5. 语言包管理
+   - 数据库表: custom_translations
+   - API: /api/admin/translations (GET/POST/DELETE)
+   - API: /api/admin/translations/export (GET)
+   - API: /api/admin/translations/import (POST)
+   - 页面: /admin/settings/translations
+   - 功能: 查看/编辑翻译、导入/导出、按命名空间筛选、搜索
+```
 
 ### 9. 插件系统
 > 支持第三方插件扩展
@@ -260,10 +496,125 @@
 - [ ] AI 智能标签
 - [ ] AI 相册描述生成
 
-### 12. 协作功能
-- [ ] 多摄影师协作
-- [ ] 权限管理
-- [ ] 操作日志
+### 12. 协作功能 ✅ 已完成
+- [x] 多摄影师协作
+- [x] 权限管理
+- [x] 操作日志
+
+**多摄影师协作已完成的技术实现：**
+```
+1. 数据库表
+   - album_collaborators: 相册协作者表
+   - collaboration_invites: 协作邀请表
+
+2. 协作角色
+   - owner: 所有者（完全控制）
+   - editor: 编辑者（上传/编辑照片）
+   - viewer: 查看者（只读）
+
+3. 细粒度权限
+   - canUpload: 上传照片
+   - canEdit: 编辑照片
+   - canDelete: 删除照片
+   - canManage: 管理相册设置
+   - canInvite: 邀请其他协作者
+
+4. API 端点
+   - GET/POST /api/admin/albums/[id]/collaborators: 协作者管理
+   - PATCH/DELETE /api/admin/albums/[id]/collaborators/[id]: 单个协作者
+   - GET /api/admin/collaborations: 获取我的协作
+   - POST/DELETE /api/admin/collaborations/[id]: 接受/拒绝/退出
+
+5. 前端组件
+   - components/admin/collaborator-manager.tsx: 协作者管理器
+   - components/admin/collaboration-invites.tsx: 协作邀请列表
+
+6. 功能特点
+   - 邀请用户协作
+   - 接受/拒绝邀请
+   - 权限精细控制
+   - 退出协作
+   - 操作日志记录
+```
+
+**权限管理已完成的技术实现：**
+```
+1. 数据库表
+   - permissions: 权限定义表（25+ 系统内置权限）
+   - role_permissions: 角色权限关联表
+   - user_permissions: 用户特殊权限表（覆盖角色权限）
+
+2. 权限分类
+   - album: 相册管理（查看/创建/编辑/删除/发布/分享）
+   - photo: 照片管理（查看/上传/编辑/删除/下载/修图）
+   - customer: 客户管理（查看/创建/编辑/删除/通知）
+   - analytics: 数据统计（查看/导出）
+   - system: 系统管理（设置/升级/用户/权限/审计/备份）
+
+3. 角色预设
+   - admin: 管理员（所有权限）
+   - photographer: 摄影师（相册/照片/客户管理）
+   - retoucher: 修图师（照片查看/修图）
+   - viewer: 查看者（只读权限）
+
+4. API 端点
+   - GET /api/admin/permissions: 获取所有权限
+   - GET/PUT /api/admin/permissions/roles/[role]: 角色权限管理
+   - GET/PUT /api/admin/permissions/users/[id]: 用户特殊权限
+
+5. 前端组件
+   - components/admin/permission-manager.tsx: 权限管理器
+   - 页面: /admin/settings/permissions
+
+6. 工具库
+   - lib/permissions.ts: 权限检查工具
+   - lib/api-permissions.ts: API 权限检查辅助
+   - 支持权限缓存（5分钟 TTL）
+```
+
+**操作日志已完成的技术实现：**
+```
+1. 数据库
+   - audit_logs 表: 存储操作日志记录
+   - 索引: user_id, action, resource_type, created_at 等
+
+2. API 端点
+   - GET /api/admin/audit-logs: 查询日志列表（支持筛选、分页）
+   - GET /api/admin/audit-logs/stats: 获取日志统计
+   - GET /api/admin/audit-logs/export: 导出日志（JSON/CSV）
+
+3. 前端组件
+   - components/admin/audit-log-viewer.tsx: 日志查看器
+   - 页面: /admin/settings/audit-logs
+
+4. 日志记录工具
+   - lib/audit-log.ts: 日志记录工具库
+   - 便捷方法: logCreate, logUpdate, logDelete, logLogin
+
+5. 集成点
+   - 相册创建/更新/删除自动记录日志
+   - 用户登录自动记录日志
+   - 支持记录操作者信息、资源信息、变更详情
+```
+
+**数据备份与恢复已完成的技术实现：**
+```
+1. API 端点
+   - GET /api/admin/backup: 获取备份信息（数据库统计、存储统计）
+   - GET /api/admin/backup/export: 导出数据（JSON 格式）
+   - POST /api/admin/backup/import: 导入数据
+
+2. 前端组件
+   - components/admin/backup-manager.tsx: 备份管理器
+   - 页面: /admin/settings/backup
+
+3. 功能特点
+   - 选择性导出/导入数据表
+   - 显示数据库表统计
+   - 显示存储空间使用情况
+   - 显示最近操作记录
+   - 支持 JSON 格式导出/导入
+```
 
 ### 13. 云服务版本
 - [ ] SaaS 多租户支持

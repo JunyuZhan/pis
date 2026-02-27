@@ -62,7 +62,7 @@ export interface SingleWatermark {
   opacity: number
   /** 位置 */
   position: 'top-left' | 'top-center' | 'top-right' | 'center-left' | 'center' | 'center-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'
-  /** 字体大小或 Logo 尺寸（可选，自动计算） */
+  /** 字体大小或 Logo 尺寸（预览图宽度的百分比，1-100，可选，自动计算） */
   size?: number
   /** 边距（百分比，0-20，默认 5） */
   margin?: number
@@ -287,8 +287,16 @@ export class PhotoProcessor {
 
     // ========== 步骤 3: Apply gamma correction ==========
     // 伽马校正，必须在 contrast 之后执行
+    // Sharp要求gamma值在1.0-3.0之间，超出范围会导致错误
     if (config.gamma !== undefined && config.gamma !== 1.0) {
-      processedImage = processedImage.gamma(config.gamma);
+      // 验证并限制gamma值在有效范围内
+      const validGamma = Math.max(1.0, Math.min(3.0, config.gamma));
+      if (validGamma !== config.gamma) {
+        console.warn(
+          `[StylePreset] Gamma value ${config.gamma} out of range (1.0-3.0), clamped to ${validGamma}`
+        );
+      }
+      processedImage = processedImage.gamma(validGamma);
     }
 
     // ========== 步骤 4: Skip tint ==========
@@ -557,9 +565,20 @@ export class PhotoProcessor {
     imageHeight: number
   ): Promise<Buffer | null> {
     if (watermark.type === 'text' && watermark.text) {
-      // Optimization: Calculate font size based on area rather than min dimension
-      const baseSize = Math.sqrt(imageWidth * imageHeight);
-      const fontSize = watermark.size || Math.max(12, Math.min(72, Math.floor(baseSize * 0.01)));
+      // size 是预览图宽度的百分比（1-100），转换为像素
+      // 向后兼容：如果 size > 20，认为是旧的像素值，需要转换为百分比
+      // 假设预览图宽度为 1920px，将像素值转换为百分比：pixels / 1920 * 100
+      let sizePercent: number;
+      if (watermark.size === undefined) {
+        sizePercent = 2; // 默认值 2%
+      } else if (watermark.size > 20) {
+        // 向后兼容：旧像素值，转换为百分比（基于 1920px 预览图）
+        const maxPreviewSize = parseInt(process.env.PREVIEW_MAX_SIZE || '1920', 10);
+        sizePercent = (watermark.size / maxPreviewSize) * 100;
+      } else {
+        sizePercent = watermark.size; // 新百分比值
+      }
+      const fontSize = Math.floor(imageWidth * (sizePercent / 100));
       const { x, y, anchor, baseline } = this.getTextPosition(watermark.position, imageWidth, imageHeight, watermark.margin);
 
       const svgText = `
@@ -612,7 +631,20 @@ export class PhotoProcessor {
             throw new Error(`Logo file too large: ${logoBuffer.byteLength} bytes (max: ${maxSize} bytes)`);
           }
 
-          const logoSize = watermark.size || Math.floor(Math.min(imageWidth, imageHeight) * 0.15);
+          // size 是预览图宽度的百分比（1-100），转换为像素
+          // 向后兼容：如果 size > 20，认为是旧的像素值，需要转换为百分比
+          // 假设预览图宽度为 1920px，将像素值转换为百分比：pixels / 1920 * 100
+          let sizePercent: number;
+          if (watermark.size === undefined) {
+            sizePercent = 8; // 默认值 8%
+          } else if (watermark.size > 20) {
+            // 向后兼容：旧像素值，转换为百分比（基于 1920px 预览图）
+            const maxPreviewSize = parseInt(process.env.PREVIEW_MAX_SIZE || '1920', 10);
+            sizePercent = (watermark.size / maxPreviewSize) * 100;
+          } else {
+            sizePercent = watermark.size; // 新百分比值
+          }
+          const logoSize = Math.floor(imageWidth * (sizePercent / 100));
 
           // Optimization: Get buffer and metadata in one go, avoid repeated Sharp instances
           const resizedLogoResult = await sharp(Buffer.from(logoBuffer))
@@ -789,10 +821,121 @@ export class PhotoProcessor {
   }
 
   /**
-   * 清理 EXIF 数据，移除敏感信息（GPS）
+   * 清理 EXIF 值，确保可以安全存储到 PostgreSQL JSON 字段
    *
    * @description
-   * 移除 GPS 位置信息以保护隐私
+   * 处理以下问题：
+   * - \u0000 (NULL 字符)：相机 EXIF 中的 C 风格字符串结尾
+   * - 控制字符 (\u0001-\u001F)：某些相机固件的非标准数据
+   * - Buffer/Uint8Array：二进制数据转为 Base64 或移除
+   * - 无效 UTF-8：非 UTF-8 编码的字符串（如 Shift-JIS）
+   * - 超长字符串：某些 MakerNote 可能非常大
+   *
+   * @param value - 任意值
+   * @param depth - 递归深度（防止无限递归）
+   * @returns 清理后的值
+   *
+   * @internal
+   */
+  private sanitizeValue(value: unknown, depth: number = 0): unknown {
+    // 防止无限递归
+    if (depth > 10) {
+      return '[max depth exceeded]';
+    }
+
+    // 处理 null/undefined
+    if (value === null || value === undefined) {
+      return value;
+    }
+
+    // 处理 Buffer/Uint8Array（某些 EXIF 字段是二进制数据）
+    if (Buffer.isBuffer(value) || value instanceof Uint8Array) {
+      // 小于 1KB 的二进制数据转为 Base64，否则忽略
+      if (value.length < 1024) {
+        return `[binary:${value.length}bytes]`;
+      }
+      return '[binary:truncated]';
+    }
+
+    // 处理字符串
+    if (typeof value === 'string') {
+      // 移除所有控制字符（\u0000-\u001F），保留换行和制表符
+      let cleaned = value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+      
+      // 限制字符串长度（某些 MakerNote 可能非常大）
+      if (cleaned.length > 10000) {
+        cleaned = cleaned.substring(0, 10000) + '...[truncated]';
+      }
+      
+      // 验证是否为有效 UTF-8（移除无效字符）
+      // 使用 encodeURIComponent/decodeURIComponent 验证
+      try {
+        decodeURIComponent(encodeURIComponent(cleaned));
+      } catch {
+        // 如果编码失败，尝试移除非 ASCII 字符
+        cleaned = cleaned.replace(/[^\x20-\x7E]/g, '?');
+      }
+      
+      return cleaned;
+    }
+
+    // 处理数组
+    if (Array.isArray(value)) {
+      // 限制数组长度
+      const maxLength = 100;
+      const arr = value.slice(0, maxLength).map(item => this.sanitizeValue(item, depth + 1));
+      if (value.length > maxLength) {
+        arr.push(`[...${value.length - maxLength} more items]`);
+      }
+      return arr;
+    }
+
+    // 处理 Date 对象
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+
+    // 处理普通对象
+    if (typeof value === 'object') {
+      const cleaned: Record<string, unknown> = {};
+      const entries = Object.entries(value);
+      
+      // 限制对象属性数量
+      const maxKeys = 200;
+      let count = 0;
+      
+      for (const [key, val] of entries) {
+        if (count >= maxKeys) {
+          cleaned['__truncated__'] = `${entries.length - maxKeys} more keys`;
+          break;
+        }
+        // 跳过无法 JSON 序列化的键
+        if (typeof key !== 'string') continue;
+        cleaned[key] = this.sanitizeValue(val, depth + 1);
+        count++;
+      }
+      return cleaned;
+    }
+
+    // 处理数字（检查 NaN 和 Infinity）
+    if (typeof value === 'number') {
+      if (Number.isNaN(value)) return null;
+      if (!Number.isFinite(value)) return null;
+      return value;
+    }
+
+    // 其他基本类型直接返回
+    return value;
+  }
+
+  /**
+   * 清理 EXIF 数据，移除敏感信息和不安全字符
+   *
+   * @description
+   * - 移除 GPS 位置信息以保护隐私
+   * - 清理不安全字符（NULL、控制字符等）
+   * - 处理二进制数据、超长字符串等边缘情况
+   * - 确保数据可以安全存储到 PostgreSQL JSON 字段
    *
    * @param {any} rawExif - 原始 EXIF 对象
    * @returns {any} 清理后的 EXIF 对象
@@ -840,7 +983,8 @@ export class PhotoProcessor {
       }
     });
 
-    return sanitized;
+    // 清理所有不安全字符，确保可以存储到 PostgreSQL JSON 字段
+    return this.sanitizeValue(sanitized);
   }
 
   /**

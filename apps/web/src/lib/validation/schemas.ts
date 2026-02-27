@@ -144,6 +144,9 @@ export const userListQuerySchema = z.object({
 // 相册相关
 // ============================================
 
+// 多语言翻译 schema（支持任意语言代码）
+const translationsSchema = z.record(z.string().max(1000)).optional().or(z.null());
+
 const watermarkItemSchema = z
   .object({
     type: z.enum(["text", "logo"], {
@@ -155,6 +158,16 @@ const watermarkItemSchema = z
       .number()
       .min(0, "透明度必须在 0-1 之间")
       .max(1, "透明度必须在 0-1 之间")
+      .optional(),
+    size: z
+      .number()
+      .min(0.1, "水印大小必须大于 0.1%")
+      .max(100, "水印大小不能超过 100%")
+      .optional(),
+    margin: z
+      .number()
+      .min(0, "边距不能小于 0%")
+      .max(20, "边距不能超过 20%")
       .optional(),
   })
   .superRefine((data, ctx) => {
@@ -194,6 +207,9 @@ export const createAlbumSchema = z
       .max(1000, "描述最多 1000 个字符")
       .optional()
       .or(z.null()),
+    // 多语言支持
+    title_translations: translationsSchema, // { "zh-CN": "中文标题", "en": "English Title" }
+    description_translations: translationsSchema,
     slug: slugSchema.optional(),
     event_date: z.string().datetime().optional().or(z.null()),
     location: z.string().max(200).optional().or(z.null()),
@@ -283,6 +299,11 @@ export const updateAlbumSchema = z
   .object({
     title: z.string().min(1, "相册标题不能为空").max(200).optional(),
     description: z.string().max(1000).optional().or(z.null()),
+    // 多语言支持
+    title_translations: translationsSchema, // { "zh-CN": "中文标题", "en": "English Title" }
+    description_translations: translationsSchema,
+    share_title_translations: translationsSchema,
+    share_description_translations: translationsSchema,
     cover_photo_id: uuidSchema.optional().or(z.null()),
     is_public: z.boolean().optional(),
     is_live: z.boolean().optional(),
@@ -321,6 +342,7 @@ export const updateAlbumSchema = z
     poster_image_url: z.string().url().optional().or(z.null()),
     event_date: z.string().datetime().optional().or(z.null()),
     location: z.string().max(200).optional().or(z.null()),
+    template_id: z.string().max(100).optional().or(z.null()), // 相册样式模板 ID
   })
   .superRefine((data, ctx) => {
     // 验证 URL 不能是内网地址（SSRF 防护）

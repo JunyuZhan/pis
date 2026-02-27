@@ -14,12 +14,20 @@ import {
   CheckCircle2,
   Download,
   Sparkles,
+  Settings,
+  Languages,
+  Palette,
+  ScrollText,
+  Shield,
+  Archive,
 } from "lucide-react";
 import { ChangePasswordForm } from "@/components/admin/change-password-form";
 import { TemplateManager } from "@/components/admin/template-manager";
 import { ConsistencyChecker } from "@/components/admin/consistency-checker";
 import { UpgradeManager } from "@/components/admin/upgrade-manager";
 import { AIRetouchSettings } from "@/components/admin/ai-retouch-settings";
+import { SystemSettingsSection } from "@/components/admin/system-settings-section";
+import { APP_VERSION } from "@/lib/version";
 
 export default async function SettingsPage() {
   const db = await createClient();
@@ -152,6 +160,15 @@ export default async function SettingsPage() {
         <ChangePasswordForm />
       </div>
 
+      {/* 站点设置 */}
+      <div className="card">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Settings className="w-5 h-5 text-accent" />
+          站点设置
+        </h2>
+        <SystemSettingsSection />
+      </div>
+
       {/* 系统统计 */}
       <div className="card">
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -190,7 +207,7 @@ export default async function SettingsPage() {
         <div className="space-y-3 text-sm">
           <div className="flex justify-between items-center py-2 border-b border-border/50">
             <span className="text-text-muted">应用版本</span>
-            <span className="font-medium">1.0.0</span>
+            <span className="font-medium">v{APP_VERSION}</span>
           </div>
           <div className="flex justify-between items-center py-2 border-b border-border/50">
             <span className="text-text-muted">数据库</span>
@@ -234,6 +251,42 @@ export default async function SettingsPage() {
         />
       </div>
 
+      {/* 国际化设置 */}
+      <div className="card">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Languages className="w-5 h-5 text-accent" />
+          国际化设置
+        </h2>
+        <p className="text-sm text-text-muted mb-4">
+          管理系统的多语言翻译字符串，可以自定义覆盖默认翻译
+        </p>
+        <a
+          href="/admin/settings/translations"
+          className="block p-3 bg-surface rounded-lg hover:bg-surface-elevated transition-colors cursor-pointer"
+        >
+          <p className="font-medium">语言包管理</p>
+          <p className="text-sm text-text-muted">查看和编辑系统翻译字符串</p>
+        </a>
+      </div>
+
+      {/* 样式模板管理 */}
+      <div className="card">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Palette className="w-5 h-5 text-accent" />
+          样式模板
+        </h2>
+        <p className="text-sm text-text-muted mb-4">
+          创建和管理相册的视觉样式模板，包括主题颜色、字体排版、布局效果等
+        </p>
+        <a
+          href="/admin/settings/style-templates"
+          className="block p-3 bg-surface rounded-lg hover:bg-surface-elevated transition-colors cursor-pointer"
+        >
+          <p className="font-medium">样式模板编辑器</p>
+          <p className="text-sm text-text-muted">自定义相册视觉风格，支持导入/导出</p>
+        </a>
+      </div>
+
       {/* 模板管理 */}
       <div className="card">
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -259,6 +312,78 @@ export default async function SettingsPage() {
           系统升级
         </h2>
         <UpgradeManager />
+      </div>
+
+      {/* 操作日志 */}
+      <div className="card">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <ScrollText className="w-5 h-5 text-accent" />
+          操作日志
+        </h2>
+        <p className="text-sm text-text-muted mb-4">
+          查看系统操作日志，追踪用户行为和变更记录
+        </p>
+        <a
+          href="/admin/settings/audit-logs"
+          className="block p-3 bg-surface rounded-lg hover:bg-surface-elevated transition-colors cursor-pointer"
+        >
+          <p className="font-medium">审计日志查看器</p>
+          <p className="text-sm text-text-muted">搜索、筛选和导出系统操作记录</p>
+        </a>
+      </div>
+
+      {/* 权限管理 */}
+      <div className="card">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Shield className="w-5 h-5 text-accent" />
+          权限管理
+        </h2>
+        <p className="text-sm text-text-muted mb-4">
+          配置角色权限，控制不同用户的操作范围
+        </p>
+        <a
+          href="/admin/settings/permissions"
+          className="block p-3 bg-surface rounded-lg hover:bg-surface-elevated transition-colors cursor-pointer"
+        >
+          <p className="font-medium">角色权限配置</p>
+          <p className="text-sm text-text-muted">管理摄影师、修图师、查看者的权限</p>
+        </a>
+      </div>
+
+      {/* 邮件配置 */}
+      <div className="card">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Mail className="w-5 h-5 text-accent" />
+          邮件通知配置
+        </h2>
+        <p className="text-sm text-text-muted mb-4">
+          配置 SMTP 邮件服务器，用于发送客户通知（如相册就绪通知）
+        </p>
+        <a
+          href="/admin/settings/email-config"
+          className="block p-3 bg-surface rounded-lg hover:bg-surface-elevated transition-colors cursor-pointer"
+        >
+          <p className="font-medium">邮件服务配置</p>
+          <p className="text-sm text-text-muted">配置 SMTP 服务器、测试邮件发送</p>
+        </a>
+      </div>
+
+      {/* 数据备份 */}
+      <div className="card">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Archive className="w-5 h-5 text-accent" />
+          数据备份
+        </h2>
+        <p className="text-sm text-text-muted mb-4">
+          导出和导入系统数据，进行数据备份和恢复
+        </p>
+        <a
+          href="/admin/settings/backup"
+          className="block p-3 bg-surface rounded-lg hover:bg-surface-elevated transition-colors cursor-pointer"
+        >
+          <p className="font-medium">备份管理</p>
+          <p className="text-sm text-text-muted">导出数据、导入备份、查看存储统计</p>
+        </a>
       </div>
 
       {/* 快速操作 */}

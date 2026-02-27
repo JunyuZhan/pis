@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PhotoUploader } from './photo-uploader'
 
@@ -27,12 +27,25 @@ global.File = class File {
   name: string
   size: number
   type: string
-  constructor(name: string, options?: { type?: string; size?: number }) {
+  constructor(bits: any[], name: string, options?: { type?: string; size?: number }) {
     this.name = name
     this.size = options?.size || 0
     this.type = options?.type || 'image/jpeg'
   }
+  arrayBuffer() {
+    return Promise.resolve(new ArrayBuffer(8))
+  }
 } as any
+
+// Mock crypto
+Object.defineProperty(global, 'crypto', {
+  value: {
+    subtle: {
+      digest: async () => new ArrayBuffer(8),
+    },
+    getRandomValues: (arr: any) => arr,
+  },
+})
 
 global.FileList = class FileList {
   length: number
@@ -48,6 +61,24 @@ global.FileList = class FileList {
   }
 } as any
 
+global.DataTransfer = class DataTransfer {
+  items: any
+  files: FileList
+  constructor() {
+    this.files = new (FileList as any)([])
+    this.items = {
+      add: (file: File) => {
+        const newFiles = []
+        for (let i = 0; i < this.files.length; i++) {
+          newFiles.push(this.files[i])
+        }
+        newFiles.push(file)
+        this.files = new (FileList as any)(newFiles)
+      }
+    }
+  }
+} as any
+
 describe('PhotoUploader', () => {
   const mockAlbumId = 'test-album-id'
 
@@ -55,6 +86,14 @@ describe('PhotoUploader', () => {
     vi.clearAllMocks()
     // Mock window.alert
     window.alert = vi.fn()
+    
+    // Default mock fetch response
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+      text: async () => '',
+    })
   })
 
   it('应该渲染上传组件', () => {
@@ -85,16 +124,13 @@ describe('PhotoUploader', () => {
     const user = userEvent.setup()
     render(<PhotoUploader albumId={mockAlbumId} />)
     
-    const fileInput = screen.getByLabelText(/点击选择文件/i).closest('label')?.querySelector('input[type="file"]') as HTMLInputElement
+    // 查找文件输入框，使用 LabelText "选择照片"
+    const fileInput = screen.getByLabelText(/选择照片/i) as HTMLInputElement
     
     if (fileInput) {
       // 创建模拟文件
       const file = new File(['test'], 'test.jpg', { type: 'image/jpeg' })
       Object.defineProperty(file, 'size', { value: 1024 })
-      
-      const dataTransfer = new DataTransfer()
-      dataTransfer.items.add(file)
-      const fileList = dataTransfer.files
       
       // Mock checkDuplicate API
       mockFetch.mockResolvedValueOnce({
@@ -103,11 +139,6 @@ describe('PhotoUploader', () => {
       })
       
       // 模拟文件选择
-      Object.defineProperty(fileInput, 'files', {
-        value: fileList,
-        writable: false,
-      })
-      
       await user.upload(fileInput, file)
       
       // 文件应该被添加到列表（可能需要等待）
@@ -122,7 +153,8 @@ describe('PhotoUploader', () => {
     const user = userEvent.setup()
     render(<PhotoUploader albumId={mockAlbumId} />)
     
-    const fileInput = screen.getByLabelText(/点击选择文件/i).closest('label')?.querySelector('input[type="file"]') as HTMLInputElement
+    // 查找文件输入框，使用 LabelText "选择照片"
+    const fileInput = screen.getByLabelText(/选择照片/i) as HTMLInputElement
     
     if (fileInput) {
       // 创建不支持的文件类型（视频）
@@ -133,12 +165,7 @@ describe('PhotoUploader', () => {
       dataTransfer.items.add(file)
       const fileList = dataTransfer.files
       
-      Object.defineProperty(fileInput, 'files', {
-        value: fileList,
-        writable: false,
-      })
-      
-      await user.upload(fileInput, file)
+      fireEvent.change(fileInput, { target: { files: fileList } })
       
       // 应该显示错误提示
       await waitFor(() => {
@@ -151,21 +178,12 @@ describe('PhotoUploader', () => {
     const user = userEvent.setup()
     render(<PhotoUploader albumId={mockAlbumId} />)
     
-    const fileInput = screen.getByLabelText(/点击选择文件/i).closest('label')?.querySelector('input[type="file"]') as HTMLInputElement
+    const fileInput = screen.getByLabelText(/选择照片/i) as HTMLInputElement
     
     if (fileInput) {
       // 创建超大文件（> 100MB）
       const file = new File(['test'], 'large.jpg', { type: 'image/jpeg' })
       Object.defineProperty(file, 'size', { value: 101 * 1024 * 1024 })
-      
-      const dataTransfer = new DataTransfer()
-      dataTransfer.items.add(file)
-      const fileList = dataTransfer.files
-      
-      Object.defineProperty(fileInput, 'files', {
-        value: fileList,
-        writable: false,
-      })
       
       await user.upload(fileInput, file)
       
@@ -178,7 +196,7 @@ describe('PhotoUploader', () => {
     const user = userEvent.setup()
     
     // Mock 重复检查API返回重复
-    mockFetch.mockResolvedValueOnce({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ 
         isDuplicate: true,
@@ -188,20 +206,11 @@ describe('PhotoUploader', () => {
     
     render(<PhotoUploader albumId={mockAlbumId} />)
     
-    const fileInput = screen.getByLabelText(/点击选择文件/i).closest('label')?.querySelector('input[type="file"]') as HTMLInputElement
+    const fileInput = screen.getByLabelText(/选择照片/i) as HTMLInputElement
     
     if (fileInput) {
       const file = new File(['test'], 'test.jpg', { type: 'image/jpeg' })
       Object.defineProperty(file, 'size', { value: 1024 })
-      
-      const dataTransfer = new DataTransfer()
-      dataTransfer.items.add(file)
-      const fileList = dataTransfer.files
-      
-      Object.defineProperty(fileInput, 'files', {
-        value: fileList,
-        writable: false,
-      })
       
       await user.upload(fileInput, file)
       
@@ -226,7 +235,8 @@ describe('PhotoUploader', () => {
     const user = userEvent.setup()
     render(<PhotoUploader albumId={mockAlbumId} />)
     
-    const dropZone = screen.getByText(/点击选择文件/).closest('div')
+    // 使用 closest('.border-dashed') 查找拖拽区域
+    const dropZone = screen.getByText(/点击选择文件/).closest('.border-dashed')
     
     if (dropZone) {
       // 使用 act 包装状态更新

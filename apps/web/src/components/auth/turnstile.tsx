@@ -38,6 +38,7 @@ declare global {
       ) => string
       reset: (widgetId: string) => void
       remove: (widgetId: string) => void
+      execute: (widgetId: string | null, options?: { theme?: 'light' | 'dark' | 'auto' }) => void
     }
   }
 }
@@ -90,19 +91,19 @@ export function Turnstile({ onVerify, onError, onExpire }: TurnstileProps) {
 
     try {
       // 渲染 Turnstile widget（Invisible 模式）
-      // Invisible 模式会在页面加载时自动执行验证
       const widgetId = window.turnstile.render(containerRef.current, {
         sitekey: siteKey,
         callback: (token: string) => {
           // 验证成功，token 有效期为 5 分钟
+          console.log('[Turnstile] Verification successful')
           onVerify(token)
         },
         'error-callback': () => {
-          console.error('Turnstile verification failed')
+          console.error('[Turnstile] Verification failed')
           onError?.()
         },
         'expired-callback': () => {
-          console.warn('Turnstile token expired')
+          console.warn('[Turnstile] Token expired')
           onExpire?.()
         },
         size: 'invisible', // Invisible 模式：完全隐藏，用户无感知
@@ -111,9 +112,25 @@ export function Turnstile({ onVerify, onError, onExpire }: TurnstileProps) {
 
       widgetIdRef.current = widgetId
       setIsRendered(true)
+
+      // Invisible 模式需要手动触发验证
+      // 延迟一点时间确保 widget 完全初始化
+      setTimeout(() => {
+        if (window.turnstile && widgetIdRef.current) {
+          try {
+            console.log('[Turnstile] Executing invisible verification')
+            window.turnstile.execute(widgetIdRef.current)
+          } catch (error) {
+            console.error('[Turnstile] Failed to execute verification:', error)
+            // 如果执行失败，仍然允许登录（降级策略）
+            onError?.()
+          }
+        }
+      }, 100)
     } catch (error) {
-      console.error('Failed to render Turnstile:', error)
+      console.error('[Turnstile] Failed to render:', error)
       // 如果渲染失败，仍然允许登录（降级策略）
+      onError?.()
     }
 
     return () => {

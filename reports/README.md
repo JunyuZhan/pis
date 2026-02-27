@@ -1,46 +1,20 @@
 # Reports Directory
 
-This directory contains various reports and analysis documents generated during development and testing.
+本目录用于存放开发过程中的临时报告和分析文档。
 
-## Directory Structure
+## 📝 说明
 
-- `analysis/` - Code analysis, review documents, and fix summaries
-- `test-reports/` - Test execution reports and test results
-- `component-reliability/` - Component reliability test reports
+- **临时报告**: 开发过程中的分析报告、测试报告等临时文档
+- **定期清理**: 建议定期清理过时的报告，只保留对后续开发有价值的文档
+- **归档**: 重要的报告可以归档到 `docs/` 目录
 
-## File Organization
+## 🧹 清理策略
 
-### Analysis Reports (`analysis/`)
-Contains code analysis, reviews, and fix documentation:
-- Code review summaries
-- Bug fix documentation
-- Performance analysis
-- Permission and authentication analysis
-- Component issue analysis
+- 已完成的修复报告 → 删除
+- 过时的测试报告 → 删除
+- 重复的分析文档 → 合并或删除
+- 重要的架构分析 → 移至 `docs/` 目录
 
-### Test Reports (`test-reports/`)
-Contains test execution results and summaries:
-- Test execution reports
-- Test status and results
-- Integration test reports
-- Coverage reports
-- Test gap analysis
+---
 
-### Component Reliability (`component-reliability/`)
-Contains automated component reliability test reports with timestamps.
-
-## 📝 文档索引
-
-详细的测试报告索引请查看: `docs/testing/TEST_REPORTS_INDEX.md`
-
-## 🧹 清理说明
-
-- 根目录下的临时测试报告文件已清理（2026-02-06）
-- 过时的测试状态文件已删除
-- 重复的分析文件已合并
-
-详细信息请查看: `docs/testing/CLEANUP_SUMMARY.md`
-
-## Note
-
-Some reports may be temporary and can be cleaned up periodically. Important analysis and test reports should be preserved for reference.
+**最后更新**: 2026-02-07

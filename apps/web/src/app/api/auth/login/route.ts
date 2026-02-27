@@ -10,6 +10,7 @@ import { initAuthDatabase } from '@/lib/auth/database'
 import { loginSchema } from '@/lib/validation/schemas'
 import { safeValidate, handleError } from '@/lib/validation/error-handler'
 import { createAdminClient } from '@/lib/database'
+import { logLogin } from '@/lib/audit-log'
 
 // 初始化认证数据库（如果尚未初始化）
 try {
@@ -176,45 +177,50 @@ export async function POST(request: NextRequest) {
     }
 
     // 如果配置了 Turnstile，验证 token
+    // 注意：Turnstile 是可选功能，如果验证失败或没有 token，允许降级登录（记录警告日志）
     const turnstileSecretKey = process.env.TURNSTILE_SECRET_KEY
     if (turnstileSecretKey) {
       if (!turnstileToken) {
-        console.warn('Turnstile configured but no token provided')
-        return handleError(new Error('请完成人机验证'), '请完成人机验证')
-      }
+        // Turnstile 配置了但没有 token，可能是：
+        // 1. Turnstile 脚本加载失败
+        // 2. 验证超时
+        // 3. 网络问题
+        // 允许降级登录，但记录警告日志
+        console.warn('[Login] Turnstile configured but no token provided, allowing fallback login')
+        // 不阻止登录，继续执行登录流程
+      } else {
 
-      // 验证 token
-      try {
-        const verifyResponse = await fetch(
-          'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              secret: turnstileSecretKey,
-              response: turnstileToken,
-              remoteip: ip !== 'unknown' ? ip : undefined,
-            }),
-          }
-        )
-
-        const verifyData = await verifyResponse.json()
-
-        if (!verifyData.success) {
-          console.error('Turnstile verification failed:', verifyData)
-          return NextResponse.json(
-            { error: { code: 'CAPTCHA_FAILED', message: '人机验证失败，请重试' } },
-            { status: 400 }
+        // 验证 token
+        try {
+          const verifyResponse = await fetch(
+            'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                secret: turnstileSecretKey,
+                response: turnstileToken,
+                remoteip: ip !== 'unknown' ? ip : undefined,
+              }),
+            }
           )
+
+          const verifyData = await verifyResponse.json()
+
+          if (!verifyData.success) {
+            // Turnstile 验证失败，允许降级登录（记录警告日志）
+            console.warn('[Login] Turnstile verification failed, allowing fallback login:', verifyData)
+            // 不阻止登录，继续执行登录流程
+          } else {
+            console.log('[Login] Turnstile verification successful')
+          }
+        } catch (error) {
+          // Turnstile 验证服务不可用，允许降级登录（记录警告日志）
+          console.warn('[Login] Turnstile verification service unavailable, allowing fallback login:', error)
+          // 不阻止登录，继续执行登录流程
         }
-      } catch (error) {
-        console.error('Turnstile verification error:', error)
-        return NextResponse.json(
-          { error: { code: 'CAPTCHA_ERROR', message: '验证服务暂时不可用，请稍后重试' } },
-          { status: 503 }
-        )
       }
     }
 
@@ -431,6 +437,11 @@ export async function POST(request: NextRequest) {
           console.error('Failed to update last login time:', err)
         })
       }
+
+      // 记录登录日志（异步，不阻塞响应）
+      logLogin({ id: user.id, email: user.email, role: (user as { role?: string }).role }).catch((err) => {
+        console.error('Failed to log login:', err)
+      })
 
       return response
     } catch (error) {

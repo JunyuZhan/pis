@@ -94,37 +94,56 @@ const playfairDisplay = localFont({
   fallback: ["Georgia", "Times New Roman", "serif"],
 });
 
-// Metadata will be generated dynamically based on locale
+// Metadata will be generated dynamically based on locale and settings
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   // Messages are loaded but not used in metadata (only used in layout)
   const messages = await getMessages();
+  
+  // 从数据库获取站点设置
+  let siteSettings: Record<string, unknown> = {};
+  try {
+    const { getPublicSettings } = await import("@/lib/settings");
+    const settings = await getPublicSettings();
+    siteSettings = settings ? { ...settings } : {};
+  } catch (e) {
+    console.warn("Failed to load site settings for metadata:", e);
+  }
 
-  // Get translations for metadata
-  const title = (messages as { home?: { title?: string } })?.home?.title || 
+  // Get translations for metadata (优先使用数据库设置)
+  const title = (siteSettings.site_title as string) ||
+    (messages as { home?: { title?: string } })?.home?.title || 
     (locale === "zh-CN" ? "PIS - 专业级摄影分享" : "PIS - Professional Photo Sharing");
-  const description = (messages as { home?: { description?: string } })?.home?.description || 
+  const description = (siteSettings.site_description as string) ||
+    (messages as { home?: { description?: string } })?.home?.description || 
     (locale === "zh-CN" ? "私有化即时摄影分享系统，让每一刻精彩即时呈现" : "Private Instant photo Sharing system");
+  const keywords = (siteSettings.site_keywords as string) || 
+    (locale === "zh-CN" ? "摄影,相册,分享,活动摄影" : "photography,album,sharing,event photography");
+  
+  // 获取自定义 favicon
+  const faviconUrl = (siteSettings.favicon_url as string) || (siteSettings.brand_favicon as string) || "/favicon.ico";
+  const siteName = (siteSettings.brand_name as string) || "PIS";
 
   return {
     title,
     description,
+    keywords,
     manifest: "/manifest.json",
     icons: {
-      icon: "/favicon.ico",
+      icon: faviconUrl,
       apple: "/icons/icon-192x192.png",
     },
     appleWebApp: {
       capable: true,
       statusBarStyle: "black-translucent",
-      title: "PIS",
+      title: siteName,
     },
     formatDetection: {
       telephone: false,
     },
     openGraph: {
       type: "website",
-      siteName: "PIS",
+      siteName,
       title,
       description,
     },
@@ -170,10 +189,47 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`dark ${inter.variable} ${notoSerifSC.variable} ${playfairDisplay.variable}`}
+      className={`${inter.variable} ${notoSerifSC.variable} ${playfairDisplay.variable}`}
       data-scroll-behavior="smooth"
+      suppressHydrationWarning
     >
       <head>
+        {/* 主题初始化脚本（防止闪烁） */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('pis-theme') || 'dark';
+                  var resolved = theme;
+                  if (theme === 'system') {
+                    resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                  }
+                  document.documentElement.classList.add(resolved);
+                  
+                  var color = localStorage.getItem('pis-primary-color') || '#D4AF37';
+                  var hex = color.replace('#', '');
+                  var r = parseInt(hex.substring(0, 2), 16);
+                  var g = parseInt(hex.substring(2, 4), 16);
+                  var b = parseInt(hex.substring(4, 6), 16);
+                  document.documentElement.style.setProperty('--color-accent', r + ' ' + g + ' ' + b);
+                  
+                  // 应用圆角设置
+                  var radiusMap = { none: '0', sm: '0.25rem', md: '0.5rem', lg: '0.75rem', xl: '1rem', full: '9999px' };
+                  var radius = localStorage.getItem('pis-border-radius') || 'md';
+                  var radiusValue = radiusMap[radius] || '0.5rem';
+                  document.documentElement.style.setProperty('--radius-base', radiusValue);
+                  document.documentElement.style.setProperty('--radius-sm', radius === 'none' ? '0' : radius === 'full' ? radiusValue : 'calc(' + radiusValue + ' * 0.5)');
+                  document.documentElement.style.setProperty('--radius-lg', radius === 'none' ? '0' : radius === 'full' ? radiusValue : 'calc(' + radiusValue + ' * 1.5)');
+                  document.documentElement.style.setProperty('--radius-xl', radius === 'none' ? '0' : radius === 'full' ? radiusValue : 'calc(' + radiusValue + ' * 2)');
+                  document.documentElement.dataset.radius = radius;
+                } catch (e) {
+                  document.documentElement.classList.add('dark');
+                }
+              })();
+            `,
+          }}
+        />
         {/* 性能优化：DNS 预解析和预连接 */}
         {mediaHost && (
           <>
@@ -187,7 +243,8 @@ export default async function RootLayout({
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
 
-        {/* PWA Apple 特定 meta */}
+        {/* PWA meta 标签 */}
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta
           name="apple-mobile-web-app-status-bar-style"
@@ -209,17 +266,6 @@ export default async function RootLayout({
           rel="apple-touch-icon"
           sizes="167x167"
           href="/icons/icon-192x192.png"
-        />
-        {/* Splash screens for iOS */}
-        <link
-          rel="apple-touch-startup-image"
-          href="/splash/splash-1170x2532.png"
-          media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)"
-        />
-        <link
-          rel="apple-touch-startup-image"
-          href="/splash/splash-1284x2778.png"
-          media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)"
         />
       </head>
       <body className={inter.className}>

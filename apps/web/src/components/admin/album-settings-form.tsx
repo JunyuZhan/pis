@@ -7,17 +7,32 @@ import type { Database } from '@/types/database'
 import { MultiWatermarkManager, type WatermarkItem } from './multi-watermark-manager'
 import { StylePresetSelector } from './style-preset-selector'
 import { StorageChecker } from './storage-checker'
+import { TemplateSelector } from './template-selector'
+import { CustomerSelector } from './customer-selector'
+import { TranslationEditor } from './translation-editor'
+import { ConfigTemplateActions, type TemplateConfig } from './config-template-actions'
 import { showSuccess, handleApiError } from '@/lib/toast'
 import { getSafeMediaUrl, getFtpServerHost, getFtpServerPort } from '@/lib/utils'
 
-type Album = Database['public']['Tables']['albums']['Row']
+type Album = Database['public']['Tables']['albums']['Row'] & {
+  // 多语言字段（可能不存在于旧数据中）
+  title_translations?: Record<string, string> | null
+  description_translations?: Record<string, string> | null
+  share_title_translations?: Record<string, string> | null
+  share_description_translations?: Record<string, string> | null
+}
 
 interface AlbumSettingsFormProps {
   album: Album
   coverOriginalKey?: string | null  // 封面照片的原图 key（用于风格预设预览）
+  coverPreviewDimensions?: { width: number; height: number } | null  // 封面照片的预览图尺寸（用于水印预览）
 }
 
-export function AlbumSettingsForm({ album, coverOriginalKey }: AlbumSettingsFormProps) {
+export function AlbumSettingsForm({ 
+  album, 
+  coverOriginalKey,
+  coverPreviewDimensions 
+}: AlbumSettingsFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -36,6 +51,7 @@ export function AlbumSettingsForm({ album, coverOriginalKey }: AlbumSettingsForm
         logoUrl: undefined,
         opacity: 0.5,
         position: 'bottom-right',
+        size: 24, // 默认字体大小 24px
         margin: 5,
         enabled: true,
       }],
@@ -103,6 +119,9 @@ export function AlbumSettingsForm({ album, coverOriginalKey }: AlbumSettingsForm
   // 解析调色配置
   const initialColorGrading = album.color_grading as { preset?: string } | null
   const initialStylePresetId = initialColorGrading?.preset || null
+  
+  // 解析模板配置
+  const initialTemplateId = (album as { template_id?: string | null }).template_id || null
 
   const [formData, setFormData] = useState({
     title: album.title,
@@ -138,6 +157,13 @@ export function AlbumSettingsForm({ album, coverOriginalKey }: AlbumSettingsForm
     poster_image_url: album.poster_image_url || '',
     // 调色配置
     color_grading: initialStylePresetId,
+    // 模板配置
+    template_id: initialTemplateId,
+    // 多语言翻译
+    title_translations: album.title_translations || null,
+    description_translations: album.description_translations || null,
+    share_title_translations: album.share_title_translations || null,
+    share_description_translations: album.share_description_translations || null,
   })
 
   // 获取默认水印配置（单个水印对象）
@@ -158,12 +184,13 @@ export function AlbumSettingsForm({ album, coverOriginalKey }: AlbumSettingsForm
       logoUrl: undefined,
       opacity: 0.5,
       position: 'bottom-right',
+      size: 24, // 默认字体大小 24px
       margin: 5,
       enabled: true,
     }
   }
 
-  const handleChange = (field: string, value: string | boolean | number | Record<string, unknown> | null) => {
+  const handleChange = (field: string, value: string | boolean | number | Record<string, unknown> | Record<string, string> | null) => {
     setFormData((prev) => {
       // 如果启用水印开关，且当前没有水印配置或水印文字为空，自动添加/更新默认水印
       if (field === 'watermark_enabled' && value === true) {
@@ -214,6 +241,54 @@ export function AlbumSettingsForm({ album, coverOriginalKey }: AlbumSettingsForm
     }))
   }
 
+  // 获取当前配置（用于保存为模板）
+  const getCurrentConfig = (): TemplateConfig => {
+    return {
+      is_public: formData.is_public,
+      layout: formData.layout as 'masonry' | 'grid' | 'carousel',
+      sort_rule: formData.sort_rule as 'capture_desc' | 'capture_asc' | 'manual',
+      allow_download: formData.allow_download,
+      allow_batch_download: formData.allow_batch_download,
+      show_exif: formData.show_exif,
+      password: formData.password || null,
+      expires_at: formData.expires_at || null,
+      watermark_enabled: formData.watermark_enabled,
+      watermark_config: formData.watermark_config as Record<string, unknown>,
+    }
+  }
+
+  // 应用模板配置到表单
+  const handleApplyConfig = (config: Partial<TemplateConfig>) => {
+    setFormData((prev) => {
+      const updated = { ...prev }
+      
+      if (config.is_public !== undefined) updated.is_public = config.is_public
+      if (config.layout !== undefined) updated.layout = config.layout
+      if (config.sort_rule !== undefined) updated.sort_rule = config.sort_rule
+      if (config.allow_download !== undefined) updated.allow_download = config.allow_download
+      if (config.allow_batch_download !== undefined) updated.allow_batch_download = config.allow_batch_download
+      if (config.show_exif !== undefined) updated.show_exif = config.show_exif
+      if (config.password !== undefined) updated.password = config.password || ''
+      if (config.expires_at !== undefined) {
+        updated.expires_at = config.expires_at 
+          ? new Date(config.expires_at).toISOString().slice(0, 16)
+          : ''
+      }
+      if (config.watermark_enabled !== undefined) updated.watermark_enabled = config.watermark_enabled
+      if (config.watermark_config !== undefined) {
+        // 解析水印配置
+        const watermarkConfig = config.watermark_config
+        if (watermarkConfig && typeof watermarkConfig === 'object' && 'watermarks' in watermarkConfig) {
+          updated.watermark_config = watermarkConfig as typeof prev.watermark_config
+        } else {
+          updated.watermark_config = { watermarks: [] } as typeof prev.watermark_config
+        }
+      }
+      
+      return updated
+    })
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -252,7 +327,8 @@ export function AlbumSettingsForm({ album, coverOriginalKey }: AlbumSettingsForm
         : null
       
       // 从 formData 中提取需要提交的字段，排除 upload_token（通过重置按钮单独更新）
-      const { upload_token, ...formDataWithoutToken } = formData
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { upload_token: _, ...formDataWithoutToken } = formData
       
       const submitData = {
         ...formDataWithoutToken,
@@ -268,6 +344,11 @@ export function AlbumSettingsForm({ album, coverOriginalKey }: AlbumSettingsForm
         poster_image_url: formData.poster_image_url.trim() || null,
         watermark_config: watermarkConfig,
         color_grading: colorGrading,  // 新增：调色配置
+        // 多语言翻译
+        title_translations: formData.title_translations,
+        description_translations: formData.description_translations,
+        share_title_translations: formData.share_title_translations,
+        share_description_translations: formData.share_description_translations,
       }
 
       const response = await fetch(`/api/admin/albums/${album.id}`, {
@@ -333,26 +414,47 @@ export function AlbumSettingsForm({ album, coverOriginalKey }: AlbumSettingsForm
       {/* 基本信息 */}
       <section className="card space-y-4">
         <h2 className="text-lg font-medium">基本信息</h2>
-        <div>
-          <label className="block text-sm font-medium text-text-secondary mb-2">
-            相册标题
-          </label>
-          <input
-            type="text"
-            required
-            value={formData.title}
-            onChange={(e) => handleChange('title', e.target.value)}
-            className="input"
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">
+              相册标题
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.title}
+              onChange={(e) => handleChange('title', e.target.value)}
+              className="input"
+            />
+          </div>
+          <TranslationEditor
+            label="标题"
+            value={formData.title_translations as Record<string, string> | null}
+            onChange={(value) => handleChange('title_translations', value)}
+            defaultValue={formData.title}
+            placeholder="输入该语言的标题"
+            maxLength={200}
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-text-secondary mb-2">
-            相册描述
-          </label>
-          <textarea
-            value={formData.description}
-            onChange={(e) => handleChange('description', e.target.value)}
-            className="input min-h-[100px] resize-none"
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">
+              相册描述
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => handleChange('description', e.target.value)}
+              className="input min-h-[100px] resize-none"
+            />
+          </div>
+          <TranslationEditor
+            label="描述"
+            value={formData.description_translations as Record<string, string> | null}
+            onChange={(value) => handleChange('description_translations', value)}
+            defaultValue={formData.description}
+            placeholder="输入该语言的描述"
+            multiline
+            maxLength={1000}
           />
         </div>
 
@@ -881,9 +983,34 @@ export function AlbumSettingsForm({ album, coverOriginalKey }: AlbumSettingsForm
             <MultiWatermarkManager
               watermarks={formData.watermark_config.watermarks || []}
               onChange={handleWatermarksChange}
+              previewDimensions={coverPreviewDimensions || undefined}
             />
           </div>
         )}
+      </section>
+
+      {/* 外观模板 */}
+      <section className="card space-y-4">
+        <TemplateSelector
+          value={formData.template_id}
+          onChange={(templateId) => handleChange('template_id', templateId)}
+          coverImage={
+            coverOriginalKey && mediaUrl
+              ? `${mediaUrl.replace(/\/$/, '')}/${coverOriginalKey.replace(/^\//, '')}`
+              : undefined
+          }
+        />
+        <p className="text-xs text-text-muted">
+          外观模板决定相册的整体视觉风格，包括配色、布局、字体等。选择模板后，访客查看相册时将使用该模板的样式。
+        </p>
+      </section>
+
+      {/* 配置模板 */}
+      <section className="card space-y-4">
+        <ConfigTemplateActions
+          getCurrentConfig={getCurrentConfig}
+          onApplyConfig={handleApplyConfig}
+        />
       </section>
 
       {/* 风格设置 */}
@@ -923,35 +1050,56 @@ export function AlbumSettingsForm({ album, coverOriginalKey }: AlbumSettingsForm
         </p>
 
         <div className="space-y-4 pt-4 border-t border-border">
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
-              分享标题
-            </label>
-            <input
-              type="text"
-              value={formData.share_title}
-              onChange={(e) => handleChange('share_title', e.target.value)}
-              className="input"
-              placeholder={album.title}
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">
+                分享标题
+              </label>
+              <input
+                type="text"
+                value={formData.share_title}
+                onChange={(e) => handleChange('share_title', e.target.value)}
+                className="input"
+                placeholder={album.title}
+              />
+              <p className="text-xs text-text-muted mt-1">
+                留空则使用相册标题
+              </p>
+            </div>
+            <TranslationEditor
+              label="分享标题"
+              value={formData.share_title_translations as Record<string, string> | null}
+              onChange={(value) => handleChange('share_title_translations', value)}
+              defaultValue={formData.share_title || formData.title}
+              placeholder="输入该语言的分享标题"
+              maxLength={100}
             />
-            <p className="text-xs text-text-muted mt-1">
-              留空则使用相册标题
-            </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
-              分享描述
-            </label>
-            <textarea
-              value={formData.share_description}
-              onChange={(e) => handleChange('share_description', e.target.value)}
-              className="input min-h-[80px] resize-none"
-              placeholder={album.description || '查看精彩照片'}
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">
+                分享描述
+              </label>
+              <textarea
+                value={formData.share_description}
+                onChange={(e) => handleChange('share_description', e.target.value)}
+                className="input min-h-[80px] resize-none"
+                placeholder={album.description || '查看精彩照片'}
+              />
+              <p className="text-xs text-text-muted mt-1">
+                留空则使用相册描述或默认文案
+              </p>
+            </div>
+            <TranslationEditor
+              label="分享描述"
+              value={formData.share_description_translations as Record<string, string> | null}
+              onChange={(value) => handleChange('share_description_translations', value)}
+              defaultValue={formData.share_description || formData.description}
+              placeholder="输入该语言的分享描述"
+              multiline
+              maxLength={300}
             />
-            <p className="text-xs text-text-muted mt-1">
-              留空则使用相册描述或默认文案
-            </p>
           </div>
 
           <div>
@@ -996,6 +1144,15 @@ export function AlbumSettingsForm({ album, coverOriginalKey }: AlbumSettingsForm
             </span>
           </p>
         </div>
+      </section>
+
+      {/* 客户关联 */}
+      <section className="card space-y-4">
+        <h2 className="text-lg font-medium">客户关联</h2>
+        <p className="text-sm text-text-muted">
+          将此相册关联到客户，方便管理和查看客户的所有相册
+        </p>
+        <CustomerSelector albumId={album.id} />
       </section>
 
       {/* 存储检查 */}

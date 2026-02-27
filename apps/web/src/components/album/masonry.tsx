@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import { Heart, Download, Share2, Expand, Loader2, ImageIcon } from 'lucide-react'
 import type { Photo, Album } from '@/types/database'
+import type { AlbumTemplateStyle } from '@/lib/album-templates'
 import { cn, getSafeMediaUrl } from '@/lib/utils'
 import { getBlurDataURL } from '@/lib/blurhash'
 import { handleApiError } from '@/lib/toast'
@@ -25,6 +26,7 @@ interface MasonryGridProps {
   isLoading?: boolean
   onLoadMore?: () => void
   onSelectChange?: (photoId: string, isSelected: boolean) => void
+  template?: AlbumTemplateStyle | null
 }
 
 /**
@@ -39,6 +41,7 @@ export function MasonryGrid({
   isLoading = false,
   onLoadMore,
   onSelectChange,
+  template,
 }: MasonryGridProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [selectedMap, setSelectedMap] = useState<Record<string, boolean>>(() => {
@@ -67,9 +70,23 @@ export function MasonryGrid({
         if (!photo?.thumb_key) continue
         
         // 只使用 updated_at 作为时间戳，避免 Date.now() 导致的 hydration mismatch
-        const imageSrc = photo.updated_at 
+        let imageSrc = photo.updated_at 
           ? `${mediaUrl.replace(/\/$/, '')}/${photo.thumb_key.replace(/^\//, '')}?t=${new Date(photo.updated_at).getTime()}`
           : `${mediaUrl.replace(/\/$/, '')}/${photo.thumb_key.replace(/^\//, '')}`
+        
+        // 确保使用相对路径或 HTTPS，避免混合内容警告
+        // 如果已经是相对路径，直接使用
+        if (!imageSrc.startsWith('/')) {
+          try {
+            const url = new URL(imageSrc, window.location.origin)
+            // 如果是 HTTP 但当前页面是 HTTPS，转换为相对路径
+            if (url.protocol === 'http:' && window.location.protocol === 'https:') {
+              imageSrc = url.pathname + url.search
+            }
+          } catch {
+            // URL 解析失败，使用原始值
+          }
+        }
         
         // 检查是否已存在预加载链接或图片已加载
         if (document.querySelector(`link[href="${imageSrc}"]`) || 
@@ -84,13 +101,13 @@ export function MasonryGrid({
         link.setAttribute('fetchpriority', i === 0 ? 'high' : 'low')
         document.head.appendChild(link)
         
-        // 设置超时清理：如果 5 秒后图片还没使用，移除预加载链接
+        // 设置超时清理：如果 8 秒后图片还没使用，移除预加载链接（增加时间窗口）
         setTimeout(() => {
           const linkElement = document.querySelector(`link[href="${imageSrc}"]`)
           if (linkElement && !document.querySelector(`img[src="${imageSrc}"]`)) {
             linkElement.remove()
           }
-        }, 5000)
+        }, 8000) // 增加到 8 秒，给图片更多时间加载
       }
     }, 100) // 延迟 100ms，确保页面已渲染
   }, [photos])
@@ -246,15 +263,21 @@ export function MasonryGrid({
     }
   }, [lightboxIndex, scrollToPhotoIndex])
 
+  // 获取模板间距配置
+  const getGapStyle = () => {
+    if (!template) return layout === 'masonry' ? { columnGap: '0.25rem' } : undefined
+    return { gap: 'var(--template-gap, 0.25rem)' }
+  }
+  
   return (
     <>
       <div
         className={cn(
           layout === 'masonry'
             ? 'columns-2 sm:columns-3 md:columns-3 lg:columns-4' // 响应式列数
-            : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-1' // 响应式网格，间距 4px
+            : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4' // 响应式网格
         )}
-        style={layout === 'masonry' ? { columnGap: '0.25rem' } : undefined} // 列间距 4px，与垂直间距一致
+        style={getGapStyle()}
       >
         {photos.map((photo, index) => (
           <PhotoCard
@@ -270,6 +293,7 @@ export function MasonryGrid({
             onToggleSelect={handleCardSelect}
             allowDownload={album.allow_download}
             layout={layout}
+            template={template}
           />
         ))}
       </div>
@@ -312,6 +336,83 @@ interface PhotoCardProps {
   onToggleSelect?: (photoId: string, currentSelected: boolean) => void
   allowDownload?: boolean
   layout?: LayoutMode
+  template?: AlbumTemplateStyle | null
+}
+
+// 根据模板配置获取悬停效果类名
+function getHoverClasses(template?: AlbumTemplateStyle | null): string {
+  if (!template) {
+    return 'group-hover:scale-105' // 默认 zoom 效果
+  }
+  
+  switch (template.hover.effect) {
+    case 'none':
+      return ''
+    case 'zoom':
+      return 'group-hover:scale-105'
+    case 'lift':
+      return 'group-hover:scale-[1.02] group-hover:-translate-y-1'
+    case 'glow':
+      return 'group-hover:scale-[1.02] group-hover:brightness-110'
+    case 'overlay':
+      return '' // overlay 效果通过遮罩层实现
+    default:
+      return 'group-hover:scale-105'
+  }
+}
+
+// 根据模板配置获取入场动画配置
+function getEntranceAnimation(template?: AlbumTemplateStyle | null, index?: number) {
+  const delay = ((index || 0) % 10) * 0.05
+  
+  // 没有模板时，使用原来的默认动画（淡入+上滑）
+  if (!template) {
+    return {
+      initial: { opacity: 0, y: 20 },
+      animate: { opacity: 1, y: 0 },
+      transition: { duration: 0.5, delay },
+    }
+  }
+  
+  // 模板配置为无动画
+  if (template.animation.entrance === 'none') {
+    return {
+      initial: { opacity: 1 },
+      animate: { opacity: 1 },
+      transition: { duration: 0 },
+    }
+  }
+  
+  const duration = 
+    template.animation.duration === 'fast' ? 0.3 :
+    template.animation.duration === 'slow' ? 0.7 : 0.5
+  
+  switch (template.animation.entrance) {
+    case 'fade':
+      return {
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        transition: { duration, delay },
+      }
+    case 'slide':
+      return {
+        initial: { opacity: 0, y: 30 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration, delay },
+      }
+    case 'scale':
+      return {
+        initial: { opacity: 0, scale: 0.9 },
+        animate: { opacity: 1, scale: 1 },
+        transition: { duration, delay },
+      }
+    default:
+      return {
+        initial: { opacity: 0, y: 20 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration, delay },
+      }
+  }
 }
 
 const PhotoCard = memo(function PhotoCard({
@@ -324,6 +425,7 @@ const PhotoCard = memo(function PhotoCard({
   onToggleSelect,
   allowDownload = false,
   layout = 'masonry',
+  template,
 }: PhotoCardProps) {
   const [showCopied, setShowCopied] = useState(false)
   const [blurDataURL, setBlurDataURL] = useState<string | undefined>(undefined)
@@ -466,19 +568,28 @@ const PhotoCard = memo(function PhotoCard({
     }
   }
 
+  // 获取模板动画配置
+  const entranceAnimation = getEntranceAnimation(template, index)
+  const hoverClasses = getHoverClasses(template)
+  
   return (
     <motion.div
       ref={cardRef}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: (index % 10) * 0.05 }}
+      initial={entranceAnimation.initial}
+      animate={entranceAnimation.animate}
+      transition={entranceAnimation.transition}
       className={cn(
         'group relative',
-        layout === 'masonry' ? 'break-inside-avoid mb-1' : '' // 添加底部间距 4px，与列间距保持一致
+        layout === 'masonry' ? 'break-inside-avoid mb-1' : '', // 添加底部间距 4px，与列间距保持一致
+        // 发光效果的外层样式
+        template?.hover.effect === 'glow' && 'hover:shadow-lg hover:shadow-accent/20'
       )}
     >
-      {/* 照片卡片 - 移除圆角和阴影，实现无缝效果 */}
-      <div className="bg-surface-elevated overflow-hidden">
+      {/* 照片卡片 */}
+      <div 
+        className="bg-surface-elevated overflow-hidden"
+        style={{ borderRadius: 'var(--template-rounded, 0)' }}
+      >
         {/* 图片区域 */}
         <div 
           className={cn(
@@ -495,7 +606,8 @@ const PhotoCard = memo(function PhotoCard({
               height={layout === 'grid' ? undefined : Math.round(400 * aspectRatio)}
               fill={layout === 'grid'}
               className={cn(
-                "w-full transition-transform duration-500 group-hover:scale-105",
+                "w-full transition-all duration-500",
+                hoverClasses,
                 layout === 'grid' ? "h-full object-cover" : "h-auto"
               )}
               quality={isPriority ? 85 : 75} // 优先图片质量高，其他降低质量
@@ -522,7 +634,14 @@ const PhotoCard = memo(function PhotoCard({
           )}
 
           {/* 悬停遮罩 */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <div className={cn(
+            "absolute inset-0 transition-opacity duration-300",
+            template?.hover.effect === 'overlay' 
+              ? "bg-black/50 opacity-0 group-hover:opacity-100" // 全覆盖遮罩效果
+              : template?.hover.effect === 'none'
+              ? "hidden" // 无悬停效果时隐藏遮罩
+              : "bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100" // 默认渐变遮罩
+          )} />
           
           {/* 放大图标 */}
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">

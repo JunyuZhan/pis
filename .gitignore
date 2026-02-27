@@ -59,6 +59,12 @@ docker/.env
 docker/.env.generated
 docker/.deployment-info
 
+# Docker Secrets (密钥文件，除脚本和文档外全部忽略)
+docker/secrets/*
+!docker/secrets/.gitkeep
+!docker/secrets/init-secrets.sh
+!docker/secrets/README.md
+
 # Deployment
 .env.generated
 .deployment-info

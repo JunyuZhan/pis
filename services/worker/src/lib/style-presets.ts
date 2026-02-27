@@ -256,7 +256,7 @@ export const STYLE_PRESETS: Record<string, StylePreset> = {
       brightness: 1.0,
       contrast: -0.15,
       saturation: 0.65,
-      gamma: 0.95,
+      gamma: 1.0, // 修复：Sharp要求gamma在1.0-3.0之间，0.95无效
       hue: 0,
     },
     cssFilter: "brightness(1.0) contrast(0.85) saturate(0.65)",
@@ -284,7 +284,7 @@ export const STYLE_PRESETS: Record<string, StylePreset> = {
       brightness: 0.85,
       contrast: 0.2,
       saturation: 0.8,
-      gamma: 0.9,
+      gamma: 1.0, // 修复：Sharp要求gamma在1.0-3.0之间，0.9无效
       hue: -12,
       tint: { r: 240, g: 245, b: 255 },
     },
@@ -300,7 +300,7 @@ export const STYLE_PRESETS: Record<string, StylePreset> = {
       brightness: 0.95,
       contrast: 0.1,
       saturation: 1.25,
-      gamma: 0.9,
+      gamma: 1.0, // 修复：Sharp要求gamma在1.0-3.0之间，0.9无效
       hue: -5,
       tint: { r: 235, g: 255, b: 240 },
     },

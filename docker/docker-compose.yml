@@ -1,7 +1,22 @@
 name: pis
 
 # ============================================
-# PIS 完全自托管部署配置（生产环境）
+# ⚠️ 警告：此配置使用环境变量存储密钥，仅用于开发/测试！
+#
+# 🔐 生产环境请使用安全配置：
+#   docker-compose.secrets.yml
+#
+# 原因：
+#   - 此配置密钥通过环境变量暴露
+#   - docker inspect 可直接查看所有密钥
+#   - 密钥可能出现在日志和进程列表中
+#
+# 安全部署方法：
+#   1. cd docker/secrets && ./init-secrets.sh
+#   2. docker compose -f docker-compose.secrets.yml up -d
+#
+# 详见：docker/DEPLOY-SECURE.md
+# ============================================
 #
 # 包含服务：
 # - PostgreSQL: 数据库（端口 5432，仅内部）

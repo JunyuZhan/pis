@@ -1,26 +1,27 @@
-'use client'
+"use client";
 
-import { useCallback, useState, useEffect, useMemo, useRef } from 'react'
-import type React from 'react'
-import Lightbox from 'yet-another-react-lightbox'
-import Zoom from 'yet-another-react-lightbox/plugins/zoom'
-import Captions from 'yet-another-react-lightbox/plugins/captions'
-import 'yet-another-react-lightbox/styles.css'
-import 'yet-another-react-lightbox/plugins/captions.css'
-import { Download, Heart, RotateCw, RotateCcw, Share2 } from 'lucide-react'
-import { useTranslations } from 'next-intl'
-import { cn, getSafeMediaUrl } from '@/lib/utils'
-import { handleApiError, showSuccess } from '@/lib/toast'
-import type { Photo } from '@/types/database'
+import { useCallback, useState, useEffect, useMemo, useRef } from "react";
+import type React from "react";
+import Lightbox from "yet-another-react-lightbox";
+import Zoom from "yet-another-react-lightbox/plugins/zoom";
+import Captions from "yet-another-react-lightbox/plugins/captions";
+import "yet-another-react-lightbox/styles.css";
+import "yet-another-react-lightbox/plugins/captions.css";
+import { Download, Heart, RotateCw, RotateCcw, Share2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { cn, getSafeMediaUrl } from "@/lib/utils";
+import { handleApiError, showSuccess } from "@/lib/toast";
+import { usePhotoViewTracker, trackDownload } from "@/hooks/use-analytics";
+import type { Photo } from "@/types/database";
 
 interface PhotoLightboxProps {
-  photos: Photo[]
-  index: number
-  open: boolean
-  onClose: () => void
-  allowDownload?: boolean
-  onSelectChange?: (photoId: string, isSelected: boolean) => void
-  onIndexChange?: (index: number) => void
+  photos: Photo[];
+  index: number;
+  open: boolean;
+  onClose: () => void;
+  allowDownload?: boolean;
+  onSelectChange?: (photoId: string, isSelected: boolean) => void;
+  onIndexChange?: (index: number) => void;
 }
 
 export function PhotoLightbox({
@@ -32,133 +33,182 @@ export function PhotoLightbox({
   onSelectChange,
   onIndexChange,
 }: PhotoLightboxProps) {
-  const t = useTranslations('album.lightbox')
-  
+  const t = useTranslations("album.lightbox");
+
   // 使用安全的媒体 URL（自动修复 localhost HTTPS 问题）
-  const safeMediaUrl = getSafeMediaUrl()
-  
+  const safeMediaUrl = getSafeMediaUrl();
+
   // 开发环境警告
-  if (typeof window !== 'undefined' && !safeMediaUrl) {
-    console.error('⚠️ NEXT_PUBLIC_MEDIA_URL is not configured. Images may not load.')
+  if (typeof window !== "undefined" && !safeMediaUrl) {
+    console.error(
+      "⚠️ NEXT_PUBLIC_MEDIA_URL is not configured. Images may not load.",
+    );
   }
   // 初始化 currentIndex，确保有效
   const [currentIndex, setCurrentIndex] = useState(() => {
     if (index >= 0 && index < photos.length) {
-      return index
+      return index;
     }
-    return 0
-  })
-  const [selectedMap, setSelectedMap] = useState<Record<string, boolean>>(() => {
-    const map: Record<string, boolean> = {}
-    photos.forEach((p) => {
-      map[p.id] = p.is_selected
-    })
-    return map
-  })
+    return 0;
+  });
+  const [selectedMap, setSelectedMap] = useState<Record<string, boolean>>(
+    () => {
+      const map: Record<string, boolean> = {};
+      photos.forEach((p) => {
+        map[p.id] = p.is_selected;
+      });
+      return map;
+    },
+  );
   // 跟踪每张照片的临时旋转角度（仅前端显示，不保存到数据库）
-  const [viewRotationMap, setViewRotationMap] = useState<Record<string, number>>({})
+  const [viewRotationMap, setViewRotationMap] = useState<
+    Record<string, number>
+  >({});
   // 跟踪哪些照片已加载原图（用户点击"查看原图"后）
   // 移除此逻辑，现在默认只显示大预览图，下载时才获取原图
   // const [loadedOriginals, setLoadedOriginals] = useState<Set<string>>(new Set())
-  const prevIndexRef = useRef(index)
+  const prevIndexRef = useRef(index);
+
+  // 照片查看追踪
+  const { trackPhotoView } = usePhotoViewTracker(photos[0]?.album_id);
 
   // 预加载相邻图片（只在 Lightbox 打开时预加载）
   const preloadImage = useCallback((imageSrc: string) => {
-    if (!imageSrc || typeof window === 'undefined') return
-    
-    // 检查是否已存在预加载链接或图片已加载
-    if (document.querySelector(`link[href="${imageSrc}"]`) || 
-        document.querySelector(`img[src="${imageSrc}"]`)) return
-    
-    const link = document.createElement('link')
-    link.rel = 'preload'
-    link.as = 'image'
-    link.href = imageSrc
-    link.setAttribute('fetchpriority', 'high') // Lightbox 相邻图片是高优先级
-    document.head.appendChild(link)
-    
-    // 设置超时清理：如果 3 秒后图片还没使用，移除预加载链接
-    setTimeout(() => {
-      const linkElement = document.querySelector(`link[href="${imageSrc}"]`)
-      if (linkElement && !document.querySelector(`img[src="${imageSrc}"]`)) {
-        linkElement.remove()
+    if (!imageSrc || typeof window === "undefined") return;
+
+    // 确保使用相对路径或 HTTPS，避免混合内容警告
+    let safeSrc = imageSrc;
+    // 如果已经是相对路径，直接使用
+    if (imageSrc.startsWith("/")) {
+      safeSrc = imageSrc;
+    } else {
+      try {
+        const url = new URL(imageSrc, window.location.origin);
+        // 如果是 HTTP 但当前页面是 HTTPS，转换为相对路径
+        if (url.protocol === "http:" && window.location.protocol === "https:") {
+          safeSrc = url.pathname + url.search;
+        }
+      } catch {
+        // URL 解析失败，使用原始值
       }
-    }, 3000)
-  }, [])
+    }
+
+    // 检查是否已存在预加载链接或图片已加载
+    if (
+      document.querySelector(`link[href="${safeSrc}"]`) ||
+      document.querySelector(`img[src="${safeSrc}"]`) ||
+      document.querySelector(`img[src="${imageSrc}"]`)
+    )
+      return;
+
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "image";
+    link.href = safeSrc;
+    link.setAttribute("fetchpriority", "high"); // Lightbox 相邻图片是高优先级
+    document.head.appendChild(link);
+
+    // 设置超时清理：如果 5 秒后图片还没使用，移除预加载链接
+    setTimeout(() => {
+      const linkElement = document.querySelector(`link[href="${safeSrc}"]`);
+      if (
+        linkElement &&
+        !document.querySelector(`img[src="${safeSrc}"]`) &&
+        !document.querySelector(`img[src="${imageSrc}"]`)
+      ) {
+        linkElement.remove();
+      }
+    }, 5000);
+  }, []);
 
   // 同步外部传入的 index 到内部 state，并预加载相邻图片
   useEffect(() => {
-    if (!open) return
-    
+    if (!open) return;
+
     // 如果 index 无效，重置为 0
-    const validIndex = index >= 0 && index < photos.length ? index : 0
-    
+    const validIndex = index >= 0 && index < photos.length ? index : 0;
+
     if (validIndex !== prevIndexRef.current) {
-      prevIndexRef.current = validIndex
-      setCurrentIndex(validIndex)
-      
+      prevIndexRef.current = validIndex;
+      setCurrentIndex(validIndex);
+
+      // 追踪照片查看
+      const currentPhoto = photos[validIndex];
+      if (currentPhoto) {
+        trackPhotoView(currentPhoto.id);
+      }
+
       // 预加载前一张和后一张图片
       if (photos.length > 0) {
-        const prevIndex = validIndex > 0 ? validIndex - 1 : null
-        const nextIndex = validIndex < photos.length - 1 ? validIndex + 1 : null
-        
+        const prevIndex = validIndex > 0 ? validIndex - 1 : null;
+        const nextIndex =
+          validIndex < photos.length - 1 ? validIndex + 1 : null;
+
         if (prevIndex !== null) {
-          const prevPhoto = photos[prevIndex]
-          const prevImageKey = prevPhoto.preview_key || prevPhoto.thumb_key || prevPhoto.original_key
+          const prevPhoto = photos[prevIndex];
+          const prevImageKey =
+            prevPhoto.preview_key ||
+            prevPhoto.thumb_key ||
+            prevPhoto.original_key;
           if (prevImageKey && safeMediaUrl) {
             // 只使用 updated_at 作为时间戳，避免 Date.now() 导致的 hydration mismatch
             const prevImageSrc = prevPhoto.updated_at
-              ? `${safeMediaUrl.replace(/\/$/, '')}/${prevImageKey.replace(/^\//, '')}?t=${new Date(prevPhoto.updated_at).getTime()}`
-              : `${safeMediaUrl.replace(/\/$/, '')}/${prevImageKey.replace(/^\//, '')}`
-            preloadImage(prevImageSrc)
+              ? `${safeMediaUrl.replace(/\/$/, "")}/${prevImageKey.replace(/^\//, "")}?t=${new Date(prevPhoto.updated_at).getTime()}`
+              : `${safeMediaUrl.replace(/\/$/, "")}/${prevImageKey.replace(/^\//, "")}`;
+            preloadImage(prevImageSrc);
           }
         }
-        
+
         if (nextIndex !== null) {
-          const nextPhoto = photos[nextIndex]
-          const nextImageKey = nextPhoto.preview_key || nextPhoto.thumb_key || nextPhoto.original_key
+          const nextPhoto = photos[nextIndex];
+          const nextImageKey =
+            nextPhoto.preview_key ||
+            nextPhoto.thumb_key ||
+            nextPhoto.original_key;
           if (nextImageKey && safeMediaUrl) {
             // 只使用 updated_at 作为时间戳，避免 Date.now() 导致的 hydration mismatch
             const nextImageSrc = nextPhoto.updated_at
-              ? `${safeMediaUrl.replace(/\/$/, '')}/${nextImageKey.replace(/^\//, '')}?t=${new Date(nextPhoto.updated_at).getTime()}`
-              : `${safeMediaUrl.replace(/\/$/, '')}/${nextImageKey.replace(/^\//, '')}`
-            preloadImage(nextImageSrc)
+              ? `${safeMediaUrl.replace(/\/$/, "")}/${nextImageKey.replace(/^\//, "")}?t=${new Date(nextPhoto.updated_at).getTime()}`
+              : `${safeMediaUrl.replace(/\/$/, "")}/${nextImageKey.replace(/^\//, "")}`;
+            preloadImage(nextImageSrc);
           }
         }
       }
     }
-  }, [index, open, photos, safeMediaUrl, preloadImage])
+  }, [index, open, photos, safeMediaUrl, preloadImage, trackPhotoView]);
 
   // 使用 useMemo 稳定 currentPhoto 的引用，避免无限循环
   const currentPhoto = useMemo(() => {
-    if (!photos || photos.length === 0) return null
+    if (!photos || photos.length === 0) return null;
     if (currentIndex >= 0 && currentIndex < photos.length) {
-      return photos[currentIndex]
+      return photos[currentIndex];
     }
-    return photos[0] || null
-  }, [photos, currentIndex])
-  
+    return photos[0] || null;
+  }, [photos, currentIndex]);
+
   // 使用 useMemo 稳定 currentPhotoId，避免依赖整个对象
   const currentPhotoId = useMemo(() => {
-    return currentPhoto?.id || ''
-  }, [currentPhoto])
+    return currentPhoto?.id || "";
+  }, [currentPhoto]);
 
   // 构建 slides，默认使用预览图，点击"查看原图"后才使用原图
   const slides = useMemo(() => {
     if (!photos || photos.length === 0) {
-      return []
+      return [];
     }
-    
+
     return photos.map((photo) => {
-      const exif = photo.exif as Record<string, unknown> | null
-      const make = (exif?.image as Record<string, unknown>)?.Make || (exif?.Make as string)
-      const model = (exif?.image as Record<string, unknown>)?.Model || (exif?.Model as string)
-      const exifData = exif?.exif as Record<string, unknown> | undefined
-      const fNumber = exifData?.FNumber as number | undefined
-      const exposureTime = exifData?.ExposureTime as number | undefined
-      const iso = exifData?.ISO as number | undefined
-      const focalLength = exifData?.FocalLength as number | undefined
-      const dateTime = (exifData?.DateTimeOriginal as string) || photo.captured_at
+      const exif = photo.exif as Record<string, unknown> | null;
+      // 支持两种大小写：Image/image（exif-reader 输出大写，某些库输出小写）
+      const imageData = (exif?.Image || exif?.image) as Record<string, unknown> | undefined;
+      const make = imageData?.Make as string | undefined;
+      const model = imageData?.Model as string | undefined;
+      // 支持两种大小写：Photo/photo 或 exif（不同 EXIF 库的输出格式不同）
+      const exifData = (exif?.Photo || exif?.photo || exif?.exif) as Record<string, unknown> | undefined;
+      const fNumber = exifData?.FNumber as number | undefined;
+      const exposureTime = exifData?.ExposureTime as number | undefined;
+      const iso = (exifData?.ISO || exifData?.ISOSpeedRatings) as number | undefined;
+      const focalLength = exifData?.FocalLength as number | undefined;
 
       const exifString = [
         make && model ? `${make} ${model}` : null,
@@ -172,207 +222,305 @@ export function PhotoLightbox({
         focalLength ? `${focalLength}mm` : null,
       ]
         .filter(Boolean)
-        .join(' · ')
-
-      // 格式化日期时间（使用固定格式）
-      let formattedDateTime: string | undefined
-      if (dateTime) {
-        try {
-          const date = new Date(dateTime)
-          formattedDateTime = date.toISOString().replace('T', ' ').slice(0, 19)
-        } catch {
-          formattedDateTime = undefined
-        }
-      }
+        .join(" · ");
 
       // 默认使用预览图（preview_key），如果用户点击了"查看原图"才使用原图（original_key）
       // 优先级：已加载原图 -> 预览图 -> 缩略图 -> 原图（作为后备）
       // 修改：只使用预览图（如果有），下载时才使用原图
-      const imageKey = photo.preview_key || photo.thumb_key || photo.original_key
+      const imageKey =
+        photo.preview_key || photo.thumb_key || photo.original_key;
 
       // 确保 safeMediaUrl 存在且 imageKey 存在
       if (!safeMediaUrl) {
-        console.error('NEXT_PUBLIC_MEDIA_URL is not configured')
+        console.error("NEXT_PUBLIC_MEDIA_URL is not configured");
       }
       if (!imageKey) {
-        console.warn('Missing imageKey for photo:', photo.id)
+        console.warn("Missing imageKey for photo:", photo.id);
       }
 
       // 构建图片 URL，确保格式正确并使用 HTTPS
       // 添加时间戳作为缓存破坏参数（旋转已在 Worker 处理时应用）
       // 只使用 updated_at 作为时间戳，避免 Date.now() 导致的 hydration mismatch
-      const imageSrc = imageKey && safeMediaUrl 
-        ? (photo.updated_at
-            ? `${safeMediaUrl.replace(/\/$/, '')}/${imageKey.replace(/^\//, '')}?t=${new Date(photo.updated_at).getTime()}`
-            : `${safeMediaUrl.replace(/\/$/, '')}/${imageKey.replace(/^\//, '')}`)
-        : ''
+      const imageSrc =
+        imageKey && safeMediaUrl
+          ? photo.updated_at
+            ? `${safeMediaUrl.replace(/\/$/, "")}/${imageKey.replace(/^\//, "")}?t=${new Date(photo.updated_at).getTime()}`
+            : `${safeMediaUrl.replace(/\/$/, "")}/${imageKey.replace(/^\//, "")}`
+          : "";
 
-      // 构建描述文本：EXIF信息 + 时间 + 图片质量提示
-      let description = exifString || formattedDateTime || ''
-      if (allowDownload && photo.preview_key && photo.original_key) {
-        const qualityHint = '💡 当前为预览图，点击下载按钮获取高清原图'
-        description = description 
-          ? `${description} · ${qualityHint}`
-          : qualityHint
-      }
+      // 构建描述文本：仅显示 EXIF 信息（不显示日期时间和提示文字）
+      const description = exifString || "";
 
       return {
         src: imageSrc,
         width: photo.width || 0,
         height: photo.height || 0,
-        title: photo.filename || '',
+        title: photo.filename || "",
         description: description,
         photoId: photo.id,
         originalKey: photo.original_key || null,
         previewKey: photo.preview_key || null,
-      }
-      })
-    }, [photos, safeMediaUrl, allowDownload])
+      };
+    });
+  }, [photos, safeMediaUrl]);
 
   // 加载当前照片的原图 - 已移除
   // const handleLoadOriginal = useCallback(() => {
   //   if (!currentPhotoId || !currentPhoto?.original_key) return
-  //   
+  //
   //   // 将照片ID添加到已加载原图集合，触发 slides 重新计算使用原图
   //   setLoadedOriginals((prev) => new Set(prev).add(currentPhotoId))
   // }, [currentPhotoId, currentPhoto])
 
   // 检查是否需要显示"查看原图"按钮 - 已移除
   // const showLoadOriginalButton = useMemo(() => {
-  //   return currentPhoto && 
+  //   return currentPhoto &&
   //     currentPhoto.original_key &&
   //     !loadedOriginals.has(currentPhoto.id) &&
   //     // 如果当前显示的是预览图，且预览图与原图不同，才显示按钮
-  //     (currentPhoto.preview_key 
+  //     (currentPhoto.preview_key
   //       ? currentPhoto.preview_key !== currentPhoto.original_key
   //       : true) // 如果没有预览图但原图存在，也显示按钮
   // }, [currentPhoto, loadedOriginals])
 
   // 通过 API 下载原图
-  const handleDownload = useCallback(async () => {
-    if (!currentPhotoId) return
-
-    try {
-      // 获取下载链接
-      const res = await fetch(`/api/public/download/${currentPhotoId}`)
-      if (!res.ok) {
-        const error = await res.json()
-        handleApiError(new Error(error.error?.message || '下载失败'))
-        return
+  const handleDownload = useCallback(
+    async (e?: React.MouseEvent) => {
+      // 阻止事件冒泡
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
       }
 
-      const { downloadUrl, filename } = await res.json()
+      console.log("[Download] ===== Download button clicked =====");
+      console.log("[Download] Event:", e);
+      console.log("[Download] Current photo ID:", currentPhotoId);
 
-      // 使用 fetch 获取文件数据，然后用 Blob 创建下载
-      // 这样可以确保强制下载而不是预览
-      const fileRes = await fetch(downloadUrl)
-      if (!fileRes.ok) {
-        throw new Error('文件下载失败')
+      if (!currentPhotoId) {
+        console.warn("[Download] No current photo ID");
+        handleApiError(new Error("未选择照片"), "下载失败");
+        return;
       }
-      
-      const blob = await fileRes.blob()
-      const blobUrl = URL.createObjectURL(blob)
-      
-      const a = document.createElement('a')
-      a.href = blobUrl
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      
-      // 释放 Blob URL
-      URL.revokeObjectURL(blobUrl)
-    } catch (error) {
-      handleApiError(error, '下载失败，请重试')
-    }
-  }, [currentPhotoId])
+
+      console.log("[Download] Starting download for photo:", currentPhotoId);
+
+      try {
+        // 获取下载链接
+        const downloadApiUrl = `/api/public/download/${currentPhotoId}`;
+        console.log("[Download] Fetching download URL from:", downloadApiUrl);
+
+        const res = await fetch(downloadApiUrl);
+        console.log(
+          "[Download] API response status:",
+          res.status,
+          res.statusText,
+        );
+
+        if (!res.ok) {
+          const error = await res.json();
+          console.error("[Download] API error:", error);
+          handleApiError(
+            new Error(error.error?.message || "下载失败"),
+            "下载失败",
+          );
+          return;
+        }
+
+        const data = await res.json();
+        console.log("[Download] API response data:", data);
+
+        // API 返回格式: { data: { downloadUrl, filename } }
+        const downloadUrl = data.data?.downloadUrl || data.downloadUrl;
+        const filename = data.data?.filename || data.filename;
+
+        console.log("[Download] Extracted downloadUrl:", downloadUrl);
+        console.log("[Download] Extracted filename:", filename);
+
+        // 验证 downloadUrl 是否存在
+        if (!downloadUrl || typeof downloadUrl !== "string") {
+          console.error("[Download] Invalid downloadUrl:", downloadUrl);
+          throw new Error("下载链接无效");
+        }
+
+        console.log("[Download] Original downloadUrl:", downloadUrl);
+        console.log("[Download] safeMediaUrl:", safeMediaUrl);
+
+        // 如果 downloadUrl 是相对路径，转换为完整 URL
+        let fullDownloadUrl = downloadUrl;
+        if (downloadUrl.startsWith("/")) {
+          // 相对路径，需要转换为完整 URL
+          if (safeMediaUrl) {
+            // 如果 downloadUrl 是 /media/xxx，需要拼接 safeMediaUrl
+            if (downloadUrl.startsWith("/media/")) {
+              const key = downloadUrl.replace("/media/", "");
+              fullDownloadUrl = `${safeMediaUrl.replace(/\/$/, "")}/${key}`;
+            } else {
+              // 其他相对路径，使用当前域名
+              fullDownloadUrl = `${window.location.origin}${downloadUrl}`;
+            }
+          } else {
+            // 如果没有 safeMediaUrl，使用当前域名
+            fullDownloadUrl = `${window.location.origin}${downloadUrl}`;
+          }
+        }
+
+        console.log("[Download] Full download URL:", fullDownloadUrl);
+        console.log("[Download] Filename:", filename);
+
+        // 使用 fetch 获取文件数据，然后用 Blob 创建下载
+        // 这样可以确保强制下载而不是预览
+        console.log("[Download] Fetching file from:", fullDownloadUrl);
+        const fileRes = await fetch(fullDownloadUrl);
+        console.log(
+          "[Download] File response status:",
+          fileRes.status,
+          fileRes.statusText,
+        );
+
+        if (!fileRes.ok) {
+          const errorText = await fileRes.text();
+          console.error("[Download] File fetch error:", errorText);
+          throw new Error(
+            `文件下载失败: ${fileRes.status} ${fileRes.statusText}`,
+          );
+        }
+
+        const blob = await fileRes.blob();
+        console.log("[Download] Blob size:", blob.size, "bytes");
+        console.log("[Download] Blob type:", blob.type);
+
+        const blobUrl = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = filename || "download";
+        document.body.appendChild(a);
+        console.log("[Download] Triggering download...");
+        a.click();
+        document.body.removeChild(a);
+
+        // 释放 Blob URL
+        URL.revokeObjectURL(blobUrl);
+
+        console.log("[Download] Download completed successfully");
+
+        // 追踪下载事件
+        const currentPhoto = photos[currentIndex];
+        trackDownload({
+          photoId: currentPhotoId,
+          albumId: currentPhoto?.album_id,
+          downloadType: "single",
+          fileCount: 1,
+          totalSize: blob.size,
+        });
+      } catch (error) {
+        console.error("[Download] Error occurred:", error);
+        handleApiError(error, "下载失败，请重试");
+      }
+    },
+    [currentPhotoId, currentIndex, photos, safeMediaUrl],
+  );
 
   // 选片功能
   const handleSelect = useCallback(async () => {
-    if (!currentPhoto || !currentPhoto.id) return
+    if (!currentPhoto || !currentPhoto.id) return;
 
-    const photoId = currentPhoto.id
-    const newSelected = !selectedMap[photoId]
-    setSelectedMap((prev) => ({ ...prev, [photoId]: newSelected }))
+    const photoId = currentPhoto.id;
+    const newSelected = !selectedMap[photoId];
+    setSelectedMap((prev) => ({ ...prev, [photoId]: newSelected }));
 
     try {
       const res = await fetch(`/api/public/photos/${photoId}/select`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isSelected: newSelected }),
-      })
+      });
 
       if (!res.ok) {
         // 回滚
-        setSelectedMap((prev) => ({ ...prev, [photoId]: !newSelected }))
-        
+        setSelectedMap((prev) => ({ ...prev, [photoId]: !newSelected }));
+
         // 显示错误信息
-        const errorData = await res.json()
-        handleApiError(new Error(errorData.error?.message || '操作失败'), '选片失败')
+        const errorData = await res.json();
+        handleApiError(
+          new Error(errorData.error?.message || "操作失败"),
+          "选片失败",
+        );
       } else {
-        onSelectChange?.(photoId, newSelected)
+        onSelectChange?.(photoId, newSelected);
       }
     } catch (error) {
-      setSelectedMap((prev) => ({ ...prev, [photoId]: !newSelected }))
-      handleApiError(error, '选片失败')
+      setSelectedMap((prev) => ({ ...prev, [photoId]: !newSelected }));
+      handleApiError(error, "选片失败");
     }
-  }, [currentPhoto, selectedMap, onSelectChange])
+  }, [currentPhoto, selectedMap, onSelectChange]);
 
+  // 处理双击放大
   // 处理视图变化，使用 useCallback 避免在渲染期间更新状态
-  const handleView = useCallback(({ index: newIndex }: { index: number }) => {
-    if (newIndex >= 0 && newIndex < photos.length && newIndex !== prevIndexRef.current) {
-      prevIndexRef.current = newIndex
-      setCurrentIndex(newIndex)
-      onIndexChange?.(newIndex)
-    }
-  }, [photos.length, onIndexChange])
+  const handleView = useCallback(
+    ({ index: newIndex }: { index: number }) => {
+      if (
+        newIndex >= 0 &&
+        newIndex < photos.length &&
+        newIndex !== prevIndexRef.current
+      ) {
+        prevIndexRef.current = newIndex;
+        setCurrentIndex(newIndex);
+        onIndexChange?.(newIndex);
+      }
+    },
+    [photos.length, onIndexChange],
+  );
 
   // 旋转照片（仅前端显示）
-  const handleRotate = useCallback((angle: number) => {
-    if (!currentPhotoId) return
-    
-    setViewRotationMap((prev) => {
-      const currentRotation = prev[currentPhotoId] || 0
-      const newRotation = (currentRotation + angle) % 360
-      return {
-        ...prev,
-        [currentPhotoId]: newRotation < 0 ? newRotation + 360 : newRotation,
-      }
-    })
-  }, [currentPhotoId])
+  const handleRotate = useCallback(
+    (angle: number) => {
+      if (!currentPhotoId) return;
+
+      setViewRotationMap((prev) => {
+        const currentRotation = prev[currentPhotoId] || 0;
+        const newRotation = (currentRotation + angle) % 360;
+        return {
+          ...prev,
+          [currentPhotoId]: newRotation < 0 ? newRotation + 360 : newRotation,
+        };
+      });
+    },
+    [currentPhotoId],
+  );
 
   // 分享照片
   const handleShare = useCallback(async () => {
-    const shareUrl = window.location.href
-    
+    const shareUrl = window.location.href;
+
     if (navigator.share) {
       try {
         await navigator.share({
-          title: t('shareTitle'),
+          title: t("shareTitle"),
           url: shareUrl,
-        })
+        });
       } catch {
         // 用户取消分享
       }
     } else {
       // 复制链接（使用兼容方案）
-      const { copyToClipboard } = await import('@/lib/clipboard')
-      const success = await copyToClipboard(shareUrl)
+      const { copyToClipboard } = await import("@/lib/clipboard");
+      const success = await copyToClipboard(shareUrl);
       if (success) {
-        showSuccess(t('linkCopied'))
+        showSuccess(t("linkCopied"));
       } else {
-        console.error('Failed to copy share link')
+        console.error("Failed to copy share link");
       }
     }
-  }, [t])
+  }, [t]);
 
   const toolbarButtons = useMemo(() => {
     if (!currentPhoto) {
-      return ['close']
+      return ["close"];
     }
 
-    const currentPhotoId = currentPhoto.id
-    const isSelected = selectedMap[currentPhotoId] || false
+    const currentPhotoId = currentPhoto.id;
+    const isSelected = selectedMap[currentPhotoId] || false;
 
     const buttons: Array<React.ReactNode> = [
       <button
@@ -380,43 +528,38 @@ export function PhotoLightbox({
         type="button"
         onClick={handleSelect}
         className={cn(
-          'yarl__button flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors',
+          "yarl__button flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors",
           isSelected
-            ? 'bg-red-500 text-white'
-            : 'bg-white/10 text-white hover:bg-white/20'
+            ? "bg-red-500 text-white"
+            : "bg-white/10 text-white hover:bg-white/20",
         )}
-        aria-label={isSelected ? t('deselect') : t('select')}
+        aria-label={isSelected ? t("deselect") : t("select")}
       >
-        <Heart
-          className={cn(
-            'w-5 h-5',
-            isSelected && 'fill-current'
-          )}
-        />
+        <Heart className={cn("w-5 h-5", isSelected && "fill-current")} />
       </button>,
       <button
         key="rotate-left"
         type="button"
         onClick={() => handleRotate(-90)}
         className="yarl__button flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors min-h-[44px] active:scale-[0.98] touch-manipulation"
-        aria-label={t('rotateLeft')}
-        title={t('rotateLeftTitle')}
+        aria-label={t("rotateLeft")}
+        title={t("rotateLeftTitle")}
       >
         <RotateCcw className="w-5 h-5" />
-        <span className="hidden sm:inline text-sm">{t('rotateLeft')}</span>
+        <span className="hidden sm:inline text-sm">{t("rotateLeft")}</span>
       </button>,
       <button
         key="rotate-right"
         type="button"
         onClick={() => handleRotate(90)}
         className="yarl__button flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors min-h-[44px] active:scale-[0.98] touch-manipulation"
-        aria-label={t('rotateRight')}
-        title={t('rotateRightTitle')}
+        aria-label={t("rotateRight")}
+        title={t("rotateRightTitle")}
       >
         <RotateCw className="w-5 h-5" />
-        <span className="hidden sm:inline text-sm">{t('rotateRight')}</span>
+        <span className="hidden sm:inline text-sm">{t("rotateRight")}</span>
       </button>,
-    ]
+    ];
 
     if (allowDownload) {
       buttons.push(
@@ -425,13 +568,15 @@ export function PhotoLightbox({
           type="button"
           onClick={handleDownload}
           className="yarl__button flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors min-h-[44px] active:scale-[0.98] touch-manipulation"
-          aria-label={t('downloadOriginal')}
-          title={t('downloadOriginalTitle')}
+          aria-label={t("downloadOriginal")}
+          title={t("downloadOriginalTitle")}
         >
           <Download className="w-5 h-5" />
-          <span className="hidden sm:inline text-sm">{t('downloadOriginal')}</span>
-        </button>
-      )
+          <span className="hidden sm:inline text-sm">
+            {t("downloadOriginal")}
+          </span>
+        </button>,
+      );
     }
 
     buttons.push(
@@ -440,47 +585,63 @@ export function PhotoLightbox({
         type="button"
         onClick={handleShare}
         className="yarl__button flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors min-h-[44px] active:scale-[0.98] touch-manipulation"
-        aria-label={t('share')}
-        title={t('shareTitle')}
+        aria-label={t("share")}
+        title={t("shareTitle")}
       >
         <Share2 className="w-5 h-5" />
-        <span className="hidden sm:inline text-sm">{t('share')}</span>
-      </button>
-    )
+        <span className="hidden sm:inline text-sm">{t("share")}</span>
+      </button>,
+    );
 
-    buttons.push('close')
-    return buttons
-  }, [currentPhoto, selectedMap, allowDownload, handleSelect, handleDownload, handleRotate, handleShare, t])
+    buttons.push("close");
+    return buttons;
+  }, [
+    currentPhoto,
+    selectedMap,
+    allowDownload,
+    handleSelect,
+    handleDownload,
+    handleRotate,
+    handleShare,
+    t,
+  ]);
 
   // 如果未打开或没有照片，不渲染
   if (!open || photos.length === 0) {
-    return null
+    return null;
   }
 
   // 确保 mediaUrl 配置存在
   if (!safeMediaUrl) {
-    console.error('NEXT_PUBLIC_MEDIA_URL is not configured. Cannot display images.')
-    return null
+    console.error(
+      "NEXT_PUBLIC_MEDIA_URL is not configured. Cannot display images.",
+    );
+    return null;
   }
 
   // 确保 currentIndex 有效
-  const validIndex = currentIndex >= 0 && currentIndex < photos.length ? currentIndex : 0
-  
+  const validIndex =
+    currentIndex >= 0 && currentIndex < photos.length ? currentIndex : 0;
+
   // 确保 slides 不为空
   if (slides.length === 0) {
-    return null
+    return null;
   }
 
   // 确保 currentPhoto 存在
   if (!currentPhoto || !currentPhoto.id) {
-    return null
+    return null;
   }
 
   // 确保当前 slide 存在
-  const currentSlide = slides[validIndex]
+  const currentSlide = slides[validIndex];
   if (!currentSlide || !currentSlide.src) {
-    console.warn('Current slide is missing or has no src:', validIndex, currentSlide)
-    return null
+    console.warn(
+      "Current slide is missing or has no src:",
+      validIndex,
+      currentSlide,
+    );
+    return null;
   }
 
   // 构建工具栏按钮数组，确保稳定的引用以避免 hydration 问题
@@ -491,9 +652,13 @@ export function PhotoLightbox({
       index={validIndex}
       slides={slides}
       plugins={[Zoom, Captions]}
+      zoom={{
+        scrollToZoom: true,
+        doubleClickDelay: 300, // 双击延迟（毫秒）
+        doubleClickMaxStops: 2, // 双击缩放最大档数
+      }}
       on={{
         view: handleView,
-        click: onClose,
       }}
       controller={{
         // 移动端下滑关闭
@@ -501,7 +666,7 @@ export function PhotoLightbox({
         // 点击背景关闭
         closeOnBackdropClick: true,
       }}
-      captions={{ descriptionTextAlign: 'center', showToggle: true }}
+      captions={{ descriptionTextAlign: "center", showToggle: true }}
       carousel={{
         finite: false,
         preload: 2,
@@ -510,65 +675,65 @@ export function PhotoLightbox({
       // 触摸滑动：默认支持触摸屏和触摸板左右滑动
       // 鼠标点击：支持点击左右箭头按钮切换照片
       render={{
-        // 只有一张照片时隐藏导航按钮
-        buttonPrev: photos.length <= 1 ? () => null : undefined,
-        buttonNext: photos.length <= 1 ? () => null : undefined,
+        // 隐藏左右导航按钮
+        buttonPrev: () => null,
+        buttonNext: () => null,
         // 自定义 slide 渲染，应用旋转（保留默认行为）
         slide: ({ slide }) => {
           interface SlideWithPhotoId {
-            photoId?: string
-            src: string
-            title?: string
+            photoId?: string;
+            src: string;
+            title?: string;
           }
-          const slideWithId = slide as SlideWithPhotoId
-          const photoId = slideWithId.photoId
-          const rotation = photoId ? (viewRotationMap[photoId] || 0) : 0
-          
-          // 如果没有旋转，使用默认渲染
+          const slideWithId = slide as SlideWithPhotoId;
+          const photoId = slideWithId.photoId;
+          const rotation = photoId ? viewRotationMap[photoId] || 0 : 0;
+
+          // 如果没有旋转，使用默认渲染（但添加双击事件）
           if (rotation === 0) {
-            return undefined
+            return undefined;
           }
-          
+
           // 有旋转时，自定义渲染
           // eslint-disable-next-line @next/next/no-img-element
           return (
             <div
               className="yarl__slide"
               style={{
-                width: '100%',
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 transform: `rotate(${rotation}deg)`,
-                transition: 'transform 0.3s ease-out',
+                transition: "transform 0.3s ease-out",
               }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={slide.src}
-                alt={typeof slide.title === 'string' ? slide.title : ''}
+                alt={typeof slide.title === "string" ? slide.title : ""}
                 style={{
-                  maxWidth: '100%',
-                  maxHeight: '100%',
-                  objectFit: 'contain',
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                  objectFit: "contain",
                 }}
                 draggable={false}
               />
             </div>
-          )
+          );
         },
       }}
       toolbar={{
         buttons: toolbarButtons,
       }}
       styles={{
-        container: { backgroundColor: 'rgba(0, 0, 0, .95)' },
+        container: { backgroundColor: "rgba(0, 0, 0, .95)" },
         captionsDescriptionContainer: {
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          padding: '10px',
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
+          padding: "10px",
         },
       }}
     />
-  )
+  );
 }

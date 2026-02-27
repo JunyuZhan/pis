@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback, useRef } from 'react'
 import type { Photo } from '@/types/database'
+import { useSettings } from './use-settings'
 
 interface UsePhotoRealtimeOptions {
   albumId: string
@@ -47,12 +48,18 @@ export function usePhotoRealtime({
   onUpdate,
   onDelete,
 }: UsePhotoRealtimeOptions) {
+  // 从设置中获取轮询间隔
+  const { settings } = useSettings()
+  const pollingInterval = settings?.polling_interval || parseInt(process.env.NEXT_PUBLIC_POLLING_INTERVAL || '5000', 10)
+
   // 使用 ref 存储回调，避免重复订阅
   const callbacksRef = useRef({ onInsert, onUpdate, onDelete })
   callbacksRef.current = { onInsert, onUpdate, onDelete }
 
   // 存储已知的照片ID，用于检测新照片
   const knownPhotoIdsRef = useRef<Set<string>>(new Set())
+  // 标记是否已完成首次初始化（首次不触发 onInsert）
+  const isInitializedRef = useRef(false)
 
   const checkForUpdates = useCallback(async () => {
     if (!albumId || !albumSlug) return
@@ -68,25 +75,34 @@ export function usePhotoRealtime({
 
       // 检测新照片
       const currentPhotoIds = new Set<string>(currentPhotos.map((p: Photo) => p.id))
-      const newPhotos = currentPhotos.filter((p: Photo) => !knownPhotoIdsRef.current.has(p.id))
+      
+      // 只有在初始化完成后才检测新照片
+      if (isInitializedRef.current) {
+        const newPhotos = currentPhotos.filter((p: Photo) => !knownPhotoIdsRef.current.has(p.id))
 
-      newPhotos.forEach((photo: Photo) => {
-        if (photo.status === 'completed' && !photo.deleted_at) {
-          callbacksRef.current.onInsert?.(photo)
-          knownPhotoIdsRef.current.add(photo.id)
-        }
-      })
+        newPhotos.forEach((photo: Photo) => {
+          if (photo.status === 'completed' && !photo.deleted_at) {
+            callbacksRef.current.onInsert?.(photo)
+            knownPhotoIdsRef.current.add(photo.id)
+          }
+        })
+      } else {
+        // 首次运行，只初始化已知照片ID，不触发回调
+        isInitializedRef.current = true
+      }
 
       // 更新已知照片ID集合
       currentPhotoIds.forEach((id) => knownPhotoIdsRef.current.add(id))
 
-      // 清理已删除的照片ID
-      knownPhotoIdsRef.current.forEach((id: string) => {
-        if (!currentPhotoIds.has(id)) {
-          callbacksRef.current.onDelete?.(id)
-          knownPhotoIdsRef.current.delete(id)
-        }
-      })
+      // 清理已删除的照片ID（只在初始化后执行）
+      if (isInitializedRef.current) {
+        knownPhotoIdsRef.current.forEach((id: string) => {
+          if (!currentPhotoIds.has(id)) {
+            callbacksRef.current.onDelete?.(id)
+            knownPhotoIdsRef.current.delete(id)
+          }
+        })
+      }
     } catch (error) {
       console.error('Failed to check for photo updates:', error)
     }
@@ -98,8 +114,7 @@ export function usePhotoRealtime({
     // 初始化已知照片ID
     checkForUpdates()
 
-    // 设置轮询间隔（默认5秒）
-    const pollingInterval = parseInt(process.env.NEXT_PUBLIC_POLLING_INTERVAL || '5000', 10)
+    // 设置轮询间隔（从设置中读取，默认5秒）
     const intervalId = setInterval(checkForUpdates, pollingInterval)
 
     // 在effect开始时复制ref值，避免cleanup时ref已改变
@@ -108,8 +123,9 @@ export function usePhotoRealtime({
     return () => {
       clearInterval(intervalId)
       knownPhotoIds.clear()
+      isInitializedRef.current = false // 重置初始化状态
     }
-  }, [albumId, albumSlug, enabled, checkForUpdates])
+  }, [albumId, albumSlug, enabled, checkForUpdates, pollingInterval])
 }
 
 /**
@@ -124,6 +140,12 @@ export function usePhotoRealtimeAdmin({
   enabled?: boolean
   onStatusChange?: (photoId: string, status: Photo['status']) => void
 }) {
+  // 从设置中获取轮询间隔（管理员端使用更短的间隔）
+  const { settings } = useSettings()
+  const adminPollingInterval = settings?.polling_interval 
+    ? Math.min(settings.polling_interval, 2000) // 管理员端最多2秒
+    : parseInt(process.env.NEXT_PUBLIC_ADMIN_POLLING_INTERVAL || '3000', 10)
+
   const callbackRef = useRef(onStatusChange)
   callbackRef.current = onStatusChange
 
@@ -168,9 +190,8 @@ export function usePhotoRealtimeAdmin({
     // 初始化状态映射
     checkForStatusChanges()
 
-    // 设置轮询间隔（管理员端更频繁，默认3秒）
-    const pollingInterval = parseInt(process.env.NEXT_PUBLIC_ADMIN_POLLING_INTERVAL || '3000', 10)
-    const intervalId = setInterval(checkForStatusChanges, pollingInterval)
+    // 设置轮询间隔（管理员端更频繁）
+    const intervalId = setInterval(checkForStatusChanges, adminPollingInterval)
 
     // 在effect开始时复制ref值，避免cleanup时ref已改变
     const photoStatusMap = photoStatusMapRef.current
@@ -179,5 +200,5 @@ export function usePhotoRealtimeAdmin({
       clearInterval(intervalId)
       photoStatusMap.clear()
     }
-  }, [albumId, enabled, checkForStatusChanges])
+  }, [albumId, enabled, checkForStatusChanges, adminPollingInterval])
 }

@@ -119,37 +119,67 @@ class PISFileSystem extends FileSystem {
     // Call super to handle the actual file writing to local temp dir
     // super.write 返回 { stream, clientPath }
     const result = super.write(fileName, { append, start });
-    const { stream, clientPath } = result as { stream: any; clientPath: string };
+    const { stream, clientPath } = result as {
+      stream: any;
+      clientPath: string;
+    };
 
     // Get absolute path - 直接使用 root + fileName 构建路径
-    const cleanFileName = fileName.startsWith("/") ? fileName.slice(1) : fileName;
+    const cleanFileName = fileName.startsWith("/")
+      ? fileName.slice(1)
+      : fileName;
     const fsPath = join(this.root, cleanFileName);
 
-    // Listen for finish/close event on the actual stream
-    stream.once("close", async () => {
+    const cleanupFile = async (reason: string) => {
       try {
+        await fs.unlink(fsPath);
+        logger.info({ fileName, fsPath, reason }, "🧹 Temp file cleaned up");
+      } catch (cleanupErr) {
+        if ((cleanupErr as NodeJS.ErrnoException).code !== "ENOENT") {
+          logger.error(
+            { cleanupErr, fileName, fsPath },
+            "❌ Failed to cleanup temp file",
+          );
+        }
+      }
+    };
+
+    let processingFailed = false;
+
+    // 超时保护：防止客户端连接后不传输数据（2分钟超时）
+    const timeoutId = setTimeout(() => {
+      if (!processingFailed) {
+        logger.warn({ fileName, fsPath }, "⏱️ Upload timeout, cleaning up");
+        processingFailed = true;
+        cleanupFile("timeout").catch((err) => {
+          logger.error({ err, fileName }, "❌ Timeout cleanup failed");
+        });
+      }
+    }, 120000);
+
+    // 处理上传的包装函数，用于清理超时计时器
+    const wrappedProcessUpload = async () => {
+      clearTimeout(timeoutId);
+      try {
+        // 上传处理逻辑
         logger.info(
           { fileName, fsPath, albumId: this.albumId },
           "📸 FTP Upload completed, starting processing...",
         );
 
-        // fileName is relative to root (which is specific to album), e.g. "DSC001.jpg"
         const cleanPath = fileName.startsWith("/")
           ? fileName.slice(1)
           : fileName;
         const originalName = cleanPath.split("/").pop() || "unknown.jpg";
 
-        // Read the file
         const fileBuffer = await fs.readFile(fsPath);
 
-        // Generate a unique ID for the photo
         const photoId = uuidv4();
         const extension = parse(originalName).ext.toLowerCase() || ".jpg";
         const storageKey = `raw/${this.albumId}/${photoId}${extension}`;
 
-        // Upload to Storage (MinIO)
         await uploadBuffer(storageKey, fileBuffer, {
-          "Content-Type": "image/jpeg", // Simple assumption
+          "Content-Type": "image/jpeg",
           "x-amz-meta-original-name": encodeURIComponent(originalName),
         });
 
@@ -158,7 +188,6 @@ class PISFileSystem extends FileSystem {
           "☁️  Uploaded to Storage",
         );
 
-        // Insert into Database
         const database = await getDb();
         const { error: insertError } = await database.from("photos").insert({
           id: photoId,
@@ -167,7 +196,7 @@ class PISFileSystem extends FileSystem {
           original_key: storageKey,
           status: "pending",
           file_size: fileBuffer.length,
-          mime_type: extension === ".png" ? "image/png" : "image/jpeg", // Simple mime type detection
+          mime_type: extension === ".png" ? "image/png" : "image/jpeg",
         });
 
         if (insertError) {
@@ -178,7 +207,6 @@ class PISFileSystem extends FileSystem {
           throw new Error("Database insert failed");
         }
 
-        // Add to Processing Queue
         await photoQueue.add(
           "process-photo",
           {
@@ -187,16 +215,58 @@ class PISFileSystem extends FileSystem {
             originalKey: storageKey,
           },
           {
-            jobId: photoId, // Deduplication
+            jobId: photoId,
           },
         );
 
         logger.info({ jobId: photoId }, "🚀 Added to processing queue");
-
-        // Cleanup local temp file
-        await fs.unlink(fsPath);
       } catch (err) {
+        processingFailed = true;
         logger.error({ err, fileName }, "❌ Error processing FTP upload");
+      } finally {
+        await cleanupFile(
+          processingFailed ? "upload failed" : "upload completed",
+        );
+      }
+    };
+
+    // 旧的 processUpload 函数不再需要，保留它作为别名以保持兼容性
+    const processUpload = wrappedProcessUpload;
+
+    stream.once("close", async () => {
+      try {
+        await processUpload();
+      } catch (err) {
+        logger.error(
+          { err, fileName },
+          "❌ Unexpected error in stream close handler",
+        );
+      }
+    });
+
+    stream.on("error", async (err: Error) => {
+      logger.error(
+        { err, fileName, fsPath },
+        "❌ Stream error during FTP upload",
+      );
+      processingFailed = true;
+      try {
+        await cleanupFile("stream error");
+      } catch (cleanupErr) {
+        logger.error(
+          { cleanupErr, fileName },
+          "❌ Failed to cleanup on stream error",
+        );
+      }
+    });
+
+    stream.on("aborted", async () => {
+      logger.warn({ fileName, fsPath }, "⚠️ Client aborted FTP upload");
+      processingFailed = true;
+      try {
+        await cleanupFile("client aborted");
+      } catch (cleanupErr) {
+        logger.error({ cleanupErr, fileName }, "❌ Failed to cleanup on abort");
       }
     });
 
@@ -219,13 +289,50 @@ export class FtpServerService {
   private ftpServer: FtpSrv | null = null;
   /** FTP 根目录路径 */
   private rootPath: string;
+  /** 定时清理任务 */
+  private cleanupInterval: NodeJS.Timeout | null = null;
 
   /**
    * 创建 FTP 服务器服务实例
    */
   constructor() {
-    // Use a temp directory for FTP root
     this.rootPath = process.env.FTP_ROOT_DIR || join(process.cwd(), "temp_ftp");
+  }
+
+  /**
+   * 清理临时目录中过期的文件（超过1小时的目录）
+   */
+  private async cleanupExpiredDirs(): Promise<void> {
+    try {
+      const stats = await fs.readdir(this.rootPath, { withFileTypes: true });
+      const now = Date.now();
+      const ONE_HOUR = 60 * 60 * 1000;
+
+      for (const dir of stats) {
+        if (!dir.isDirectory()) continue;
+
+        const dirPath = join(this.rootPath, dir.name);
+        const dirStats = await fs.stat(dirPath);
+        const age = now - dirStats.mtimeMs;
+
+        if (age > ONE_HOUR) {
+          try {
+            await fs.rm(dirPath, { recursive: true, force: true });
+            logger.info(
+              { dirPath, age: Math.round(age / 1000 / 60) },
+              "🧹 Cleaned up expired FTP temp dir",
+            );
+          } catch (rmErr) {
+            logger.error(
+              { rmErr, dirPath },
+              "❌ Failed to remove expired temp dir",
+            );
+          }
+        }
+      }
+    } catch (err) {
+      logger.error({ err }, "❌ Error during FTP temp dir cleanup");
+    }
   }
 
   /**
@@ -348,6 +455,14 @@ export class FtpServerService {
         },
         "🚀 FTP Server started",
       );
+
+      this.cleanupInterval = setInterval(
+        () => {
+          this.cleanupExpiredDirs();
+        },
+        60 * 60 * 1000,
+      );
+      this.cleanupExpiredDirs();
     } catch (err) {
       logger.error({ err }, "❌ Failed to start FTP Server");
     }
@@ -359,6 +474,10 @@ export class FtpServerService {
    * @returns {Promise<void>}
    */
   async stop() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
     if (this.ftpServer) {
       await this.ftpServer.close();
       logger.info("FTP Server stopped");

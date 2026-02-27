@@ -46,7 +46,7 @@ RUN apk update --no-cache && \
 WORKDIR /app
 
 # 安装 pnpm
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
 
 # 复制 workspace 配置和 lockfile
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./

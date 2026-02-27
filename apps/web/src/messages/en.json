@@ -154,7 +154,131 @@
     "createGroup": "Create Group",
     "groupName": "Group Name",
     "noGroup": "No Group",
-    "allGroups": "All Groups"
+    "allGroups": "All Groups",
+    "sidebar": {
+      "title": "PIS",
+      "subtitle": "Admin Panel",
+      "backToFrontend": "Back to Frontend",
+      "albumManagement": "Album Management",
+      "customerManagement": "Customer Management",
+      "analytics": "Analytics",
+      "retouchWorkbench": "Retouch Workbench",
+      "userManagement": "User Management",
+      "systemSettings": "System Settings",
+      "logout": "Logout"
+    },
+    "customers": {
+      "title": "Customer Management",
+      "add": "Add Customer",
+      "edit": "Edit Customer",
+      "delete": "Delete Customer",
+      "deleteConfirm": "Are you sure you want to delete this customer?",
+      "name": "Name",
+      "phone": "Phone",
+      "email": "Email",
+      "wechat": "WeChat",
+      "company": "Company",
+      "address": "Address",
+      "notes": "Notes",
+      "tags": "Tags",
+      "source": "Source",
+      "status": "Status",
+      "albums": "Albums",
+      "sendNotification": "Send Notification",
+      "noCustomers": "No customers yet",
+      "sourceOptions": {
+        "referral": "Referral",
+        "website": "Website",
+        "social": "Social Media",
+        "other": "Other"
+      },
+      "statusOptions": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "archived": "Archived"
+      }
+    },
+    "notifications": {
+      "title": "Notifications",
+      "send": "Send Notification",
+      "sending": "Sending...",
+      "sent": "Sent",
+      "failed": "Failed",
+      "type": "Notification Type",
+      "albumReady": "Album Ready Notification",
+      "custom": "Custom Notification",
+      "emailSubject": "Email Subject",
+      "emailContent": "Email Content",
+      "selectAlbum": "Select Album",
+      "noEmail": "This customer has no email address"
+    },
+    "analytics": {
+      "title": "Analytics",
+      "overview": "Overview",
+      "visitors": "Visitors",
+      "downloads": "Downloads",
+      "topAlbums": "Top Albums",
+      "deviceStats": "Device Statistics",
+      "browserStats": "Browser Statistics",
+      "export": "Export",
+      "exportCSV": "Export CSV",
+      "exportJSON": "Export JSON",
+      "period": {
+        "7days": "Last 7 days",
+        "30days": "Last 30 days",
+        "90days": "Last 90 days",
+        "all": "All time"
+      }
+    },
+    "upgrade": {
+      "title": "System Upgrade",
+      "currentVersion": "Current Version",
+      "latestVersion": "Latest Version",
+      "hasUpdate": "Update available",
+      "upToDate": "Up to date",
+      "checkUpdate": "Check for Updates",
+      "checking": "Checking...",
+      "upgrade": "Upgrade",
+      "upgrading": "Upgrading...",
+      "upgradeSuccess": "Upgrade successful",
+      "upgradeFailed": "Upgrade failed",
+      "rollback": "Rollback",
+      "rollbackTo": "Rollback to",
+      "rollbackConfirm": "Are you sure you want to rollback to version {version}?",
+      "history": "Upgrade History",
+      "noHistory": "No upgrade history",
+      "options": {
+        "rebuild": "Rebuild images (no cache)",
+        "rebuildDesc": "For dependency updates, Dockerfile changes, or build configuration changes",
+        "skipRestart": "Skip container restart",
+        "skipRestartDesc": "Only update code and config, don't restart Docker containers"
+      }
+    },
+    "settings": {
+      "title": "System Settings",
+      "brand": "Brand Information",
+      "brandName": "Name",
+      "brandTagline": "Tagline",
+      "logo": "Logo",
+      "favicon": "Favicon",
+      "copyright": "Copyright & Filing",
+      "copyrightText": "Copyright Text",
+      "icpNumber": "ICP Filing Number",
+      "policeNumber": "Police Filing Number",
+      "site": "Site Configuration",
+      "siteTitle": "Site Title",
+      "siteDescription": "Site Description",
+      "contact": "Contact Information",
+      "wechatQrcode": "WeChat QR Code",
+      "theme": "Theme Appearance",
+      "themeMode": "Theme Mode",
+      "primaryColor": "Primary Color",
+      "borderRadius": "Border Radius",
+      "display": "Display Settings",
+      "showExif": "Show EXIF Information",
+      "saveSuccess": "Settings saved",
+      "saveFailed": "Failed to save"
+    }
   },
   "errors": {
     "generic": "An error occurred, please try again later",
@@ -180,11 +304,85 @@
     }
   },
   "footer": {
-    "poweredBy": "Powered by PIS",
+    "poweredBy": "Powered by",
+    "poweredBySuffix": "",
     "copyright": "© 2026 junyuzhan. All rights reserved.",
     "privacyPolicy": "Privacy Policy",
     "termsOfService": "Terms of Service",
     "thankYou": "Thank you for choosing our photography service",
     "description": "Private Instant photo Sharing system"
+  },
+  "legal": {
+    "backToHome": "Back to Home",
+    "lastUpdated": "Last Updated",
+    "privacyPolicy": {
+      "title": "Privacy Policy",
+      "intro": "We take your privacy very seriously. This Privacy Policy explains how we collect, use, store, and protect your personal information. By using this service, you agree to the practices described in this Privacy Policy.",
+      "collection": {
+        "title": "Information Collection",
+        "desc": "To provide better services, we may collect the following types of information:",
+        "item1": "Access logs: including IP address, browser type, access time, etc.",
+        "item2": "Device information: including device model, operating system version, etc.",
+        "item3": "Photo metadata: EXIF information when uploading photos (such as capture time, camera model, etc.)"
+      },
+      "usage": {
+        "title": "Information Usage",
+        "desc": "The information we collect will be used for the following purposes:",
+        "item1": "Provide, maintain, and improve our services",
+        "item2": "Analyze service usage to optimize user experience",
+        "item3": "Ensure the security and stability of the service"
+      },
+      "protection": {
+        "title": "Information Protection",
+        "desc": "We take appropriate technical and organizational measures to protect your personal information from unauthorized access, use, or disclosure. All data transmission uses HTTPS encryption, and sensitive information is encrypted during storage."
+      },
+      "cookies": {
+        "title": "Cookie Usage",
+        "desc": "We use cookies to maintain user sessions and remember your preferences. You can manage or disable cookies through your browser settings, but this may affect the proper functioning of some features."
+      },
+      "thirdParty": {
+        "title": "Third-Party Services",
+        "desc": "This service is self-hosted and does not share your data with third parties. All data is stored on your own servers and is completely under your control."
+      },
+      "contact": {
+        "title": "Contact Us",
+        "desc": "If you have any questions or suggestions about this Privacy Policy, please contact us through the contact information provided in the footer."
+      }
+    },
+    "termsOfService": {
+      "title": "Terms of Service",
+      "intro": "Welcome to our photography sharing service. Please read the following terms carefully before using this service. By continuing to use this service, you agree to comply with these terms.",
+      "service": {
+        "title": "Service Description",
+        "desc": "This service is a self-hosted photography sharing and management platform designed to help photographers share and manage their photo works safely and conveniently."
+      },
+      "userResponsibility": {
+        "title": "User Responsibilities",
+        "desc": "When using this service, you agree to:",
+        "item1": "Comply with all applicable laws and regulations",
+        "item2": "Not upload or share any illegal, harmful, or content that infringes on the rights of others",
+        "item3": "Protect your account information and be responsible for all activities under your account"
+      },
+      "intellectualProperty": {
+        "title": "Intellectual Property",
+        "desc": "The copyright of all photos you upload belongs to you. This service does not claim any ownership of your content. We only obtain the limited license necessary to provide the service."
+      },
+      "photoUsage": {
+        "title": "Photo Usage",
+        "desc": "Photos shared through this service are only for viewing and downloading (if download is enabled) by authorized users. No one may use the photos for commercial purposes or redistribute them without the explicit permission of the photographer."
+      },
+      "disclaimer": {
+        "title": "Disclaimer",
+        "desc": "This service is provided \"as is\" without any express or implied warranties. We are not responsible for service interruptions, data loss, or any indirect damages. It is recommended that you regularly back up important data."
+      },
+      "modifications": {
+        "title": "Terms Modifications",
+        "desc": "We reserve the right to modify these terms at any time. Modified terms will take effect immediately upon posting on this page. Continued use of this service indicates your acceptance of the modified terms."
+      },
+      "contact": {
+        "title": "Contact Us",
+        "desc": "If you have any questions about these Terms of Service, please contact us through the contact information provided in the footer."
+      }
+    }
   }
 }

@@ -7,6 +7,8 @@ import { useTranslations } from 'next-intl'
 import { MasonryGrid } from './masonry'
 import { Loader2, ImageIcon, RefreshCw, X, ScanFace } from 'lucide-react'
 import { usePhotoRealtime } from '@/hooks/use-photo-realtime'
+import { useTrackAlbumView } from '@/hooks/use-analytics'
+import { useTemplate } from './template-style-provider'
 import type { Album, Photo } from '@/types/database'
 import type { LayoutMode } from './layout-toggle'
 
@@ -37,8 +39,29 @@ export function AlbumClient({ album, initialPhotos, layout = 'masonry' }: AlbumC
   const sort = searchParams.get('sort') || album.sort_rule || 'capture_desc'
   const groupId = searchParams.get('group')
   const searchMode = searchParams.get('search')
+  const from = searchParams.get('from')
   const queryClient = useQueryClient()
   const t = useTranslations('album')
+  
+  // 获取模板配置
+  const { template } = useTemplate()
+  
+  // 追踪相册访问
+  useTrackAlbumView(album.id)
+  
+  // 标记用户是通过分享链接访问的（当 from !== 'home' 时）
+  useEffect(() => {
+    if (from !== 'home') {
+      // 设置 cookie，标记用户是通过分享链接访问的
+      // cookie 有效期 30 天
+      const expires = new Date()
+      expires.setTime(expires.getTime() + 30 * 24 * 60 * 60 * 1000)
+      document.cookie = `pis_share_link_access=true; expires=${expires.toUTCString()}; path=/; SameSite=Lax`
+    } else {
+      // 如果是从主页来的，清除分享链接标记
+      document.cookie = 'pis_share_link_access=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+    }
+  }, [from])
   
   // 新照片计数
   const [newPhotoCount, setNewPhotoCount] = useState(0)
@@ -258,6 +281,7 @@ export function AlbumClient({ album, initialPhotos, layout = 'masonry' }: AlbumC
           hasMore={hasNextPage}
           isLoading={isFetchingNextPage}
           onLoadMore={() => fetchNextPage()}
+          template={template}
         />
       ) : (
         <div className="text-center py-20">

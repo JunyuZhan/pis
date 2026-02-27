@@ -11,6 +11,8 @@ import { PhotoGroupFilter } from '@/components/album/photo-group-filter'
 import { FloatingActions } from '@/components/album/floating-actions'
 import { SortToggle, type SortRule } from '@/components/album/sort-toggle'
 import { LayoutToggle, type LayoutMode } from '@/components/album/layout-toggle'
+import { TemplateStyleProvider } from '@/components/album/template-style-provider'
+import { ALBUM_TEMPLATES } from '@/lib/album-templates'
 import { getAlbumShareUrl, getAppBaseUrl, getSafeMediaUrl } from '@/lib/utils'
 import type { Database } from '@/types/database'
 
@@ -73,12 +75,13 @@ export async function generateMetadata({ params }: AlbumPageProps): Promise<Meta
         ? album.share_image_url.trim()
         : null)
   
-  // 如果还没有图片，使用封面图
+  // 如果还没有图片，使用封面图（排除已删除的照片）
   if (!shareImage && album.cover_photo_id) {
     const coverPhotoResult = await db
       .from('photos')
       .select('preview_key, thumb_key')
       .eq('id', album.cover_photo_id)
+      .is('deleted_at', null)
       .single()
     
     const coverPhoto = coverPhotoResult.data as { preview_key: string | null; thumb_key: string | null } | null
@@ -202,9 +205,26 @@ export default async function AlbumPage({ params, searchParams }: AlbumPageProps
   // 注意：密码验证应该在客户端组件中处理
   // 如果相册设置了密码，需要在客户端验证后才能显示照片
   
+  // 获取相册的模板 ID 和模板配置
+  const templateId = (album as { template_id?: string | null }).template_id || null
+  const template = templateId ? ALBUM_TEMPLATES[templateId] : null
+  
   // 确定排序和布局规则
+  // 优先级：URL 参数 > 模板配置 > 相册设置 > 默认值
   const currentSort: SortRule = (sort as SortRule) || (album.sort_rule as SortRule) || 'capture_desc'
-  const currentLayout = (layout as LayoutMode) || album.layout || 'masonry'
+  
+  // 将模板布局类型映射到支持的布局模式
+  const getTemplateLayout = (): LayoutMode | null => {
+    if (!template) return null
+    const templateLayoutType = template.layout.type
+    // story 和 timeline 暂时映射到 masonry
+    if (templateLayoutType === 'story' || templateLayoutType === 'timeline') {
+      return 'masonry'
+    }
+    return templateLayoutType as LayoutMode
+  }
+  
+  const currentLayout = (layout as LayoutMode) || getTemplateLayout() || album.layout || 'masonry'
   
   let orderBy = 'captured_at'
   let ascending = false
@@ -303,6 +323,7 @@ export default async function AlbumPage({ params, searchParams }: AlbumPageProps
   const showSplash = from !== 'home' && skip_splash !== '1'
 
   return (
+    <TemplateStyleProvider templateId={templateId}>
     <main className="min-h-screen bg-background">
       {/* 启动页（总是显示，除非已跳过） */}
       {showSplash && (
@@ -360,5 +381,6 @@ export default async function AlbumPage({ params, searchParams }: AlbumPageProps
       {/* 浮动操作按钮组 */}
       <FloatingActions album={album} currentSort={currentSort} currentLayout={currentLayout} />
     </main>
+    </TemplateStyleProvider>
   )
 }

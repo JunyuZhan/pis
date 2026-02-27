@@ -76,10 +76,20 @@ CREATE TABLE IF NOT EXISTS albums (
     location TEXT,  -- 活动地点
     -- 直播模式
     is_live BOOLEAN DEFAULT false,
+    -- 样式模板
+    template_id VARCHAR(100) DEFAULT NULL,  -- 模板 ID（如 wedding_classic, event_vibrant）
+    template_config JSONB DEFAULT '{}',     -- 自定义模板配置
+    -- 多语言支持
+    title_translations JSONB DEFAULT '{}',           -- 多语言标题
+    description_translations JSONB DEFAULT '{}',     -- 多语言描述
+    share_title_translations JSONB DEFAULT '{}',     -- 多语言分享标题
+    share_description_translations JSONB DEFAULT '{}', -- 多语言分享描述
     -- 统计
     selected_count INTEGER DEFAULT 0,
     view_count INTEGER DEFAULT 0,
     metadata JSONB DEFAULT '{}',
+    -- 所有者
+    owner_id UUID REFERENCES users(id),  -- 相册所有者
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     deleted_at TIMESTAMP WITH TIME ZONE
@@ -392,6 +402,532 @@ VALUES (
 ON CONFLICT (email) DO NOTHING;
 
 -- ============================================
+-- 系统设置表（用于后台可视化配置）
+-- ============================================
+CREATE TABLE IF NOT EXISTS system_settings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    key VARCHAR(100) UNIQUE NOT NULL,        -- 设置键名
+    value JSONB NOT NULL DEFAULT '{}',       -- 设置值（支持复杂数据结构）
+    category VARCHAR(50) NOT NULL,           -- 分类: brand, site, feature, social, seo
+    description TEXT,                        -- 设置说明
+    is_public BOOLEAN DEFAULT false,         -- 是否公开（前台可访问）
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 创建索引
+CREATE INDEX IF NOT EXISTS idx_system_settings_key ON system_settings(key);
+CREATE INDEX IF NOT EXISTS idx_system_settings_category ON system_settings(category);
+CREATE INDEX IF NOT EXISTS idx_system_settings_public ON system_settings(is_public) WHERE is_public = true;
+
+-- 为 system_settings 表创建触发器
+DROP TRIGGER IF EXISTS update_system_settings_updated_at ON system_settings;
+CREATE TRIGGER update_system_settings_updated_at
+    BEFORE UPDATE ON system_settings
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- 初始化默认系统设置
+-- 品牌设置
+INSERT INTO system_settings (key, value, category, description, is_public) VALUES
+('brand_name', '"PIS Photography"', 'brand', '品牌/工作室名称', true),
+('brand_tagline', '"专业活动摄影"', 'brand', '品牌标语', true),
+('brand_logo', 'null', 'brand', 'Logo 图片 URL', true),
+('brand_favicon', 'null', 'brand', 'Favicon URL', true)
+ON CONFLICT (key) DO NOTHING;
+
+-- 版权与备案
+INSERT INTO system_settings (key, value, category, description, is_public) VALUES
+('copyright_text', '""', 'brand', '版权声明文字（留空则使用品牌名称）', true),
+('icp_number', '""', 'brand', 'ICP 备案号', true),
+('police_number', '""', 'brand', '公安备案号', true)
+ON CONFLICT (key) DO NOTHING;
+
+-- 站点设置
+INSERT INTO system_settings (key, value, category, description, is_public) VALUES
+('site_title', '"PIS - 即时影像分享"', 'site', '站点标题', true),
+('site_description', '"专业级私有化即时摄影分享系统"', 'site', '站点描述', true),
+('site_keywords', '"摄影,相册,分享,活动摄影"', 'site', 'SEO 关键词', true)
+ON CONFLICT (key) DO NOTHING;
+
+-- 功能开关
+INSERT INTO system_settings (key, value, category, description, is_public) VALUES
+('allow_public_home', 'true', 'feature', '是否允许游客访问首页', false),
+('default_watermark_enabled', 'false', 'feature', '新相册默认启用水印', false),
+('default_allow_download', 'true', 'feature', '新相册默认允许下载', false),
+('default_show_exif', 'true', 'feature', '新相册默认显示 EXIF', false),
+('polling_interval', '3000', 'feature', '实时更新轮询间隔（毫秒）', false)
+ON CONFLICT (key) DO NOTHING;
+
+-- 社交链接
+INSERT INTO system_settings (key, value, category, description, is_public) VALUES
+('social_wechat_qrcode', 'null', 'social', '微信二维码图片 URL', true),
+('social_weibo', '""', 'social', '微博链接', true),
+('social_instagram', '""', 'social', 'Instagram 链接', true),
+('social_email', '""', 'social', '联系邮箱', true),
+('social_phone', '""', 'social', '联系电话', true)
+ON CONFLICT (key) DO NOTHING;
+
+-- 主题设置
+INSERT INTO system_settings (key, value, category, description, is_public) VALUES
+('theme_mode', '"system"', 'theme', '主题模式: light, dark, system', true),
+('theme_primary_color', '"#D4AF37"', 'theme', '主色调', true)
+ON CONFLICT (key) DO NOTHING;
+
+-- ============================================
+-- 数据统计表
+-- ============================================
+
+-- 相册访问记录表
+CREATE TABLE IF NOT EXISTS album_views (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    album_id UUID NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
+    viewer_ip VARCHAR(45),                       -- IPv4/IPv6 地址
+    viewer_ua TEXT,                              -- User-Agent
+    viewer_referer TEXT,                         -- 来源页面
+    viewer_country VARCHAR(100),                 -- 国家/地区
+    viewer_city VARCHAR(100),                    -- 城市
+    device_type VARCHAR(20),                     -- 设备类型: desktop, mobile, tablet
+    browser VARCHAR(50),                         -- 浏览器
+    os VARCHAR(50),                              -- 操作系统
+    session_id VARCHAR(100),                     -- 会话标识
+    viewed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_album_views_album_id ON album_views(album_id);
+CREATE INDEX IF NOT EXISTS idx_album_views_viewed_at ON album_views(viewed_at);
+CREATE INDEX IF NOT EXISTS idx_album_views_session ON album_views(album_id, session_id);
+
+-- 照片查看记录表
+CREATE TABLE IF NOT EXISTS photo_views (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    photo_id UUID NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
+    album_id UUID REFERENCES albums(id) ON DELETE SET NULL,
+    viewer_ip VARCHAR(45),
+    session_id VARCHAR(100),
+    viewed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_photo_views_photo_id ON photo_views(photo_id);
+CREATE INDEX IF NOT EXISTS idx_photo_views_album_id ON photo_views(album_id);
+CREATE INDEX IF NOT EXISTS idx_photo_views_viewed_at ON photo_views(viewed_at);
+
+-- 下载记录表
+CREATE TABLE IF NOT EXISTS download_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    photo_id UUID REFERENCES photos(id) ON DELETE SET NULL,
+    album_id UUID REFERENCES albums(id) ON DELETE SET NULL,
+    download_type VARCHAR(20) NOT NULL,          -- single, batch, all
+    file_count INTEGER DEFAULT 1,
+    total_size BIGINT,
+    downloader_ip VARCHAR(45),
+    session_id VARCHAR(100),
+    downloaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_download_logs_photo_id ON download_logs(photo_id);
+CREATE INDEX IF NOT EXISTS idx_download_logs_album_id ON download_logs(album_id);
+CREATE INDEX IF NOT EXISTS idx_download_logs_downloaded_at ON download_logs(downloaded_at);
+
+-- 每日统计汇总表
+CREATE TABLE IF NOT EXISTS daily_stats (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    stat_date DATE NOT NULL,
+    album_id UUID REFERENCES albums(id) ON DELETE CASCADE,
+    view_count INTEGER DEFAULT 0,
+    unique_visitors INTEGER DEFAULT 0,
+    photo_view_count INTEGER DEFAULT 0,
+    download_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(stat_date, album_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_stats_date ON daily_stats(stat_date);
+CREATE INDEX IF NOT EXISTS idx_daily_stats_album ON daily_stats(album_id);
+
+DROP TRIGGER IF EXISTS update_daily_stats_updated_at ON daily_stats;
+CREATE TRIGGER update_daily_stats_updated_at
+    BEFORE UPDATE ON daily_stats
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- 客户管理表
+-- ============================================
+
+-- 客户表
+CREATE TABLE IF NOT EXISTS customers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL,                  -- 客户姓名
+    phone VARCHAR(20),                           -- 电话号码
+    email VARCHAR(255),                          -- 邮箱
+    wechat VARCHAR(100),                         -- 微信号
+    company VARCHAR(200),                        -- 公司/单位
+    address TEXT,                                -- 地址
+    notes TEXT,                                  -- 备注信息
+    tags TEXT[],                                 -- 标签（数组）
+    source VARCHAR(50),                          -- 客户来源
+    status VARCHAR(20) DEFAULT 'active',         -- 状态
+    created_by UUID REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name);
+CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone);
+CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email);
+CREATE INDEX IF NOT EXISTS idx_customers_status ON customers(status);
+CREATE INDEX IF NOT EXISTS idx_customers_tags ON customers USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_customers_deleted_at ON customers(deleted_at) WHERE deleted_at IS NULL;
+
+DROP TRIGGER IF EXISTS update_customers_updated_at ON customers;
+CREATE TRIGGER update_customers_updated_at
+    BEFORE UPDATE ON customers
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- 客户-相册关联表
+CREATE TABLE IF NOT EXISTS customer_albums (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    album_id UUID NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
+    role VARCHAR(50) DEFAULT 'client',
+    notes TEXT,
+    notified_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(customer_id, album_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_customer_albums_customer ON customer_albums(customer_id);
+CREATE INDEX IF NOT EXISTS idx_customer_albums_album ON customer_albums(album_id);
+
+-- ============================================
+-- ============================================
+-- 升级历史表
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS upgrade_history (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    from_version VARCHAR(50) NOT NULL,
+    to_version VARCHAR(50) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    completed_at TIMESTAMP WITH TIME ZONE,
+    executed_by UUID REFERENCES users(id),
+    notes TEXT,
+    error_message TEXT,
+    rebuild_performed BOOLEAN DEFAULT false,
+    rollback_available BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_upgrade_history_status ON upgrade_history(status);
+CREATE INDEX IF NOT EXISTS idx_upgrade_history_started_at ON upgrade_history(started_at DESC);
+
+-- ============================================
+-- 通知记录表
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    customer_id UUID REFERENCES customers(id) ON DELETE SET NULL,
+    album_id UUID REFERENCES albums(id) ON DELETE SET NULL,
+    type VARCHAR(50) NOT NULL,
+    channel VARCHAR(20) NOT NULL,
+    recipient VARCHAR(255) NOT NULL,
+    subject VARCHAR(500),
+    content TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    sent_at TIMESTAMP WITH TIME ZONE,
+    error_message TEXT,
+    metadata JSONB DEFAULT '{}',
+    created_by UUID REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_customer_id ON notifications(customer_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_album_id ON notifications(album_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_status ON notifications(status);
+
+-- 邮件配置表
+CREATE TABLE IF NOT EXISTS email_config (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    smtp_host VARCHAR(255) NOT NULL,
+    smtp_port INTEGER NOT NULL DEFAULT 587,
+    smtp_secure BOOLEAN DEFAULT true,
+    smtp_user VARCHAR(255),
+    smtp_pass VARCHAR(255),
+    from_email VARCHAR(255) NOT NULL,
+    from_name VARCHAR(255),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ============================================
+-- 自定义翻译表
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS custom_translations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    locale VARCHAR(10) NOT NULL,              -- 语言代码，如 'zh-CN', 'en'
+    namespace VARCHAR(100) NOT NULL,          -- 命名空间，如 'common', 'admin', 'album'
+    key VARCHAR(255) NOT NULL,                -- 翻译键，如 'title', 'description'
+    value TEXT NOT NULL,                      -- 翻译值
+    is_active BOOLEAN DEFAULT true,           -- 是否启用（启用后覆盖默认翻译）
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(locale, namespace, key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_custom_translations_locale ON custom_translations(locale);
+CREATE INDEX IF NOT EXISTS idx_custom_translations_namespace ON custom_translations(namespace);
+CREATE INDEX IF NOT EXISTS idx_custom_translations_active ON custom_translations(is_active);
+
+COMMENT ON TABLE custom_translations IS '自定义翻译表，用于覆盖默认翻译字符串';
+
+-- ============================================
+-- 自定义样式模板表
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS style_templates (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(200) NOT NULL,
+    description TEXT,
+    category VARCHAR(50) DEFAULT 'general',
+    -- 样式配置（JSON）
+    theme_config JSONB NOT NULL DEFAULT '{}',
+    typography_config JSONB NOT NULL DEFAULT '{}',
+    layout_config JSONB NOT NULL DEFAULT '{}',
+    hero_config JSONB NOT NULL DEFAULT '{}',
+    hover_config JSONB NOT NULL DEFAULT '{}',
+    animation_config JSONB NOT NULL DEFAULT '{}',
+    -- 元数据
+    thumbnail_url TEXT,
+    is_builtin BOOLEAN DEFAULT false,
+    is_public BOOLEAN DEFAULT true,
+    sort_order INTEGER DEFAULT 0,
+    created_by UUID REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_style_templates_category ON style_templates(category);
+CREATE INDEX IF NOT EXISTS idx_style_templates_is_public ON style_templates(is_public);
+CREATE INDEX IF NOT EXISTS idx_style_templates_sort_order ON style_templates(sort_order);
+
+COMMENT ON TABLE style_templates IS '自定义样式模板表，存储用户创建的相册视觉样式';
+
+-- ============================================
+-- 操作日志表
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    -- 操作者信息
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    user_email VARCHAR(255),
+    user_role VARCHAR(50),
+    -- 操作信息
+    action VARCHAR(100) NOT NULL,
+    resource_type VARCHAR(100) NOT NULL,
+    resource_id VARCHAR(255),
+    resource_name VARCHAR(500),
+    -- 详细信息
+    description TEXT,
+    changes JSONB DEFAULT '{}',
+    metadata JSONB DEFAULT '{}',
+    -- 请求信息
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    request_method VARCHAR(10),
+    request_path TEXT,
+    -- 状态
+    status VARCHAR(20) DEFAULT 'success',
+    error_message TEXT,
+    -- 时间戳
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_resource_type ON audit_logs(resource_type);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_resource_id ON audit_logs(resource_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC);
+
+COMMENT ON TABLE audit_logs IS '操作日志表，记录系统中的关键操作';
+
+-- ============================================
+-- 权限定义表
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS permissions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    code VARCHAR(100) NOT NULL UNIQUE,
+    name VARCHAR(200) NOT NULL,
+    description TEXT,
+    category VARCHAR(50) NOT NULL,
+    is_system BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_permissions_code ON permissions(code);
+CREATE INDEX IF NOT EXISTS idx_permissions_category ON permissions(category);
+
+COMMENT ON TABLE permissions IS '权限定义表';
+
+-- 角色权限关联表
+CREATE TABLE IF NOT EXISTS role_permissions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    role VARCHAR(50) NOT NULL,
+    permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+    granted_by UUID REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(role, permission_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_role_permissions_role ON role_permissions(role);
+
+COMMENT ON TABLE role_permissions IS '角色权限关联表';
+
+-- 用户特殊权限表
+CREATE TABLE IF NOT EXISTS user_permissions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+    granted BOOLEAN DEFAULT true,
+    granted_by UUID REFERENCES users(id),
+    expires_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, permission_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_permissions_user ON user_permissions(user_id);
+
+COMMENT ON TABLE user_permissions IS '用户特殊权限表';
+
+-- 插入系统内置权限
+INSERT INTO permissions (code, name, description, category, is_system) VALUES
+    ('album:view', '查看相册', '查看相册列表和详情', 'album', true),
+    ('album:create', '创建相册', '创建新相册', 'album', true),
+    ('album:edit', '编辑相册', '编辑相册信息和设置', 'album', true),
+    ('album:delete', '删除相册', '删除相册', 'album', true),
+    ('album:publish', '发布相册', '公开或取消公开相册', 'album', true),
+    ('album:share', '分享相册', '生成分享链接和海报', 'album', true),
+    ('photo:view', '查看照片', '查看照片列表和详情', 'photo', true),
+    ('photo:upload', '上传照片', '上传新照片', 'photo', true),
+    ('photo:edit', '编辑照片', '编辑照片信息', 'photo', true),
+    ('photo:delete', '删除照片', '删除照片', 'photo', true),
+    ('photo:download', '下载照片', '下载原图', 'photo', true),
+    ('photo:retouch', '修图', 'AI 修图功能', 'photo', true),
+    ('customer:view', '查看客户', '查看客户列表和详情', 'customer', true),
+    ('customer:create', '创建客户', '创建新客户', 'customer', true),
+    ('customer:edit', '编辑客户', '编辑客户信息', 'customer', true),
+    ('customer:delete', '删除客户', '删除客户', 'customer', true),
+    ('customer:notify', '发送通知', '向客户发送通知', 'customer', true),
+    ('analytics:view', '查看统计', '查看数据统计', 'analytics', true),
+    ('analytics:export', '导出统计', '导出统计报表', 'analytics', true),
+    ('system:settings', '系统设置', '修改系统设置', 'system', true),
+    ('system:upgrade', '系统升级', '执行系统升级', 'system', true),
+    ('system:users', '用户管理', '管理系统用户', 'system', true),
+    ('system:permissions', '权限管理', '管理用户权限', 'system', true),
+    ('system:audit', '审计日志', '查看操作日志', 'system', true),
+    ('system:backup', '数据备份', '执行数据备份', 'system', true)
+ON CONFLICT (code) DO NOTHING;
+
+-- 管理员拥有所有权限
+INSERT INTO role_permissions (role, permission_id)
+SELECT 'admin', id FROM permissions
+ON CONFLICT (role, permission_id) DO NOTHING;
+
+-- 摄影师权限
+INSERT INTO role_permissions (role, permission_id)
+SELECT 'photographer', id FROM permissions 
+WHERE code IN (
+    'album:view', 'album:create', 'album:edit', 'album:publish', 'album:share',
+    'photo:view', 'photo:upload', 'photo:edit', 'photo:delete', 'photo:download',
+    'customer:view', 'customer:create', 'customer:edit', 'customer:notify',
+    'analytics:view'
+)
+ON CONFLICT (role, permission_id) DO NOTHING;
+
+-- 修图师权限
+INSERT INTO role_permissions (role, permission_id)
+SELECT 'retoucher', id FROM permissions 
+WHERE code IN (
+    'album:view',
+    'photo:view', 'photo:edit', 'photo:retouch', 'photo:download'
+)
+ON CONFLICT (role, permission_id) DO NOTHING;
+
+-- 查看者权限（只读）
+INSERT INTO role_permissions (role, permission_id)
+SELECT 'viewer', id FROM permissions 
+WHERE code IN (
+    'album:view',
+    'photo:view',
+    'analytics:view'
+)
+ON CONFLICT (role, permission_id) DO NOTHING;
+
+-- ============================================
+-- 相册协作者表
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS album_collaborators (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    album_id UUID NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role VARCHAR(50) NOT NULL DEFAULT 'editor',
+    can_upload BOOLEAN DEFAULT true,
+    can_edit BOOLEAN DEFAULT true,
+    can_delete BOOLEAN DEFAULT false,
+    can_manage BOOLEAN DEFAULT false,
+    can_invite BOOLEAN DEFAULT false,
+    invited_by UUID REFERENCES users(id),
+    invited_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    accepted_at TIMESTAMP WITH TIME ZONE,
+    status VARCHAR(20) DEFAULT 'pending',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(album_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_album_collaborators_album ON album_collaborators(album_id);
+CREATE INDEX IF NOT EXISTS idx_album_collaborators_user ON album_collaborators(user_id);
+CREATE INDEX IF NOT EXISTS idx_album_collaborators_status ON album_collaborators(status);
+
+COMMENT ON TABLE album_collaborators IS '相册协作者表';
+
+-- 协作邀请表
+CREATE TABLE IF NOT EXISTS collaboration_invites (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    album_id UUID NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
+    invite_type VARCHAR(20) NOT NULL DEFAULT 'email',
+    email VARCHAR(255),
+    invite_code VARCHAR(32) UNIQUE,
+    role VARCHAR(50) DEFAULT 'editor',
+    can_upload BOOLEAN DEFAULT true,
+    can_edit BOOLEAN DEFAULT true,
+    can_delete BOOLEAN DEFAULT false,
+    can_manage BOOLEAN DEFAULT false,
+    can_invite BOOLEAN DEFAULT false,
+    invited_by UUID NOT NULL REFERENCES users(id),
+    status VARCHAR(20) DEFAULT 'pending',
+    expires_at TIMESTAMP WITH TIME ZONE,
+    used_at TIMESTAMP WITH TIME ZONE,
+    used_by UUID REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_collaboration_invites_album ON collaboration_invites(album_id);
+CREATE INDEX IF NOT EXISTS idx_collaboration_invites_code ON collaboration_invites(invite_code);
+
+COMMENT ON TABLE collaboration_invites IS '协作邀请表';
+
 -- 初始化完成提示
 -- ============================================
 DO $$
@@ -408,6 +944,18 @@ BEGIN
     RAISE NOTICE '   - package_downloads 表: 存储打包下载任务';
     RAISE NOTICE '   - photo_groups 表: 存储照片分组';
     RAISE NOTICE '   - photo_group_assignments 表: 存储照片分组关联';
+    RAISE NOTICE '   - system_settings 表: 存储系统设置';
+    RAISE NOTICE '   - upgrade_history 表: 存储升级历史';
+    RAISE NOTICE '   - notifications 表: 存储客户通知记录';
+    RAISE NOTICE '   - email_config 表: 存储邮件配置';
+    RAISE NOTICE '   - custom_translations 表: 存储自定义翻译';
+    RAISE NOTICE '   - style_templates 表: 存储自定义样式模板';
+    RAISE NOTICE '   - audit_logs 表: 存储操作日志';
+    RAISE NOTICE '   - permissions 表: 权限定义';
+    RAISE NOTICE '   - role_permissions 表: 角色权限';
+    RAISE NOTICE '   - user_permissions 表: 用户特殊权限';
+    RAISE NOTICE '   - album_collaborators 表: 相册协作者';
+    RAISE NOTICE '   - collaboration_invites 表: 协作邀请';
     RAISE NOTICE '';
     RAISE NOTICE '👤 默认用户账户:';
     RAISE NOTICE '   - 管理员: admin@pis.com';

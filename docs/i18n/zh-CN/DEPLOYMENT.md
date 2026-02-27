@@ -146,6 +146,87 @@ https://yourdomain.com/media    # 媒体文件
    - 配置环境变量
    - 部署
 
+### 数据库迁移（系统升级时）
+
+⚠️ **重要说明**：
+- ✅ **首次部署不需要迁移**：新部署使用 `init-postgresql-db.sql`（已包含所有最新表结构）
+- ⚠️ **迁移脚本是给已有系统（老系统）升级用的**
+- ✅ **系统升级**时，应使用升级脚本（会自动执行迁移）
+
+#### 使用升级脚本（推荐）
+
+升级脚本会自动处理代码更新和数据库迁移：
+
+```bash
+cd /opt/pis
+bash scripts/deploy/quick-upgrade.sh
+```
+
+升级脚本会：
+- ✅ 拉取最新代码
+- ✅ 更新配置文件
+- ✅ **自动检测并执行数据库迁移**（如有需要）
+- ✅ 重启 Docker 容器
+
+#### 部署脚本中的迁移检测
+
+部署脚本也会检测数据库是否需要迁移（主要用于配置更新场景）：
+
+```bash
+cd /opt/pis/docker
+bash deploy.sh
+```
+
+脚本会：
+- ✅ 自动检测缺失的表（如 `system_settings`、`permissions`、`audit_logs`）
+- ✅ 提示是否需要执行迁移
+- ⚠️ **建议使用升级脚本而不是部署脚本进行系统升级**
+
+#### 手动执行迁移（不推荐）
+
+如果需要单独执行迁移脚本：
+
+```bash
+cd /opt/pis/docker
+bash run-migrations.sh
+```
+
+迁移脚本会：
+- ✅ 按顺序执行所有迁移脚本（002-013）
+- ✅ 使用 `IF NOT EXISTS`，不会破坏现有数据
+- ✅ 显示执行进度和结果
+
+⚠️ **注意**：手动执行迁移后，仍需更新代码和重启服务才能使用新功能。
+
+#### 迁移前备份
+
+⚠️ **强烈建议**：执行迁移前先备份数据库
+
+```bash
+# 备份数据库
+docker exec pis-postgres pg_dump -U pis -d pis > backup-$(date +%Y%m%d).sql
+
+# 或使用 Docker 卷备份
+docker run --rm -v pis_postgres_data:/data -v $(pwd):/backup alpine tar czf /backup/postgres-backup-$(date +%Y%m%d).tar.gz /data
+```
+
+#### 迁移脚本列表
+
+迁移脚本位于 `docker/migrations/` 目录：
+
+- `002_add_analytics_tables.sql` - 分析统计表
+- `003_add_customers_table.sql` - 客户管理表
+- `004_add_album_template.sql` - 相册模板表
+- `005_add_upgrade_history.sql` - 升级历史表
+- `006_add_notifications.sql` - 通知记录表
+- `007_add_album_translations.sql` - 相册翻译表
+- `008_add_custom_translations.sql` - 自定义翻译表
+- `009_add_style_templates.sql` - 样式模板表
+- `010_add_audit_logs.sql` - 操作日志表
+- `011_add_permissions.sql` - 权限管理表
+- `012_add_collaborators.sql` - 协作者表
+- `013_add_system_settings.sql` - 系统设置表
+
 ### 常用命令
 
 ```bash
@@ -157,6 +238,9 @@ cd /opt/pis/docker && docker-compose -f docker-compose.yml restart
 
 # 更新代码
 cd /opt/pis && git pull && cd docker && docker-compose -f docker-compose.yml up -d --build
+
+# 执行数据库迁移（系统更新后）
+cd /opt/pis/docker && bash run-migrations.sh
 ```
 
 ### 快速故障排除

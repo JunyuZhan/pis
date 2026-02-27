@@ -5,6 +5,7 @@ import { generateUploadToken } from '@/lib/utils'
 import type { AlbumUpdate, Json } from '@/types/database'
 import { updateAlbumSchema, albumIdSchema } from '@/lib/validation/schemas'
 import { safeValidate, handleError, createSuccessResponse, ApiError } from '@/lib/validation/error-handler'
+import { logUpdate, logDelete } from '@/lib/audit-log'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -240,6 +241,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (validatedData.location !== undefined) {
       updateData.location = validatedData.location?.trim() || null
     }
+    if ((validatedData as { template_id?: string | null }).template_id !== undefined) {
+      (updateData as { template_id?: string | null }).template_id = (validatedData as { template_id?: string | null }).template_id || null
+    }
+    // 多语言字段
+    if ((validatedData as { title_translations?: Record<string, string> | null }).title_translations !== undefined) {
+      (updateData as { title_translations?: Json | null }).title_translations = (validatedData as { title_translations?: Record<string, string> | null }).title_translations as Json || null
+    }
+    if ((validatedData as { description_translations?: Record<string, string> | null }).description_translations !== undefined) {
+      (updateData as { description_translations?: Json | null }).description_translations = (validatedData as { description_translations?: Record<string, string> | null }).description_translations as Json || null
+    }
+    if ((validatedData as { share_title_translations?: Record<string, string> | null }).share_title_translations !== undefined) {
+      (updateData as { share_title_translations?: Json | null }).share_title_translations = (validatedData as { share_title_translations?: Record<string, string> | null }).share_title_translations as Json || null
+    }
+    if ((validatedData as { share_description_translations?: Record<string, string> | null }).share_description_translations !== undefined) {
+      (updateData as { share_description_translations?: Json | null }).share_description_translations = (validatedData as { share_description_translations?: Record<string, string> | null }).share_description_translations as Json || null
+    }
 
     // 先检查相册是否存在（避免 deleted_at: null 在 update 方法中无法正确处理）
     const existingAlbum = await db
@@ -287,6 +304,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     // 注意：水印配置变更后，只对新上传的照片生效
     // 已上传的照片不会被重新处理，避免数据库错误和性能问题
     // 水印配置会在照片上传时由 Worker 读取并应用（见 services/worker/src/index.ts）
+
+    // 记录操作日志
+    logUpdate(
+      { id: admin.id, email: admin.email, role: admin.role },
+      'album',
+      id,
+      album.title,
+      { after: validatedData }
+    )
 
     return createSuccessResponse({
       ...album,
@@ -386,6 +412,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       // 记录错误但不阻止删除操作
       console.warn('[Delete Album] Failed to revalidate cache:', revalidateError)
     }
+
+    // 记录操作日志
+    logDelete(
+      { id: admin.id, email: admin.email, role: admin.role },
+      'album',
+      id,
+      album.title
+    )
 
     return createSuccessResponse({
       success: true,
