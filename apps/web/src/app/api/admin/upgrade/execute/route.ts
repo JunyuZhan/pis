@@ -199,7 +199,12 @@ export async function POST(request: NextRequest) {
         )
 
         // 执行升级脚本
-        const child = spawn('bash', [upgradeScript, ...args], {
+        // 优先使用绝对路径的bash，如果不存在则使用sh
+          const bashPath = '/bin/bash'
+          const shPath = '/bin/sh'
+          const shellCommand = existsSync(bashPath) ? bashPath : shPath
+
+          const child = spawn(shellCommand, [upgradeScript, ...args], {
           cwd: projectRoot,
           env: {
             ...process.env,
