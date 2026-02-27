@@ -10,7 +10,7 @@
  */
 
 // 当前版本号（与 package.json 保持同步）
-export const APP_VERSION = '1.0.0'
+export const APP_VERSION = '1.1.0'
 
 // GitHub 仓库信息
 export const GITHUB_REPO = 'JunyuZhan/pis'
