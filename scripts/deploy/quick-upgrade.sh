@@ -335,20 +335,128 @@ update_config_files() {
     
     # 定义需要检查的密钥及其默认值
     local secrets_regenerated=0
+    local secrets_dir="${PROJECT_ROOT}/docker/secrets"
     
-    # 1. 检查数据库密码
-    DB_PASS=$(grep '^DATABASE_PASSWORD=' "$env_file" 2>/dev/null | cut -d'=' -f2- | xargs)
-    POSTGRES_PASS=$(grep '^POSTGRES_PASSWORD=' "$env_file" 2>/dev/null | cut -d'=' -f2- | xargs)
-    
-    if is_default_or_empty "$DB_PASS" "changeme your-secure-password" || \
-       is_default_or_empty "$POSTGRES_PASS" "changeme your-secure-password"; then
-        warn "检测到默认或空的数据库密码，正在重新生成..."
-        local new_db_pass=$(generate_secret 32)
-        update_env_secret "DATABASE_PASSWORD" "$new_db_pass"
-        update_env_secret "POSTGRES_PASSWORD" "$new_db_pass"
-        success "数据库密码已重新生成"
-        secrets_regenerated=$((secrets_regenerated + 1))
+    # 优先从 secrets 文件读取密码（如果存在）
+    if [ -d "$secrets_dir" ]; then
+        info "发现 secrets 目录，将从 secrets 文件读取密钥..."
+        
+        # 1. 数据库密码
+        if [ -f "$secrets_dir/db_password" ]; then
+            secret_db_pass=$(cat "$secrets_dir/db_password" | tr -d '\n')
+            if [ -n "$secret_db_pass" ]; then
+                DB_PASS=$(grep '^DATABASE_PASSWORD=' "$env_file" 2>/dev/null | cut -d'=' -f2- | xargs)
+                POSTGRES_PASS=$(grep '^POSTGRES_PASSWORD=' "$env_file" 2>/dev/null | cut -d'=' -f2- | xargs)
+                
+                # 如果 .env 中的密码与 secrets 不一致，更新为 secrets 中的密码
+                if [ "$DB_PASS" != "$secret_db_pass" ] || [ "$POSTGRES_PASS" != "$secret_db_pass" ]; then
+                    info "从 secrets 文件同步数据库密码到 .env..."
+                    update_env_secret "DATABASE_PASSWORD" "$secret_db_pass"
+                    update_env_secret "POSTGRES_PASSWORD" "$secret_db_pass"
+                    success "数据库密码已从 secrets 文件同步"
+                    secrets_regenerated=$((secrets_regenerated + 1))
+                else
+                    info "数据库密码已同步，无需更新"
+                fi
+            fi
+        fi
+        
+        # 2. JWT 密钥
+        if [ -f "$secrets_dir/jwt_secret" ]; then
+            secret_jwt=$(cat "$secrets_dir/jwt_secret" | tr -d '\n')
+            if [ -n "$secret_jwt" ]; then
+                JWT_PASS=$(grep '^AUTH_JWT_SECRET=' "$env_file" 2>/dev/null | cut -d'=' -f2- | xargs)
+                
+                if [ "$JWT_PASS" != "$secret_jwt" ]; then
+                    info "从 secrets 文件同步 JWT 密钥到 .env..."
+                    update_env_secret "AUTH_JWT_SECRET" "$secret_jwt"
+                    success "JWT 密钥已从 secrets 文件同步"
+                    secrets_regenerated=$((secrets_regenerated + 1))
+                fi
+            fi
+        fi
+        
+        # 3. Album Session Secret
+        if [ -f "$secrets_dir/album_session_secret" ]; then
+            secret_session=$(cat "$secrets_dir/album_session_secret" | tr -d '\n')
+            if [ -n "$secret_session" ]; then
+                SESSION_PASS=$(grep '^ALBUM_SESSION_SECRET=' "$env_file" 2>/dev/null | cut -d'=' -f2- | xargs)
+                
+                if [ "$SESSION_PASS" != "$secret_session" ]; then
+                    info "从 secrets 文件同步 Session 密钥到 .env..."
+                    update_env_secret "ALBUM_SESSION_SECRET" "$secret_session"
+                    success "Session 密钥已从 secrets 文件同步"
+                    secrets_regenerated=$((secrets_regenerated + 1))
+                fi
+            fi
+        fi
+        
+        # 4. Worker API Key
+        if [ -f "$secrets_dir/worker_api_key" ]; then
+            secret_worker=$(cat "$secrets_dir/worker_api_key" | tr -d '\n')
+            if [ -n "$secret_worker" ]; then
+                WORKER_PASS=$(grep '^WORKER_API_KEY=' "$env_file" 2>/dev/null | cut -d'=' -f2- | xargs)
+                
+                if [ "$WORKER_PASS" != "$secret_worker" ]; then
+                    info "从 secrets 文件同步 Worker API 密钥到 .env..."
+                    update_env_secret "WORKER_API_KEY" "$secret_worker"
+                    success "Worker API 密钥已从 secrets 文件同步"
+                    secrets_regenerated=$((secrets_regenerated + 1))
+                fi
+            fi
+        fi
+        
+        # 5. MinIO 密钥
+        if [ -f "$secrets_dir/minio_access_key" ]; then
+            secret_minio_access=$(cat "$secrets_dir/minio_access_key" | tr -d '\n')
+            if [ -n "$secret_minio_access" ]; then
+                MINIO_ACCESS=$(grep '^MINIO_ACCESS_KEY=' "$env_file" 2>/dev/null | cut -d'=' -f2- | xargs)
+                STORAGE_ACCESS=$(grep '^STORAGE_ACCESS_KEY=' "$env_file" 2>/dev/null | cut -d'=' -f2- | xargs)
+                
+                if [ "$MINIO_ACCESS" != "$secret_minio_access" ] || [ "$STORAGE_ACCESS" != "$secret_minio_access" ]; then
+                    info "从 secrets 文件同步 MinIO 访问密钥到 .env..."
+                    update_env_secret "MINIO_ACCESS_KEY" "$secret_minio_access"
+                    update_env_secret "STORAGE_ACCESS_KEY" "$secret_minio_access"
+                    update_env_secret "MINIO_ROOT_USER" "$secret_minio_access"
+                    success "MinIO 访问密钥已从 secrets 文件同步"
+                    secrets_regenerated=$((secrets_regenerated + 1))
+                fi
+            fi
+        fi
+        
+        if [ -f "$secrets_dir/minio_secret_key" ]; then
+            secret_minio_secret=$(cat "$secrets_dir/minio_secret_key" | tr -d '\n')
+            if [ -n "$secret_minio_secret" ]; then
+                MINIO_SECRET=$(grep '^MINIO_SECRET_KEY=' "$env_file" 2>/dev/null | cut -d'=' -f2- | xargs)
+                STORAGE_SECRET=$(grep '^STORAGE_SECRET_KEY=' "$env_file" 2>/dev/null | cut -d'=' -f2- | xargs)
+                
+                if [ "$MINIO_SECRET" != "$secret_minio_secret" ] || [ "$STORAGE_SECRET" != "$secret_minio_secret" ]; then
+                    info "从 secrets 文件同步 MinIO 密钥到 .env..."
+                    update_env_secret "MINIO_SECRET_KEY" "$secret_minio_secret"
+                    update_env_secret "STORAGE_SECRET_KEY" "$secret_minio_secret"
+                    update_env_secret "MINIO_ROOT_PASSWORD" "$secret_minio_secret"
+                    success "MinIO 密钥已从 secrets 文件同步"
+                    secrets_regenerated=$((secrets_regenerated + 1))
+                fi
+            fi
+        fi
     fi
+    
+    # 如果没有 secrets 目录或没有同步任何密钥，使用原来的逻辑（检查默认密码）
+    if [ $secrets_regenerated -eq 0 ]; then
+        # 1. 检查数据库密码
+        DB_PASS=$(grep '^DATABASE_PASSWORD=' "$env_file" 2>/dev/null | cut -d'=' -f2- | xargs)
+        POSTGRES_PASS=$(grep '^POSTGRES_PASSWORD=' "$env_file" 2>/dev/null | cut -d'=' -f2- | xargs)
+        
+        if is_default_or_empty "$DB_PASS" "changeme your-secure-password" || \
+           is_default_or_empty "$POSTGRES_PASS" "changeme your-secure-password"; then
+            warn "检测到默认或空的数据库密码，正在重新生成..."
+            local new_db_pass=$(generate_secret 32)
+            update_env_secret "DATABASE_PASSWORD" "$new_db_pass"
+            update_env_secret "POSTGRES_PASSWORD" "$new_db_pass"
+            success "数据库密码已重新生成"
+            secrets_regenerated=$((secrets_regenerated + 1))
+        fi
     
     # 2. 检查 MinIO 密钥
     MINIO_USER=$(grep '^MINIO_ROOT_USER=' "$env_file" 2>/dev/null | cut -d'=' -f2- | xargs)
