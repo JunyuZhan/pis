@@ -624,6 +624,32 @@ class PostgresQueryBuilder<T = unknown> {
           `Database connection failed: ${enhancedError.message}. Please ensure Docker containers are running (pnpm dev:services).`,
         );
       }
+      
+      // 检测密码认证失败
+      if (
+        enhancedError.message.includes("password authentication failed") ||
+        enhancedError.message.includes("FATAL: password")
+      ) {
+        console.error("Database password authentication failed!");
+        console.error("This usually happens when:");
+        console.error("  1. The DATABASE_PASSWORD in .env doesn't match the PostgreSQL password");
+        console.error("  2. The database was initialized with a different password");
+        console.error("  3. Docker volumes were recreated with new passwords");
+        console.error("");
+        console.error("To fix this issue:");
+        console.error("  1. Check the current password in docker/secrets/db_password");
+        console.error("  2. Add DATABASE_PASSWORD to your .env file:");
+        console.error(`     DATABASE_PASSWORD=$(cat docker/secrets/db_password)`);
+        console.error("  3. Restart the containers: docker compose down && docker compose up -d");
+        console.error("");
+        console.error("Or if data was lost, restore from backup or reinitialize the database.");
+        
+        enhancedError = new Error(
+          `Database password authentication failed. The DATABASE_PASSWORD environment variable doesn't match the PostgreSQL password. ` +
+          `This can happen when rebuilding containers with different passwords. ` +
+          `Please ensure DATABASE_PASSWORD in .env matches the password used to initialize the database.`
+        );
+      }
 
       return {
         data: null,
