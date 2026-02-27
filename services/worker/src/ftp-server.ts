@@ -30,6 +30,20 @@ import { v4 as uuidv4, validate as validateUuid } from "uuid";
 // import { db } from "./lib/database/client.js";
 let db: any = null;
 
+// FTP 上传安全配置
+const FTP_MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const FTP_ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif', '.tiff', '.bmp'];
+const FTP_ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'image/tiff',
+  'image/bmp'
+];
+
 // 延迟获取数据库客户端
 async function getDb() {
   if (!db) {
@@ -174,12 +188,41 @@ class PISFileSystem extends FileSystem {
 
         const fileBuffer = await fs.readFile(fsPath);
 
+        // ========== 安全检查：文件大小限制 ==========
+        if (fileBuffer.length > FTP_MAX_FILE_SIZE) {
+          logger.error(
+            { fileName, fileSize: fileBuffer.length, maxSize: FTP_MAX_FILE_SIZE },
+            "❌ File too large for FTP upload"
+          );
+          throw new Error(`File too large. Maximum size is ${FTP_MAX_FILE_SIZE / 1024 / 1024}MB`);
+        }
+
+        // ========== 安全检查：文件类型验证 ==========
+        const extension = parse(originalName).ext.toLowerCase();
+        
+        // 检查扩展名
+        if (!FTP_ALLOWED_EXTENSIONS.includes(extension)) {
+          logger.error(
+            { fileName, extension },
+            "❌ Invalid file extension for FTP upload"
+          );
+          throw new Error(`Invalid file type. Allowed extensions: ${FTP_ALLOWED_EXTENSIONS.join(', ')}`);
+        }
+
+        // 根据扩展名设置正确的 MIME 类型
+        let mimeType = 'image/jpeg';
+        if (extension === '.png') mimeType = 'image/png';
+        else if (extension === '.gif') mimeType = 'image/gif';
+        else if (extension === '.webp') mimeType = 'image/webp';
+        else if (extension === '.heic' || extension === '.heif') mimeType = 'image/heic';
+        else if (extension === '.tiff' || extension === '.tif') mimeType = 'image/tiff';
+        else if (extension === '.bmp') mimeType = 'image/bmp';
+
         const photoId = uuidv4();
-        const extension = parse(originalName).ext.toLowerCase() || ".jpg";
         const storageKey = `raw/${this.albumId}/${photoId}${extension}`;
 
         await uploadBuffer(storageKey, fileBuffer, {
-          "Content-Type": "image/jpeg",
+          "Content-Type": mimeType,
           "x-amz-meta-original-name": encodeURIComponent(originalName),
         });
 
@@ -196,7 +239,7 @@ class PISFileSystem extends FileSystem {
           original_key: storageKey,
           status: "pending",
           file_size: fileBuffer.length,
-          mime_type: extension === ".png" ? "image/png" : "image/jpeg",
+          mime_type: mimeType,
         });
 
         if (insertError) {
