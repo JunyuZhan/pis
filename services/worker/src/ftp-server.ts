@@ -411,7 +411,7 @@ export class FtpServerService {
       pasv_max: pasvEnd,
       anonymous: false,
       greeting: ["Welcome to PIS FTP Server"],
-      timeout: 60000,
+      timeout: 300000, // 5分钟超时，适应大文件上传
     });
 
     // Handle Authentication
