@@ -106,16 +106,62 @@ export function getMinioClient(): Minio.Client {
  * const buffer = await downloadFile('photos/image.jpg')
  * ```
  */
-export async function downloadFile(key: string): Promise<Buffer> {
+/**
+ * 🔒 安全修复: 增强的文件下载函数
+ * - 添加超时保护（默认 30 秒）
+ * - 添加大小限制（默认 100MB）
+ * - 添加流清理，避免连接泄露
+ * - 添加错误处理
+ */
+export async function downloadFile(
+  key: string,
+  options: { timeout?: number; maxSize?: number } = {}
+): Promise<Buffer> {
+  const { timeout = 30000, maxSize = 100 * 1024 * 1024 } = options
   const stream = await minioClient.getObject(bucketName, key)
   const chunks: Buffer[] = []
+  let totalSize = 0
+  let isAborted = false
+
+  const timeoutId = setTimeout(() => {
+    if (!isAborted) {
+      isAborted = true
+      stream.destroy(new Error('Download timeout'))
+    }
+  }, timeout)
 
   return new Promise((resolve, reject) => {
-    stream.on('data', (chunk) => chunks.push(chunk))
-    stream.on('end', () => resolve(Buffer.concat(chunks)))
-    stream.on('error', (err) => reject(err))
+    stream.on('data', (chunk) => {
+      if (isAborted) return
+      
+      totalSize += chunk.length
+      if (totalSize > maxSize) {
+        isAborted = true
+        stream.destroy(new Error(`File too large: ${totalSize} bytes`))
+        reject(new Error(`File too large: ${totalSize} bytes (max: ${maxSize})`))
+        return
+      }
+      chunks.push(chunk)
+    })
+
+    stream.on('end', () => {
+      if (!isAborted) {
+        clearTimeout(timeoutId)
+        resolve(Buffer.concat(chunks))
+      }
+    })
+
+    stream.on('error', (err) => {
+      clearTimeout(timeoutId)
+      reject(err)
+    })
+
+    stream.on('close', () => {
+      clearTimeout(timeoutId)
+    })
   })
 }
+
 
 /**
  * 上传文件

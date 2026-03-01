@@ -22,9 +22,6 @@ const JWT_SECRET = new TextEncoder().encode(
 if (process.env.NODE_ENV === "development") {
   console.log("[JWT Config]", {
     envVarExists: !!process.env.AUTH_JWT_SECRET,
-    envVarValue: process.env.AUTH_JWT_SECRET
-      ? `${process.env.AUTH_JWT_SECRET.substring(0, 10)}...`
-      : "undefined",
     secretLength: JWT_SECRET.length,
     hasFallback:
       !process.env.AUTH_JWT_SECRET && !process.env.ALBUM_SESSION_SECRET,
