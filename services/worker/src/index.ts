@@ -70,9 +70,10 @@ for (const envLocalPath of envLocalPaths) {
 }
 
 // 验证环境变量是否加载成功
-console.log(
-  `[Worker Env] DATABASE_PASSWORD: ${process.env.DATABASE_PASSWORD ? "SET (" + process.env.DATABASE_PASSWORD.substring(0, 5) + "...)" : "NOT SET"}`,
-);
+// 🔒 安全修复: 移除了数据库密码前缀日志，避免泄露敏感信息
+  console.log(
+    `[Worker Env] DATABASE_PASSWORD: ${process.env.DATABASE_PASSWORD ? "SET" : "NOT SET"}`,
+  );
 console.log(
   `[Worker Env] DATABASE_HOST: ${process.env.DATABASE_HOST || "NOT SET"}`,
 );

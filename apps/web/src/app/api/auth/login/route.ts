@@ -333,10 +333,6 @@ export async function POST(request: NextRequest) {
           email: normalizedEmail,
           passwordLength: password.length,
           passwordHashExists: !!user.password_hash,
-          passwordHashLength: user.password_hash?.length || 0,
-          passwordHashFormat: user.password_hash ? (user.password_hash.includes(':') ? 'valid' : 'invalid') : 'null',
-          passwordHashPreview: user.password_hash ? `${user.password_hash.substring(0, 20)}...` : 'null',
-          passwordHashFull: user.password_hash, // 完整哈希用于调试
         })
       }
       

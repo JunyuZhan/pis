@@ -364,4 +364,20 @@ export class MinIOAdapter implements StorageAdapter {
       return url;
     }
   }
+
+  
+  /**
+   * 🔒 安全修复: 关闭存储适配器，释放资源
+   * - 关闭 AWS S3 客户端
+   * - MinIO 客户端没有显式关闭方法，但 HTTP 连接会自动清理
+   */
+  async close(): Promise<void> {
+    try {
+      // 关闭 AWS S3 客户端
+      await this.s3Client.destroy();
+      console.log('[MinIOAdapter] Storage adapter closed successfully');
+    } catch (err) {
+      console.error('[MinIOAdapter] Error closing storage adapter:', err);
+    }
+  }
 }

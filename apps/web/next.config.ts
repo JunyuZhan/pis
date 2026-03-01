@@ -11,9 +11,7 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 console.log("[next.config.ts] Environment variables check:", {
   hasAuthJwtSecret: !!process.env.AUTH_JWT_SECRET,
   authJwtSecretLength: process.env.AUTH_JWT_SECRET?.length || 0,
-  authJwtSecretValue: process.env.AUTH_JWT_SECRET
-    ? `${process.env.AUTH_JWT_SECRET.substring(0, 10)}...`
-    : "undefined",
+  // 🔒 安全修复: 移除了 JWT 密钥前缀日志，避免泄露敏感信息
 });
 
 const nextConfig: NextConfig = {
@@ -25,17 +23,14 @@ const nextConfig: NextConfig = {
     // 构建时忽略 TypeScript 错误
     ignoreBuildErrors: false,
   },
-  // 确保环境变量在 middleware 中可用
-  env: {
-    AUTH_JWT_SECRET:
-      process.env.AUTH_JWT_SECRET || "fallback-secret-please-change",
-    DATABASE_TYPE: process.env.DATABASE_TYPE || "postgresql",
-    DATABASE_HOST: process.env.DATABASE_HOST,
-    DATABASE_PORT: process.env.DATABASE_PORT,
-    DATABASE_NAME: process.env.DATABASE_NAME,
-    DATABASE_USER: process.env.DATABASE_USER,
-    DATABASE_PASSWORD: process.env.DATABASE_PASSWORD,
-  },
+  // 🔒 安全修复: 移除了数据库密码等敏感信息，避免泄露到客户端
+    // 只保留真正需要暴露到前端的配置（NEXT_PUBLIC_* 前缀）
+    env: {
+      AUTH_JWT_SECRET:
+        process.env.AUTH_JWT_SECRET || "fallback-secret-please-change",
+      // ❌ 移除 DATABASE_PASSWORD, DATABASE_USER, DATABASE_HOST 等敏感配置
+      // 这些配置应该只在服务端使用，不应该暴露到浏览器
+    },
   // 生成唯一的构建 ID，用于缓存破坏
   generateBuildId: async () => {
     // 优先使用 Git commit SHA（Vercel 自动提供），否则使用时间戳
