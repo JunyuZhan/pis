@@ -108,10 +108,17 @@ temp/
 # Claude AI configuration
 .claude/
 
+# Cursor AI configuration
+.cursor/
+
+# GitNexus
+.gitnexus/
+
+# Other IDE/Tool caches
+.codeartsdoer/
+.trae/
+
 # Reports (keep structure but ignore temporary reports)
 reports/**/*.tmp
 reports/**/*.temp
 reports/test-reports/*.log
-.cursor/
-.gitnexus/
-.vscode/
