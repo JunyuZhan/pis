@@ -122,8 +122,6 @@ const nextConfig: NextConfig = {
       // 生产环境媒体服务器（通过 NEXT_PUBLIC_MEDIA_URL 动态配置）
       // 如果需要硬编码额外的域名，可以在这里添加
     ],
-    // 图片优化配置
-    formats: ['image/avif', 'image/webp'], // AVIF 优先（体积最小），WebP 作为后备
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 31536000, // 图片缓存 1 年（图片内容不变）
