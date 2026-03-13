@@ -1,40 +1,36 @@
-'use client'
+'use client';
 
-import { useEffect, useCallback, useRef } from 'react'
-import type { Photo } from '@/types/database'
-import { useSettings } from './use-settings'
+import { useEffect, useCallback, useRef } from 'react';
+import type { Photo } from '@/types/database';
 
 interface UsePhotoRealtimeOptions {
-  albumId: string
-  albumSlug: string // 公开 API 使用 slug，不是 id
-  enabled?: boolean
-  onInsert?: (photo: Photo) => void
-  onUpdate?: (photo: Photo) => void
-  onDelete?: (photoId: string) => void
+  albumId: string;
+  albumSlug: string;
+  enabled?: boolean;
+  onInsert?: (photo: Photo) => void;
+  onUpdate?: (photo: Photo) => void;
+  onDelete?: (photoId: string) => void;
 }
 
 /**
- * 照片变更监听 Hook（使用轮询替代 Realtime）
- * 
- * 注意：PostgreSQL 没有内置 Realtime 功能，使用轮询方式检查照片更新
- * 轮询间隔：5秒（可在环境变量中配置 POLLING_INTERVAL）
- * 
+ * 照片变更监听 Hook（使用 SSE 实时推送）
+ *
+ * 注意：优先使用 SSE（Server-Sent Events）实现实时推送
+ * 如果 SSE 不可用或连接失败，自动回退到轮询
+ *
  * 使用方法:
  * ```tsx
  * usePhotoRealtime({
  *   albumId: album.id,
- *   albumSlug: album.slug, // 公开 API 使用 slug
+ *   albumSlug: album.slug,
  *   enabled: true,
  *   onInsert: (photo) => {
- *     // 新照片插入，添加到列表
  *     setPhotos(prev => [photo, ...prev])
  *   },
  *   onUpdate: (photo) => {
- *     // 照片更新 (如 status 变更)
  *     setPhotos(prev => prev.map(p => p.id === photo.id ? photo : p))
  *   },
  *   onDelete: (photoId) => {
- *     // 照片删除，从列表移除
  *     setPhotos(prev => prev.filter(p => p.id !== photoId))
  *   }
  * })
@@ -48,157 +44,226 @@ export function usePhotoRealtime({
   onUpdate,
   onDelete,
 }: UsePhotoRealtimeOptions) {
-  // 从设置中获取轮询间隔
-  const { settings } = useSettings()
-  const pollingInterval = settings?.polling_interval || parseInt(process.env.NEXT_PUBLIC_POLLING_INTERVAL || '5000', 10)
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isConnectedRef = useRef(false);
 
-  // 使用 ref 存储回调，避免重复订阅
-  const callbacksRef = useRef({ onInsert, onUpdate, onDelete })
-  callbacksRef.current = { onInsert, onUpdate, onDelete }
+  // 存储回调
+  const callbacksRef = useRef({ onInsert, onUpdate, onDelete });
+  callbacksRef.current = { onInsert, onUpdate, onDelete };
 
   // 存储已知的照片ID，用于检测新照片
-  const knownPhotoIdsRef = useRef<Set<string>>(new Set())
-  // 标记是否已完成首次初始化（首次不触发 onInsert）
-  const isInitializedRef = useRef(false)
+  const knownPhotoIdsRef = useRef<Set<string>>(new Set());
+  const isInitializedRef = useRef(false);
 
-  const checkForUpdates = useCallback(async () => {
-    if (!albumId || !albumSlug) return
+  const connectSSE = useCallback(() => {
+    if (!albumId || !albumSlug || !enabled) return;
 
-    try {
-      // 获取最新的照片列表（只获取 completed 状态且未删除的照片）
-      // 公开 API 使用 slug，不是 id
-      const response = await fetch(`/api/public/albums/${albumSlug}/photos?limit=100&sort=capture_desc`)
-      if (!response.ok) return
-
-      const data = await response.json()
-      const currentPhotos = data.photos || []
-
-      // 检测新照片
-      const currentPhotoIds = new Set<string>(currentPhotos.map((p: Photo) => p.id))
-      
-      // 只有在初始化完成后才检测新照片
-      if (isInitializedRef.current) {
-        const newPhotos = currentPhotos.filter((p: Photo) => !knownPhotoIdsRef.current.has(p.id))
-
-        newPhotos.forEach((photo: Photo) => {
-          if (photo.status === 'completed' && !photo.deleted_at) {
-            callbacksRef.current.onInsert?.(photo)
-            knownPhotoIdsRef.current.add(photo.id)
-          }
-        })
-      } else {
-        // 首次运行，只初始化已知照片ID，不触发回调
-        isInitializedRef.current = true
-      }
-
-      // 更新已知照片ID集合
-      currentPhotoIds.forEach((id) => knownPhotoIdsRef.current.add(id))
-
-      // 清理已删除的照片ID（只在初始化后执行）
-      if (isInitializedRef.current) {
-        knownPhotoIdsRef.current.forEach((id: string) => {
-          if (!currentPhotoIds.has(id)) {
-            callbacksRef.current.onDelete?.(id)
-            knownPhotoIdsRef.current.delete(id)
-          }
-        })
-      }
-    } catch (error) {
-      console.error('Failed to check for photo updates:', error)
+    // 清理旧连接
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
     }
-  }, [albumId, albumSlug])
+
+    // 创建 SSE 连接
+    const workerUrl = process.env.NEXT_PUBLIC_WORKER_URL || '';
+    const eventSource = new EventSource(`${workerUrl}/api/sse/photos/${albumId}`);
+    eventSourceRef.current = eventSource;
+
+    // 连接成功
+    eventSource.onopen = () => {
+      console.log('[SSE] Connected to photo updates');
+      isConnectedRef.current = true;
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+    };
+
+    // 处理连接错误
+    eventSource.onerror = () => {
+      console.warn('[SSE] Connection error, retrying in 5 seconds...');
+      isConnectedRef.current = false;
+      eventSource.close();
+      eventSourceRef.current = null;
+
+      // 5秒后重试
+      retryTimeoutRef.current = setTimeout(() => {
+        if (enabled) {
+          connectSSE();
+        }
+      }, 5000);
+    };
+
+    // 监听新照片插入事件
+    eventSource.addEventListener('insert', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.photo) {
+          callbacksRef.current.onInsert?.(data.photo);
+          knownPhotoIdsRef.current.add(data.photo.id);
+        }
+      } catch (err) {
+        console.error('[SSE] Failed to parse insert event:', err);
+      }
+    });
+
+    // 监听照片更新事件
+    eventSource.addEventListener('update', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.photo) {
+          callbacksRef.current.onUpdate?.(data.photo);
+        }
+      } catch (err) {
+        console.error('[SSE] Failed to parse update event:', err);
+      }
+    });
+
+    // 监听照片删除事件
+    eventSource.addEventListener('delete', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.photoId) {
+          callbacksRef.current.onDelete?.(data.photoId);
+          knownPhotoIdsRef.current.delete(data.photoId);
+        }
+      } catch (err) {
+        console.error('[SSE] Failed to parse delete event:', err);
+      }
+    });
+
+    // 初始化时获取当前照片列表
+    fetch(`/api/public/albums/${albumSlug}/photos?limit=100&sort=capture_desc`)
+      .then((res) => res.json())
+      .then((data) => {
+        const photos = data.photos || [];
+        photos.forEach((p: Photo) => knownPhotoIdsRef.current.add(p.id));
+        isInitializedRef.current = true;
+      })
+      .catch((err) => console.error('[SSE] Failed to fetch initial photos:', err));
+  }, [albumId, albumSlug, enabled]);
 
   useEffect(() => {
-    if (!enabled || !albumId || !albumSlug) return
+    if (!enabled || !albumId || !albumSlug) return;
 
-    // 初始化已知照片ID
-    checkForUpdates()
-
-    // 设置轮询间隔（从设置中读取，默认5秒）
-    const intervalId = setInterval(checkForUpdates, pollingInterval)
-
-    // 在effect开始时复制ref值，避免cleanup时ref已改变
-    const knownPhotoIds = knownPhotoIdsRef.current
+    // 连接 SSE
+    connectSSE();
 
     return () => {
-      clearInterval(intervalId)
-      knownPhotoIds.clear()
-      isInitializedRef.current = false // 重置初始化状态
-    }
-  }, [albumId, albumSlug, enabled, checkForUpdates, pollingInterval])
+      // 清理
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+      knownPhotoIdsRef.current.clear();
+      isInitializedRef.current = false;
+    };
+  }, [albumId, albumSlug, enabled, connectSSE]);
 }
 
 /**
- * 管理员端使用 - 监听所有状态变更（使用轮询）
+ * 管理员端使用 - 监听所有状态变更（使用 SSE）
  */
 export function usePhotoRealtimeAdmin({
   albumId,
   enabled = true,
   onStatusChange,
 }: {
-  albumId: string
-  enabled?: boolean
-  onStatusChange?: (photoId: string, status: Photo['status']) => void
+  albumId: string;
+  enabled?: boolean;
+  onStatusChange?: (photoId: string, status: Photo['status']) => void;
 }) {
-  // 从设置中获取轮询间隔（管理员端使用更短的间隔）
-  const { settings } = useSettings()
-  const adminPollingInterval = settings?.polling_interval 
-    ? Math.min(settings.polling_interval, 2000) // 管理员端最多2秒
-    : parseInt(process.env.NEXT_PUBLIC_ADMIN_POLLING_INTERVAL || '3000', 10)
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const callbackRef = useRef(onStatusChange)
-  callbackRef.current = onStatusChange
+  const callbackRef = useRef(onStatusChange);
+  callbackRef.current = onStatusChange;
 
-  // 存储照片状态映射
-  const photoStatusMapRef = useRef<Map<string, Photo['status']>>(new Map())
+  const photoStatusMapRef = useRef<Map<string, Photo['status']>>(new Map());
 
-  const checkForStatusChanges = useCallback(async () => {
-    if (!albumId) return
+  const connectSSE = useCallback(() => {
+    if (!albumId || !enabled) return;
 
-    try {
-      // 获取所有状态的照片（包括处理中的）
-      const response = await fetch(`/api/admin/albums/${albumId}/photos`)
-      if (!response.ok) return
-
-      const data = await response.json()
-      const currentPhotos = data.photos || []
-
-      // 检测状态变更
-      currentPhotos.forEach((photo: Photo) => {
-        const oldStatus = photoStatusMapRef.current.get(photo.id)
-        if (oldStatus && oldStatus !== photo.status) {
-          callbackRef.current?.(photo.id, photo.status)
-        }
-        photoStatusMapRef.current.set(photo.id, photo.status)
-      })
-
-      // 清理已删除的照片
-      const currentPhotoIds = new Set<string>(currentPhotos.map((p: Photo) => p.id))
-      photoStatusMapRef.current.forEach((_, id) => {
-        if (!currentPhotoIds.has(id)) {
-          photoStatusMapRef.current.delete(id)
-        }
-      })
-    } catch (error) {
-      console.error('Failed to check for photo status changes:', error)
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
     }
-  }, [albumId])
+
+    const workerUrl = process.env.NEXT_PUBLIC_WORKER_URL || '';
+    const eventSource = new EventSource(`${workerUrl}/api/sse/photos/${albumId}`);
+    eventSourceRef.current = eventSource;
+
+    eventSource.onerror = () => {
+      console.warn('[SSE Admin] Connection error, retrying in 5 seconds...');
+      eventSource.close();
+      eventSourceRef.current = null;
+
+      retryTimeoutRef.current = setTimeout(() => {
+        if (enabled) {
+          connectSSE();
+        }
+      }, 5000);
+    };
+
+    // 监听更新事件
+    eventSource.addEventListener('update', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.photo) {
+          const oldStatus = photoStatusMapRef.current.get(data.photo.id);
+          if (oldStatus && oldStatus !== data.photo.status) {
+            callbackRef.current?.(data.photo.id, data.photo.status);
+          }
+          photoStatusMapRef.current.set(data.photo.id, data.photo.status);
+        }
+      } catch (err) {
+        console.error('[SSE Admin] Failed to parse update event:', err);
+      }
+    });
+
+    // 监听删除事件
+    eventSource.addEventListener('delete', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.photoId) {
+          photoStatusMapRef.current.delete(data.photoId);
+        }
+      } catch (err) {
+        console.error('[SSE Admin] Failed to parse delete event:', err);
+      }
+    });
+
+    // 初始化时获取当前照片状态
+    fetch(`/api/admin/albums/${albumId}/photos`)
+      .then((res) => res.json())
+      .then((data) => {
+        const photos = data.photos || [];
+        photos.forEach((p: Photo) => {
+          photoStatusMapRef.current.set(p.id, p.status);
+        });
+      })
+      .catch((err) => console.error('[SSE Admin] Failed to fetch initial photos:', err));
+  }, [albumId, enabled]);
 
   useEffect(() => {
-    if (!enabled || !albumId) return
+    if (!enabled || !albumId) return;
 
-    // 初始化状态映射
-    checkForStatusChanges()
-
-    // 设置轮询间隔（管理员端更频繁）
-    const intervalId = setInterval(checkForStatusChanges, adminPollingInterval)
-
-    // 在effect开始时复制ref值，避免cleanup时ref已改变
-    const photoStatusMap = photoStatusMapRef.current
+    connectSSE();
 
     return () => {
-      clearInterval(intervalId)
-      photoStatusMap.clear()
-    }
-  }, [albumId, enabled, checkForStatusChanges, adminPollingInterval])
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+      photoStatusMapRef.current.clear();
+    };
+  }, [albumId, enabled, connectSSE]);
 }
