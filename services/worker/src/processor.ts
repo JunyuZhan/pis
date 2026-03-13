@@ -24,26 +24,26 @@
  * )
  * ```
  */
-import sharp from 'sharp'
-import { encode } from 'blurhash'
-import exifReader from 'exif-reader'
-import { STYLE_PRESETS, getPresetById, type StylePresetConfig } from './lib/style-presets.js'
-import type { AIRetouchOptions } from './lib/ai-retouch.js'
+import sharp from 'sharp';
+import { encode } from 'blurhash';
+import exifReader from 'exif-reader';
+import { STYLE_PRESETS, getPresetById, type StylePresetConfig } from './lib/style-presets.js';
+import type { AIRetouchOptions } from './lib/ai-retouch.js';
 
 /**
  * 处理结果
  */
 export interface ProcessedResult {
   /** 图片元数据 */
-  metadata: sharp.Metadata
+  metadata: sharp.Metadata;
   /** EXIF 数据（已清理 GPS 信息） */
-  exif: any
+  exif: any;
   /** BlurHash 字符串 */
-  blurHash: string
+  blurHash: string;
   /** 缩略图 Buffer */
-  thumbBuffer: Buffer
+  thumbBuffer: Buffer;
   /** 预览图 Buffer（带水印） */
-  previewBuffer: Buffer
+  previewBuffer: Buffer;
 }
 
 /**
@@ -51,23 +51,32 @@ export interface ProcessedResult {
  */
 export interface SingleWatermark {
   /** 水印 ID（用于 UI 管理） */
-  id?: string
+  id?: string;
   /** 水印类型 */
-  type: 'text' | 'logo'
+  type: 'text' | 'logo';
   /** 文本内容（type 为 text 时使用） */
-  text?: string
+  text?: string;
   /** Logo URL（type 为 logo 时使用，需为 MinIO 或其他可访问的 URL） */
-  logoUrl?: string
+  logoUrl?: string;
   /** 不透明度（0-1） */
-  opacity: number
+  opacity: number;
   /** 位置 */
-  position: 'top-left' | 'top-center' | 'top-right' | 'center-left' | 'center' | 'center-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'
+  position:
+    | 'top-left'
+    | 'top-center'
+    | 'top-right'
+    | 'center-left'
+    | 'center'
+    | 'center-right'
+    | 'bottom-left'
+    | 'bottom-center'
+    | 'bottom-right';
   /** 字体大小或 Logo 尺寸（预览图宽度的百分比，1-100，可选，自动计算） */
-  size?: number
+  size?: number;
   /** 边距（百分比，0-20，默认 5） */
-  margin?: number
+  margin?: number;
   /** 是否启用 */
-  enabled?: boolean
+  enabled?: boolean;
 }
 
 /**
@@ -75,21 +84,21 @@ export interface SingleWatermark {
  */
 export interface WatermarkConfig {
   /** 是否启用水印 */
-  enabled: boolean
+  enabled: boolean;
   // 旧格式兼容：单个水印
   /** 水印类型（旧格式） */
-  type?: 'text' | 'logo'
+  type?: 'text' | 'logo';
   /** 文本内容（旧格式） */
-  text?: string
+  text?: string;
   /** Logo URL（旧格式） */
-  logoUrl?: string
+  logoUrl?: string;
   /** 不透明度（旧格式） */
-  opacity?: number
+  opacity?: number;
   /** 位置（旧格式） */
-  position?: string
+  position?: string;
   // 新格式：多个水印（最多 6 个）
   /** 水印数组（新格式） */
-  watermarks?: SingleWatermark[]
+  watermarks?: SingleWatermark[];
 }
 
 /**
@@ -100,7 +109,7 @@ export interface WatermarkConfig {
  */
 export class PhotoProcessor {
   /** Sharp 图像实例 */
-  private image: sharp.Sharp
+  private image: sharp.Sharp;
 
   /**
    * 创建照片处理器实例
@@ -108,7 +117,7 @@ export class PhotoProcessor {
    * @param buffer - 图片 Buffer
    */
   constructor(buffer: Buffer) {
-    this.image = sharp(buffer)
+    this.image = sharp(buffer);
   }
 
   /**
@@ -143,13 +152,14 @@ export class PhotoProcessor {
 
       // Check for internal addresses (SSRF protection)
       const hostname = urlObj.hostname.toLowerCase();
-      const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0';
+      const isLocalhost =
+        hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0';
       const isPrivateIP =
         hostname.startsWith('192.168.') ||
         hostname.startsWith('10.') ||
         (hostname.startsWith('172.') &&
-         parseInt(hostname.split('.')[1] || '0') >= 16 &&
-         parseInt(hostname.split('.')[1] || '0') <= 31) ||
+          parseInt(hostname.split('.')[1] || '0') >= 16 &&
+          parseInt(hostname.split('.')[1] || '0') <= 31) ||
         hostname.endsWith('.local');
 
       if (isLocalhost || isPrivateIP) {
@@ -159,7 +169,7 @@ export class PhotoProcessor {
 
       // If whitelist is configured, only allow whitelisted domains
       if (allowedHosts.length > 0) {
-        const isAllowed = allowedHosts.some(allowed => {
+        const isAllowed = allowedHosts.some((allowed) => {
           const allowedHostname = allowed.toLowerCase();
           return hostname === allowedHostname || hostname.endsWith('.' + allowedHostname);
         });
@@ -214,10 +224,7 @@ export class PhotoProcessor {
    *
    * @internal
    */
-  private applyStylePreset(
-    image: sharp.Sharp,
-    presetId: string | null | undefined
-  ): sharp.Sharp {
+  private applyStylePreset(image: sharp.Sharp, presetId: string | null | undefined): sharp.Sharp {
     // Return original image if no preset selected or "none"
     if (!presetId || presetId === 'none') {
       return image;
@@ -237,33 +244,35 @@ export class PhotoProcessor {
     // 基础色彩调整，必须在最前面执行
     // Sharp modulate 需要所有三个参数，使用已定义的值或默认值
     // 注意：saturation 为 0 时会变成黑白（如 high-key-bw），需要明确传递
-    if (config.brightness !== undefined ||
-        config.saturation !== undefined ||
-        config.hue !== undefined) {
+    if (
+      config.brightness !== undefined ||
+      config.saturation !== undefined ||
+      config.hue !== undefined
+    ) {
       // 构建 modulate 参数，只包含已定义的参数
       const modulateParams: {
-        brightness?: number
-        saturation?: number
-        hue?: number
-      } = {}
-      
+        brightness?: number;
+        saturation?: number;
+        hue?: number;
+      } = {};
+
       // 只添加已定义的参数
       if (config.brightness !== undefined) {
-        modulateParams.brightness = config.brightness
+        modulateParams.brightness = config.brightness;
       }
       if (config.saturation !== undefined) {
-        modulateParams.saturation = config.saturation
+        modulateParams.saturation = config.saturation;
       }
       if (config.hue !== undefined) {
-        modulateParams.hue = config.hue
+        modulateParams.hue = config.hue;
       }
-      
+
       // 如果至少有一个参数，调用 modulate
       // Sharp modulate 需要所有三个参数，所以我们需要提供默认值
-      const finalBrightness = modulateParams.brightness ?? 1.0
-      const finalSaturation = modulateParams.saturation ?? 1.0
-      const finalHue = modulateParams.hue ?? 0
-      
+      const finalBrightness = modulateParams.brightness ?? 1.0;
+      const finalSaturation = modulateParams.saturation ?? 1.0;
+      const finalHue = modulateParams.hue ?? 0;
+
       processedImage = processedImage.modulate({
         brightness: finalBrightness,
         saturation: finalSaturation,
@@ -376,18 +385,21 @@ export class PhotoProcessor {
         // 检查图片大小（从原始 metadata 获取）
         // 注意：对于 Buffer 输入，metadata.size 存在；对于文件输入，可能不存在
         // 如果 size 不存在，使用 width * height * channels 估算（保守估计）
-        const imageSize = originalMetadata.size || 
+        const imageSize =
+          originalMetadata.size ||
           (originalMetadata.width && originalMetadata.height && originalMetadata.channels
             ? originalMetadata.width * originalMetadata.height * originalMetadata.channels
             : 0);
         const maxSizeForAIRetouch = 10 * 1024 * 1024; // 10MB
-        
+
         if (imageSize > maxSizeForAIRetouch) {
-          console.warn(`Skipping AI retouch for large image (${(imageSize / 1024 / 1024).toFixed(2)}MB > ${maxSizeForAIRetouch / 1024 / 1024}MB)`);
+          console.warn(
+            `Skipping AI retouch for large image (${(imageSize / 1024 / 1024).toFixed(2)}MB > ${maxSizeForAIRetouch / 1024 / 1024}MB)`
+          );
         } else {
           const preset = aiRetouchConfig.config?.preset || 'auto';
           let modulateParams: { brightness: number; saturation: number };
-          
+
           if (preset === 'portrait') {
             // 人像模式：轻微提亮，轻微增加饱和度
             modulateParams = { brightness: 1.05, saturation: 1.1 };
@@ -398,7 +410,7 @@ export class PhotoProcessor {
             // 自动模式：通用增强
             modulateParams = { brightness: 1.05, saturation: 1.15 };
           }
-          
+
           rotatedImage = rotatedImage.modulate(modulateParams);
         }
       } catch (err) {
@@ -432,7 +444,7 @@ export class PhotoProcessor {
       thumbImage
         .resize(thumbSize, null, { withoutEnlargement: true })
         .jpeg({ quality: 80 })
-        .toBuffer()
+        .toBuffer(),
     ]);
 
     // 4. Generate Preview - auto-rotate based on EXIF orientation
@@ -459,30 +471,35 @@ export class PhotoProcessor {
 
     // Add Watermark
     if (watermarkConfig?.enabled) {
-      console.log(`[Watermark] Config:`, JSON.stringify(watermarkConfig));
       const watermarkStartTime = Date.now();
       const width = previewWidth;
       const height = previewHeight;
 
       // Boundary check: ensure valid image dimensions
       if (!width || !height || width <= 0 || height <= 0) {
-        console.warn(`[Watermark] Invalid image dimensions: ${width}x${height}, skipping watermark`);
+        console.warn(
+          `[Watermark] Invalid image dimensions: ${width}x${height}, skipping watermark`
+        );
       } else {
         const composites: Array<{ input: Buffer; gravity: string }> = [];
 
         // Support multiple watermarks (new format)
         if (watermarkConfig.watermarks && Array.isArray(watermarkConfig.watermarks)) {
-
           // Parallel processing of multiple watermarks (performance optimization)
-          const enabledWatermarks = watermarkConfig.watermarks.filter(w => w.enabled !== false);
-          console.log(`[Watermark] Enabled watermarks: ${enabledWatermarks.length}`, JSON.stringify(enabledWatermarks));
-          const watermarkPromises = enabledWatermarks.map(watermark =>
+          const enabledWatermarks = watermarkConfig.watermarks.filter((w) => w.enabled !== false);
+          console.log(
+            `[Watermark] Enabled watermarks: ${enabledWatermarks.length}`,
+            JSON.stringify(enabledWatermarks)
+          );
+          const watermarkPromises = enabledWatermarks.map((watermark) =>
             this.createWatermarkBuffer(watermark, width, height)
           );
 
           // Create all watermark buffers in parallel
           const watermarkBuffers = await Promise.all(watermarkPromises);
-          console.log(`[Watermark] Created buffers: ${watermarkBuffers.filter(b => b !== null).length}/${watermarkBuffers.length}`);
+          console.log(
+            `[Watermark] Created buffers: ${watermarkBuffers.filter((b) => b !== null).length}/${watermarkBuffers.length}`
+          );
 
           // Build composites array
           for (let i = 0; i < enabledWatermarks.length; i++) {
@@ -505,11 +522,7 @@ export class PhotoProcessor {
             position: (watermarkConfig.position as SingleWatermark['position']) || 'center',
           };
 
-          const watermarkBuffer = await this.createWatermarkBuffer(
-            singleWatermark,
-            width,
-            height
-          );
+          const watermarkBuffer = await this.createWatermarkBuffer(singleWatermark, width, height);
 
           if (watermarkBuffer) {
             const gravity = this.positionToGravity(singleWatermark.position);
@@ -532,9 +545,7 @@ export class PhotoProcessor {
       }
     }
 
-    const previewBuffer = await previewPipeline
-      .jpeg({ quality: 85 })
-      .toBuffer();
+    const previewBuffer = await previewPipeline.jpeg({ quality: 85 }).toBuffer();
 
     return {
       metadata, // Already rotated metadata, contains correct dimensions
@@ -579,12 +590,17 @@ export class PhotoProcessor {
         sizePercent = watermark.size; // 新百分比值
       }
       const fontSize = Math.floor(imageWidth * (sizePercent / 100));
-      const { x, y, anchor, baseline } = this.getTextPosition(watermark.position, imageWidth, imageHeight, watermark.margin);
+      const { x, y, anchor, baseline } = this.getTextPosition(
+        watermark.position,
+        imageWidth,
+        imageHeight,
+        watermark.margin
+      );
 
       const svgText = `
         <svg width="${imageWidth}" height="${imageHeight}" xmlns="http://www.w3.org/2000/svg">
           <style>
-            .watermark { fill: rgba(255, 255, 255, ${watermark.opacity}); font-size: ${fontSize}px; font-family: "Noto Sans CJK SC", "Noto Sans CJK", "Noto Sans", Arial, Helvetica, "Microsoft YaHei", "SimHei", "SimSun", "Arial Unicode MS", sans-serif; font-weight: bold; }
+            .watermark { fill: rgba(255, 255, 255, ${watermark.opacity}); font-size: ${fontSize}px; font-family: "Noto Sans CJK SC", "Noto Sans CJK", "Microsoft YaHei", Arial, sans-serif; font-weight: bold; }
           </style>
           <text x="${x}" y="${y}" text-anchor="${anchor}" dominant-baseline="${baseline}" class="watermark">${this.escapeXml(watermark.text)}</text>
         </svg>
@@ -628,7 +644,9 @@ export class PhotoProcessor {
 
           // Double check actual size
           if (logoBuffer.byteLength > maxSize) {
-            throw new Error(`Logo file too large: ${logoBuffer.byteLength} bytes (max: ${maxSize} bytes)`);
+            throw new Error(
+              `Logo file too large: ${logoBuffer.byteLength} bytes (max: ${maxSize} bytes)`
+            );
           }
 
           // size 是预览图宽度的百分比（1-100），转换为像素
@@ -648,14 +666,24 @@ export class PhotoProcessor {
 
           // Optimization: Get buffer and metadata in one go, avoid repeated Sharp instances
           const resizedLogoResult = await sharp(Buffer.from(logoBuffer))
-            .resize(logoSize, logoSize, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+            .resize(logoSize, logoSize, {
+              fit: 'contain',
+              background: { r: 0, g: 0, b: 0, alpha: 0 },
+            })
             .toBuffer({ resolveWithObject: true });
 
           const logoW = resizedLogoResult.info.width;
           const logoH = resizedLogoResult.info.height;
 
           if (logoW && logoH) {
-            const { x, y } = this.getImagePosition(watermark.position, imageWidth, imageHeight, logoW, logoH, watermark.margin);
+            const { x, y } = this.getImagePosition(
+              watermark.position,
+              imageWidth,
+              imageHeight,
+              logoW,
+              logoH,
+              watermark.margin
+            );
             const logoBase64 = resizedLogoResult.data.toString('base64');
 
             const svgLogo = `
@@ -675,7 +703,9 @@ export class PhotoProcessor {
         } catch (fetchError: any) {
           clearTimeout(timeoutId);
           if (fetchError.name === 'AbortError') {
-            console.error(`[Watermark] Logo download timeout after ${timeoutMs}ms: ${watermark.logoUrl}`);
+            console.error(
+              `[Watermark] Logo download timeout after ${timeoutMs}ms: ${watermark.logoUrl}`
+            );
           } else {
             throw fetchError;
           }
@@ -702,16 +732,16 @@ export class PhotoProcessor {
       'top-center': 'north',
       'top-right': 'northeast',
       'center-left': 'west',
-      'center': 'center',
+      center: 'center',
       'center-right': 'east',
       'bottom-left': 'southwest',
       'bottom-center': 'south',
       'bottom-right': 'southeast',
       // Legacy format compatibility
-      'northwest': 'northwest',
-      'northeast': 'northeast',
-      'southwest': 'southwest',
-      'southeast': 'southeast',
+      northwest: 'northwest',
+      northeast: 'northeast',
+      southwest: 'southwest',
+      southeast: 'southeast',
     };
     return positionMap[position] || 'center';
   }
@@ -741,11 +771,26 @@ export class PhotoProcessor {
       'top-center': { x: '50%', y: `${margin}`, anchor: 'middle', baseline: 'hanging' },
       'top-right': { x: `${width - margin}`, y: `${margin}`, anchor: 'end', baseline: 'hanging' },
       'center-left': { x: `${margin}`, y: '50%', anchor: 'start', baseline: 'middle' },
-      'center': { x: '50%', y: '50%', anchor: 'middle', baseline: 'middle' },
+      center: { x: '50%', y: '50%', anchor: 'middle', baseline: 'middle' },
       'center-right': { x: `${width - margin}`, y: '50%', anchor: 'end', baseline: 'middle' },
-      'bottom-left': { x: `${margin}`, y: `${height - margin}`, anchor: 'start', baseline: 'alphabetic' },
-      'bottom-center': { x: '50%', y: `${height - margin}`, anchor: 'middle', baseline: 'alphabetic' },
-      'bottom-right': { x: `${width - margin}`, y: `${height - margin}`, anchor: 'end', baseline: 'alphabetic' },
+      'bottom-left': {
+        x: `${margin}`,
+        y: `${height - margin}`,
+        anchor: 'start',
+        baseline: 'alphabetic',
+      },
+      'bottom-center': {
+        x: '50%',
+        y: `${height - margin}`,
+        anchor: 'middle',
+        baseline: 'alphabetic',
+      },
+      'bottom-right': {
+        x: `${width - margin}`,
+        y: `${height - margin}`,
+        anchor: 'end',
+        baseline: 'alphabetic',
+      },
     };
 
     return positions[position] || positions['center'];
@@ -784,14 +829,38 @@ export class PhotoProcessor {
 
     const positions: Record<string, { x: number; y: number }> = {
       'top-left': { x: Math.min(margin, maxX), y: Math.min(margin, maxY) },
-      'top-center': { x: Math.max(0, Math.min((imageWidth - logoWidth) / 2, maxX)), y: Math.min(margin, maxY) },
-      'top-right': { x: Math.max(0, Math.min(imageWidth - logoWidth - margin, maxX)), y: Math.min(margin, maxY) },
-      'center-left': { x: Math.min(margin, maxX), y: Math.max(0, Math.min((imageHeight - logoHeight) / 2, maxY)) },
-      'center': { x: Math.max(0, Math.min((imageWidth - logoWidth) / 2, maxX)), y: Math.max(0, Math.min((imageHeight - logoHeight) / 2, maxY)) },
-      'center-right': { x: Math.max(0, Math.min(imageWidth - logoWidth - margin, maxX)), y: Math.max(0, Math.min((imageHeight - logoHeight) / 2, maxY)) },
-      'bottom-left': { x: Math.min(margin, maxX), y: Math.max(0, Math.min(imageHeight - logoHeight - margin, maxY)) },
-      'bottom-center': { x: Math.max(0, Math.min((imageWidth - logoWidth) / 2, maxX)), y: Math.max(0, Math.min(imageHeight - logoHeight - margin, maxY)) },
-      'bottom-right': { x: Math.max(0, Math.min(imageWidth - logoWidth - margin, maxX)), y: Math.max(0, Math.min(imageHeight - logoHeight - margin, maxY)) },
+      'top-center': {
+        x: Math.max(0, Math.min((imageWidth - logoWidth) / 2, maxX)),
+        y: Math.min(margin, maxY),
+      },
+      'top-right': {
+        x: Math.max(0, Math.min(imageWidth - logoWidth - margin, maxX)),
+        y: Math.min(margin, maxY),
+      },
+      'center-left': {
+        x: Math.min(margin, maxX),
+        y: Math.max(0, Math.min((imageHeight - logoHeight) / 2, maxY)),
+      },
+      center: {
+        x: Math.max(0, Math.min((imageWidth - logoWidth) / 2, maxX)),
+        y: Math.max(0, Math.min((imageHeight - logoHeight) / 2, maxY)),
+      },
+      'center-right': {
+        x: Math.max(0, Math.min(imageWidth - logoWidth - margin, maxX)),
+        y: Math.max(0, Math.min((imageHeight - logoHeight) / 2, maxY)),
+      },
+      'bottom-left': {
+        x: Math.min(margin, maxX),
+        y: Math.max(0, Math.min(imageHeight - logoHeight - margin, maxY)),
+      },
+      'bottom-center': {
+        x: Math.max(0, Math.min((imageWidth - logoWidth) / 2, maxX)),
+        y: Math.max(0, Math.min(imageHeight - logoHeight - margin, maxY)),
+      },
+      'bottom-right': {
+        x: Math.max(0, Math.min(imageWidth - logoWidth - margin, maxX)),
+        y: Math.max(0, Math.min(imageHeight - logoHeight - margin, maxY)),
+      },
     };
 
     const pos = positions[position] || positions['center'];
@@ -817,7 +886,7 @@ export class PhotoProcessor {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;')
+      .replace(/'/g, '&apos;');
   }
 
   /**
@@ -861,12 +930,12 @@ export class PhotoProcessor {
     if (typeof value === 'string') {
       // 移除所有控制字符（\u0000-\u001F），保留换行和制表符
       let cleaned = value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
-      
+
       // 限制字符串长度（某些 MakerNote 可能非常大）
       if (cleaned.length > 10000) {
         cleaned = cleaned.substring(0, 10000) + '...[truncated]';
       }
-      
+
       // 验证是否为有效 UTF-8（移除无效字符）
       // 使用 encodeURIComponent/decodeURIComponent 验证
       try {
@@ -875,7 +944,7 @@ export class PhotoProcessor {
         // 如果编码失败，尝试移除非 ASCII 字符
         cleaned = cleaned.replace(/[^\x20-\x7E]/g, '?');
       }
-      
+
       return cleaned;
     }
 
@@ -883,7 +952,7 @@ export class PhotoProcessor {
     if (Array.isArray(value)) {
       // 限制数组长度
       const maxLength = 100;
-      const arr = value.slice(0, maxLength).map(item => this.sanitizeValue(item, depth + 1));
+      const arr = value.slice(0, maxLength).map((item) => this.sanitizeValue(item, depth + 1));
       if (value.length > maxLength) {
         arr.push(`[...${value.length - maxLength} more items]`);
       }
@@ -899,11 +968,11 @@ export class PhotoProcessor {
     if (typeof value === 'object') {
       const cleaned: Record<string, unknown> = {};
       const entries = Object.entries(value);
-      
+
       // 限制对象属性数量
       const maxKeys = 200;
       let count = 0;
-      
+
       for (const [key, val] of entries) {
         if (count >= maxKeys) {
           cleaned['__truncated__'] = `${entries.length - maxKeys} more keys`;
@@ -1004,9 +1073,9 @@ export class PhotoProcessor {
       .raw()
       .ensureAlpha()
       .resize(32, 32, { fit: 'inside' })
-      .toBuffer({ resolveWithObject: true })
+      .toBuffer({ resolveWithObject: true });
 
-    return encode(new Uint8ClampedArray(data), info.width, info.height, 4, 4)
+    return encode(new Uint8ClampedArray(data), info.width, info.height, 4, 4);
   }
 
   /**
@@ -1021,14 +1090,14 @@ export class PhotoProcessor {
    */
   private async generateBlurHash(manualRotation?: number | null): Promise<string> {
     let image = this.image.clone();
-    
+
     // 应用旋转：如果有手动旋转角度，使用手动角度；否则使用 EXIF orientation 自动旋转
     if (manualRotation !== null && manualRotation !== undefined) {
       image = image.rotate().rotate(manualRotation); // 先应用 EXIF，再应用手动旋转
     } else {
       image = image.rotate(); // 只应用 EXIF orientation
     }
-    
+
     const { data, info } = await image
       .raw()
       .ensureAlpha()
