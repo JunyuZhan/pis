@@ -112,3 +112,6 @@ temp/
 reports/**/*.tmp
 reports/**/*.temp
 reports/test-reports/*.log
+.cursor/
+.gitnexus/
+.vscode/
