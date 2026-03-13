@@ -36,29 +36,34 @@
 ## 🌟 Core Features
 
 ### ⚡ **Instant Delivery**
+
 - **Camera FTP Upload**: Direct upload from Sony/Canon cameras via FTP
 - **Real-time Processing**: Minutes-level photo delivery with automatic processing
 - **Batch Upload**: Multipart upload for large files, drag & drop support
 
 ### 🖼️ **Advanced Image Processing**
-- **Auto Processing**: EXIF rotation, thumbnail (400px) & preview (2560px) generation
+
+- **Auto Processing**: EXIF rotation, thumbnail (400px) & preview (1920px) generation
 - **Style Presets**: 13 professional presets (portrait, landscape, general) with real-time preview
 - **Watermarking**: Up to 6 watermarks (text & logo), 9-position grid, size adjustment
 - **Privacy Protection**: Automatic GPS removal from EXIF data
 
 ### 🎨 **Professional Presentation**
+
 - **Responsive Layouts**: Masonry & grid layouts, mobile optimized
 - **Dark Mode**: System-aware theme with custom primary colors
 - **Lightbox**: Keyboard navigation, full-screen viewing
 - **Custom Branding**: Logo, splash screens, dynamic posters
 
 ### 🔐 **Security & Access Control**
+
 - **Role-Based Access**: Admin, photographer, retoucher, viewer roles
 - **Permission Management**: Granular permission control per role
 - **Password Protection**: Album-level password and expiration dates
 - **Share Links**: Secure sharing with QR codes and custom posters
 
 ### 🛠️ **System Management**
+
 - **Web-Based Settings**: Configure system without editing `.env` files
 - **Brand Customization**: Logo, favicon, site title, SEO settings
 - **Data Backup**: Export/import system data (JSON format)
@@ -67,6 +72,7 @@
 - **Translation Management**: Customize system translations
 
 ### 💰 **Fully Self-Hosted**
+
 - **Zero External Dependencies**: PostgreSQL + MinIO + Redis (all self-hosted)
 - **Docker Deployment**: One-click deployment with Docker Compose
 - **Single Port**: Unified access via port 8088 (Nginx reverse proxy)
@@ -83,6 +89,7 @@ curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/deploy/on
 ```
 
 **What it does:**
+
 - ✅ Installs Docker & Docker Compose (if needed)
 - ✅ Generates secure secrets automatically
 - ✅ Starts all services (PostgreSQL + MinIO + Redis + Web + Worker + Nginx)
@@ -98,9 +105,9 @@ bash deploy.sh
 
 ### Access
 
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| Homepage | http://localhost:8080 | - |
+| Service         | URL                               | Credentials              |
+| --------------- | --------------------------------- | ------------------------ |
+| Homepage        | http://localhost:8080             | -                        |
 | Admin Dashboard | http://localhost:8080/admin/login | Created by deploy script |
 
 > 📖 **Full deployment guide**: [docs/i18n/en/DEPLOYMENT.md](docs/i18n/en/DEPLOYMENT.md)
@@ -118,6 +125,7 @@ Web (Next.js) → Nginx → Worker (BullMQ + Sharp) → MinIO
 ```
 
 **Single Port Access (8088):**
+
 - `/` - Public homepage
 - `/admin` - Admin dashboard
 - `/album/[slug]` - Client album pages

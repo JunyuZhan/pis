@@ -31,14 +31,14 @@ bash docker/deploy.sh
 
 脚本会自动为以下变量生成安全的随机值：
 
-| 变量名 | 占位符 | 说明 | 生成方式 |
-|--------|--------|------|----------|
-| `STORAGE_ACCESS_KEY` | `AUTO_GENERATE_16` | MinIO 访问密钥 | 16 字符随机字符串 |
-| `STORAGE_SECRET_KEY` | `AUTO_GENERATE` | MinIO 密钥 | 64 字符十六进制 |
-| `WORKER_API_KEY` | `AUTO_GENERATE_32` | Worker API 密钥 | 64 字符十六进制 |
-| `ALBUM_SESSION_SECRET` | `AUTO_GENERATE_32` | 会话签名密钥 | 64 字符十六进制 |
-| `REDIS_PASSWORD` | `AUTO_GENERATE` | Redis 密码 | 32 字符随机字符串 |
-| `POSTGRES_PASSWORD` | `AUTO_GENERATE` | PostgreSQL 密码 | 32 字符随机字符串 |
+| 变量名                 | 占位符             | 说明            | 生成方式          |
+| ---------------------- | ------------------ | --------------- | ----------------- |
+| `STORAGE_ACCESS_KEY`   | `AUTO_GENERATE_16` | MinIO 访问密钥  | 16 字符随机字符串 |
+| `STORAGE_SECRET_KEY`   | `AUTO_GENERATE`    | MinIO 密钥      | 64 字符十六进制   |
+| `WORKER_API_KEY`       | `AUTO_GENERATE_32` | Worker API 密钥 | 64 字符十六进制   |
+| `ALBUM_SESSION_SECRET` | `AUTO_GENERATE_32` | 会话签名密钥    | 64 字符十六进制   |
+| `REDIS_PASSWORD`       | `AUTO_GENERATE`    | Redis 密码      | 32 字符随机字符串 |
+| `POSTGRES_PASSWORD`    | `AUTO_GENERATE`    | PostgreSQL 密码 | 32 字符随机字符串 |
 
 ### 占位符说明
 
@@ -55,16 +55,19 @@ bash docker/deploy.sh
 ## 配置位置说明
 
 ### 前端 (Docker)
+
 - **位置**: 项目根目录 `.env` 或 `docker/.env`
 - **作用**: Next.js 应用运行时使用
 - **注意**: `NEXT_PUBLIC_*` 变量会暴露到浏览器
 
 ### Worker 服务器
+
 - **位置**: 项目根目录 `.env` 或 `docker/.env`
 - **作用**: Docker Compose 读取，传递给 Worker 容器
 - **注意**: 使用 Docker 内部网络地址（服务名）
 
 ### 本地开发
+
 - **位置**: 项目根目录 `.env.local`
 - **作用**: 本地开发环境使用
 - **注意**: 不提交到 Git（已在 .gitignore 中）
@@ -140,36 +143,38 @@ CLOUDFLARE_ZONE_ID=55be2d2f25313170ff6a622cda4c37ec
 
 ### 环境变量说明表
 
-| 变量名 | 类型 | 必需 | 说明 | 示例值 |
-|--------|------|------|------|--------|
-| `DATABASE_TYPE` | Private | ✅ | 数据库类型 | `postgresql` 或 `supabase` |
-| `DATABASE_URL` | Private | ❌ | PostgreSQL 连接字符串（方式1） | `postgresql://user:pass@host:5432/db` |
-| `DATABASE_HOST` | Private | ✅* | PostgreSQL 主机地址 | `postgres.example.com` |
-| `DATABASE_PORT` | Private | ❌ | PostgreSQL 端口 | `5432` |
-| `DATABASE_NAME` | Private | ✅* | PostgreSQL 数据库名 | `pis` |
-| `DATABASE_USER` | Private | ✅* | PostgreSQL 用户名 | `pis` |
-| `DATABASE_PASSWORD` | Private | ✅* | PostgreSQL 密码 | `your-secure-password` |
-| `DATABASE_SSL` | Private | ❌ | 是否使用 SSL | `true` 或 `false` |
-| `AUTH_JWT_SECRET` | Private | ✅ | JWT 签名密钥（会话管理） | `your-jwt-secret-key...` |
-| `NEXT_PUBLIC_MEDIA_URL` | Public | ✅ | 媒体服务器公网 URL（HTTPS） | `https://media.example.com/pis-photos` |
-| `NEXT_PUBLIC_WORKER_URL` | Public | ✅ | Worker API 公网 URL（HTTPS） | `https://worker.example.com` |
-| `WORKER_API_URL` | Private | ✅ | Worker API URL（服务端，兼容） | `https://worker.example.com` |
-| `WORKER_API_KEY` | Private | ✅ | Worker API 认证密钥 | `14566ade4b1a...` |
-| `NEXT_PUBLIC_APP_URL` | Public | ✅ | 应用公网访问地址 | `https://pic.example.com` |
-| `NEXT_PUBLIC_PHOTOGRAPHER_NAME` | Public | ✅ | 摄影师/品牌名称 | `PIS Photography` |
-| `NEXT_PUBLIC_PHOTOGRAPHER_TAGLINE` | Public | ✅ | 品牌标语 | `专业活动摄影` |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Public | ❌ | Cloudflare Turnstile 站点密钥 | `0x4AAAAAAA...` |
-| `TURNSTILE_SECRET_KEY` | Private | ❌ | Cloudflare Turnstile 密钥 | `0x4AAAAAAA...` |
-| `CLOUDFLARE_API_TOKEN` | Private | ❌ | Cloudflare API Token | `eefd8ypDgq_kJO2OivNQy7VFU6qj12KM7c1u03k3` |
-| `CLOUDFLARE_ZONE_ID` | Private | ❌ | Cloudflare Zone ID | `55be2d2f25313170ff6a622cda4c37ec` |
+| 变量名                             | 类型    | 必需 | 说明                           | 示例值                                     |
+| ---------------------------------- | ------- | ---- | ------------------------------ | ------------------------------------------ |
+| `DATABASE_TYPE`                    | Private | ✅   | 数据库类型                     | `postgresql` 或 `supabase`                 |
+| `DATABASE_URL`                     | Private | ❌   | PostgreSQL 连接字符串（方式1） | `postgresql://user:pass@host:5432/db`      |
+| `DATABASE_HOST`                    | Private | ✅\* | PostgreSQL 主机地址            | `postgres.example.com`                     |
+| `DATABASE_PORT`                    | Private | ❌   | PostgreSQL 端口                | `5432`                                     |
+| `DATABASE_NAME`                    | Private | ✅\* | PostgreSQL 数据库名            | `pis`                                      |
+| `DATABASE_USER`                    | Private | ✅\* | PostgreSQL 用户名              | `pis`                                      |
+| `DATABASE_PASSWORD`                | Private | ✅\* | PostgreSQL 密码                | `your-secure-password`                     |
+| `DATABASE_SSL`                     | Private | ❌   | 是否使用 SSL                   | `true` 或 `false`                          |
+| `AUTH_JWT_SECRET`                  | Private | ✅   | JWT 签名密钥（会话管理）       | `your-jwt-secret-key...`                   |
+| `NEXT_PUBLIC_MEDIA_URL`            | Public  | ✅   | 媒体服务器公网 URL（HTTPS）    | `https://media.example.com/pis-photos`     |
+| `NEXT_PUBLIC_WORKER_URL`           | Public  | ✅   | Worker API 公网 URL（HTTPS）   | `https://worker.example.com`               |
+| `WORKER_API_URL`                   | Private | ✅   | Worker API URL（服务端，兼容） | `https://worker.example.com`               |
+| `WORKER_API_KEY`                   | Private | ✅   | Worker API 认证密钥            | `14566ade4b1a...`                          |
+| `NEXT_PUBLIC_APP_URL`              | Public  | ✅   | 应用公网访问地址               | `https://pic.example.com`                  |
+| `NEXT_PUBLIC_PHOTOGRAPHER_NAME`    | Public  | ✅   | 摄影师/品牌名称                | `PIS Photography`                          |
+| `NEXT_PUBLIC_PHOTOGRAPHER_TAGLINE` | Public  | ✅   | 品牌标语                       | `专业活动摄影`                             |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY`   | Public  | ❌   | Cloudflare Turnstile 站点密钥  | `0x4AAAAAAA...`                            |
+| `TURNSTILE_SECRET_KEY`             | Private | ❌   | Cloudflare Turnstile 密钥      | `0x4AAAAAAA...`                            |
+| `CLOUDFLARE_API_TOKEN`             | Private | ❌   | Cloudflare API Token           | `eefd8ypDgq_kJO2OivNQy7VFU6qj12KM7c1u03k3` |
+| `CLOUDFLARE_ZONE_ID`               | Private | ❌   | Cloudflare Zone ID             | `55be2d2f25313170ff6a622cda4c37ec`         |
 
 **说明**:
-- ✅* 表示如果未使用 `DATABASE_URL`，则这些变量是必需的
+
+- ✅\* 表示如果未使用 `DATABASE_URL`，则这些变量是必需的
 - **Public**: `NEXT_PUBLIC_*` 前缀的变量会暴露到浏览器，不要包含敏感信息
 - **Private**: 无前缀的变量仅在服务端使用，可以包含敏感信息
 - **必需**: ✅ 表示应用运行必需，❌ 表示可选
 
 **说明**:
+
 - **Public**: `NEXT_PUBLIC_*` 前缀的变量会暴露到浏览器，不要包含敏感信息
 - **Private**: 无前缀的变量仅在服务端使用，可以包含敏感信息
 - **必需**: ✅ 表示应用运行必需，❌ 表示可选
@@ -194,6 +199,7 @@ CLOUDFLARE_ZONE_ID=55be2d2f25313170ff6a622cda4c37ec
 **原因**: Vercel 需要重新部署才能应用新的环境变量
 
 **解决**:
+
 - 在 Vercel Dashboard → Deployments 中点击 **Redeploy**
 - 或推送新的代码触发自动部署
 
@@ -202,6 +208,7 @@ CLOUDFLARE_ZONE_ID=55be2d2f25313170ff6a622cda4c37ec
 **原因**: `WORKER_API_KEY` 与 Worker 服务器不一致
 
 **解决**:
+
 - 检查 Vercel 和 Worker 服务器的 `WORKER_API_KEY` 是否完全相同
 - 确保没有多余的空格或换行符
 
@@ -210,6 +217,7 @@ CLOUDFLARE_ZONE_ID=55be2d2f25313170ff6a622cda4c37ec
 **原因**: PostgreSQL 连接配置错误
 
 **解决**:
+
 - 检查 `DATABASE_URL` 格式是否正确，或分别检查 `DATABASE_HOST`、`DATABASE_PORT`、`DATABASE_NAME`、`DATABASE_USER`、`DATABASE_PASSWORD`
 - 确保数据库服务器允许来自 Vercel IP 的连接
 - 如果使用 SSL，确保 `DATABASE_SSL=true` 且数据库服务器支持 SSL
@@ -219,6 +227,7 @@ CLOUDFLARE_ZONE_ID=55be2d2f25313170ff6a622cda4c37ec
 **原因**: `NEXT_PUBLIC_MEDIA_URL` 使用了 HTTP 或配置错误
 
 **解决**:
+
 - 确保 `NEXT_PUBLIC_MEDIA_URL` 使用 HTTPS
 - 检查 URL 格式是否正确（包含 `/pis-photos` 路径）
 
@@ -227,6 +236,7 @@ CLOUDFLARE_ZONE_ID=55be2d2f25313170ff6a622cda4c37ec
 ## Worker 服务器环境变量
 
 ### 文件位置
+
 `/opt/pis/docker/.env`
 
 ### 完整配置
@@ -277,8 +287,8 @@ WORKER_BIND_HOST=0.0.0.0                # 绑定所有接口（允许 frpc 访�
 WORKER_API_KEY=14566ade4b1a168eccf84ffb0d91e17e23662c5f966506de4c3aa82d16554cb8
 
 # ==================== 图片处理配置 ====================
-PREVIEW_MAX_SIZE=1920                   # 预览图最大尺寸（像素）
-THUMB_MAX_SIZE=250                      # 缩略图最大尺寸（像素）
+PREVIEW_MAX_SIZE=1920                   # 预览图最大尺寸（像素），默认 1920
+THUMB_MAX_SIZE=400                      # 缩略图最大尺寸（像素），默认 400
 
 # ==================== Cloudflare CDN 缓存清除 ====================
 CLOUDFLARE_API_TOKEN=eefd8ypDgq_kJO2OivNQy7VFU6qj12KM7c1u03k3
@@ -294,6 +304,7 @@ TURNSTILE_SECRET_KEY=0x4AAAAAAA5vowGPXhxUGUkqVTMvC-YaLNk
 ## 本地开发环境变量
 
 ### 文件位置
+
 项目根目录 `.env.local`
 
 ### 完整配置
@@ -371,71 +382,104 @@ CLOUDFLARE_ZONE_ID=55be2d2f25313170ff6a622cda4c37ec
 
 ### 数据库配置
 
-| 变量名 | 位置 | 说明 | 示例值 |
-|--------|------|------|--------|
-| `DATABASE_TYPE` | 所有 | 数据库类型 | `postgresql` 或 `supabase` |
-| `DATABASE_URL` | 所有 | PostgreSQL 连接字符串（可选） | `postgresql://user:pass@host:5432/db` |
-| `DATABASE_HOST` | 所有 | PostgreSQL 主机地址 | `localhost` 或 `postgres.example.com` |
-| `DATABASE_PORT` | 所有 | PostgreSQL 端口 | `5432` |
-| `DATABASE_NAME` | 所有 | PostgreSQL 数据库名 | `pis` |
-| `DATABASE_USER` | 所有 | PostgreSQL 用户名 | `pis` |
-| `DATABASE_PASSWORD` | 所有 | PostgreSQL 密码 | `your-secure-password` |
-| `DATABASE_SSL` | 所有 | 是否使用 SSL | `true` 或 `false` |
-| `AUTH_JWT_SECRET` | 所有 | JWT 签名密钥（会话管理） | `your-jwt-secret-key...` |
+| 变量名              | 位置 | 说明                          | 示例值                                |
+| ------------------- | ---- | ----------------------------- | ------------------------------------- |
+| `DATABASE_TYPE`     | 所有 | 数据库类型                    | `postgresql` 或 `supabase`            |
+| `DATABASE_URL`      | 所有 | PostgreSQL 连接字符串（可选） | `postgresql://user:pass@host:5432/db` |
+| `DATABASE_HOST`     | 所有 | PostgreSQL 主机地址           | `localhost` 或 `postgres.example.com` |
+| `DATABASE_PORT`     | 所有 | PostgreSQL 端口               | `5432`                                |
+| `DATABASE_NAME`     | 所有 | PostgreSQL 数据库名           | `pis`                                 |
+| `DATABASE_USER`     | 所有 | PostgreSQL 用户名             | `pis`                                 |
+| `DATABASE_PASSWORD` | 所有 | PostgreSQL 密码               | `your-secure-password`                |
+| `DATABASE_SSL`      | 所有 | 是否使用 SSL                  | `true` 或 `false`                     |
+| `AUTH_JWT_SECRET`   | 所有 | JWT 签名密钥（会话管理）      | `your-jwt-secret-key...`              |
 
 ### 存储配置
 
-| 变量名 | 位置 | 说明 | 示例值 |
-|--------|------|------|--------|
-| `NEXT_PUBLIC_MEDIA_URL` | Vercel | 前端访问媒体服务器的 URL | `https://media.example.com/pis-photos` |
-| `STORAGE_TYPE` | Worker | 存储类型 | `minio` |
-| `STORAGE_ENDPOINT` | Worker | 存储服务器地址（内网） | `minio` (Docker) 或 `localhost` (本地) |
-| `STORAGE_PORT` | Worker | 存储服务器端口 | `9000` |
-| `STORAGE_USE_SSL` | Worker | 是否使用 SSL | `false` |
-| `STORAGE_ACCESS_KEY` | Worker | 存储访问密钥 | `albert` |
-| `STORAGE_SECRET_KEY` | Worker | 存储密钥 | `Zjy-1314` |
-| `STORAGE_BUCKET` | Worker | 存储桶名称 | `pis-photos` |
-| `STORAGE_PUBLIC_URL` | Worker | 存储公网 URL（生成 presigned URL） | `https://media.example.com` |
-| `MINIO_PUBLIC_URL` | Worker | MinIO 公网 URL（兼容） | `https://media.example.com` |
+| 变量名                  | 位置   | 说明                                   | 示例值                                 |
+| ----------------------- | ------ | -------------------------------------- | -------------------------------------- |
+| `NEXT_PUBLIC_MEDIA_URL` | Vercel | 前端访问媒体服务器的 URL               | `https://media.example.com/pis-photos` |
+| `STORAGE_TYPE`          | Worker | 存储类型 (`minio`, `oss`, `cos`, `s3`) | `minio`                                |
+| `STORAGE_ENDPOINT`      | Worker | 存储服务器地址（内网）                 | `minio` (Docker) 或 `localhost` (本地) |
+| `STORAGE_PORT`          | Worker | 存储服务器端口                         | `9000`                                 |
+| `STORAGE_USE_SSL`       | Worker | 是否使用 SSL                           | `false`                                |
+| `STORAGE_ACCESS_KEY`    | Worker | 存储访问密钥                           | `albert`                               |
+| `STORAGE_SECRET_KEY`    | Worker | 存储密钥                               | `Zjy-1314`                             |
+| `STORAGE_BUCKET`        | Worker | 存储桶名称                             | `pis-photos`                           |
+| `STORAGE_REGION`        | Worker | 存储区域（可选，用于 S3）              | `us-east-1`                            |
+| `STORAGE_PUBLIC_URL`    | Worker | 存储公网 URL（生成 presigned URL）     | `https://media.example.com`            |
+| `MINIO_PUBLIC_URL`      | Worker | MinIO 公网 URL（兼容）                 | `https://media.example.com`            |
+| `MEDIA_DOMAIN`          | Worker | 允许的媒体域名白名单（安全）           | -                                      |
 
 **重要说明**:
+
 - `STORAGE_ENDPOINT`: Worker 服务器使用 Docker 服务名 `minio`，本地开发使用 `localhost`
 - `STORAGE_PUBLIC_URL`: 必须使用公网 HTTPS 域名，用于生成 presigned URL
 - `NEXT_PUBLIC_MEDIA_URL`: 前端访问 URL，必须使用 HTTPS
 
 ### Worker 服务配置
 
-| 变量名 | 位置 | 说明 | 示例值 |
-|--------|------|------|--------|
-| `WORKER_URL` | Worker | Worker 服务 URL（日志用） | `https://worker.example.com` |
-| `NEXT_PUBLIC_WORKER_URL` | Vercel | Worker API 公网 URL | `https://worker.example.com` |
-| `WORKER_API_KEY` | Vercel/Worker | Worker API 认证密钥 | `14566ade4b1a...` |
-| `HTTP_PORT` | Worker | Worker HTTP 端口 | `3001` |
-| `WORKER_BIND_HOST` | Worker | Worker 绑定地址 | `0.0.0.0` (允许 frpc 访问) |
+| 变量名                   | 位置          | 说明                      | 示例值                       |
+| ------------------------ | ------------- | ------------------------- | ---------------------------- |
+| `WORKER_URL`             | Worker        | Worker 服务 URL（日志用） | `https://worker.example.com` |
+| `NEXT_PUBLIC_WORKER_URL` | Vercel        | Worker API 公网 URL       | `https://worker.example.com` |
+| `WORKER_API_KEY`         | Vercel/Worker | Worker API 认证密钥       | `14566ade4b1a...`            |
+| `HTTP_PORT`              | Worker        | Worker HTTP 端口          | `3001`                       |
+| `WORKER_BIND_HOST`       | Worker        | Worker 绑定地址           | `0.0.0.0` (允许 frpc 访问)   |
 
 ### Redis 配置
 
-| 变量名 | 位置 | 说明 | 示例值 |
-|--------|------|------|--------|
-| `REDIS_HOST` | Worker | Redis 服务器地址 | `redis` (Docker) 或 `localhost` (本地) |
-| `REDIS_PORT` | Worker | Redis 端口 | `6379` |
-| `REDIS_PASSWORD` | Worker | Redis 密码（可选） | 空或密码字符串 |
+| 变量名           | 位置   | 说明               | 示例值                                 |
+| ---------------- | ------ | ------------------ | -------------------------------------- |
+| `REDIS_HOST`     | Worker | Redis 服务器地址   | `redis` (Docker) 或 `localhost` (本地) |
+| `REDIS_PORT`     | Worker | Redis 端口         | `6379`                                 |
+| `REDIS_PASSWORD` | Worker | Redis 密码（可选） | 空或密码字符串                         |
 
 ### 图片处理配置
 
-| 变量名 | 位置 | 说明 | 默认值 |
-|--------|------|------|--------|
+| 变量名             | 位置   | 说明                   | 默认值 |
+| ------------------ | ------ | ---------------------- | ------ |
 | `PREVIEW_MAX_SIZE` | Worker | 预览图最大尺寸（像素） | `1920` |
-| `THUMB_MAX_SIZE` | Worker | 缩略图最大尺寸（像素） | `250` |
+| `THUMB_MAX_SIZE`   | Worker | 缩略图最大尺寸（像素） | `400`  |
+
+### Worker 队列配置
+
+| 变量名                              | 位置   | 说明                         | 默认值    |
+| ----------------------------------- | ------ | ---------------------------- | --------- |
+| `PHOTO_PROCESSING_CONCURRENCY`      | Worker | 照片处理并发数               | `8`       |
+| `PHOTO_PROCESSING_LIMIT_MAX`        | Worker | 照片处理速率限制（次数）     | `16`      |
+| `PHOTO_PROCESSING_LIMIT_DURATION`   | Worker | 照片处理速率限制时间（毫秒） | `1000`    |
+| `PACKAGE_PROCESSING_CONCURRENCY`    | Worker | 打包下载并发数               | `4`       |
+| `STUCK_PHOTO_THRESHOLD_HOURS`       | Worker | 卡住照片超时时间（小时）     | `1`       |
+| `DELETED_PHOTO_RETENTION_DAYS`      | Worker | 已删除照片保留天数           | `30`      |
+| `DELETED_PHOTO_CLEANUP_INTERVAL_MS` | Worker | 已删除照片清理间隔（毫秒）   | `3600000` |
+| `PACKAGE_DOWNLOAD_EXPIRY_DAYS`      | Worker | 打包下载链接过期天数         | `15`      |
+| `MAX_SCAN_BATCH_SIZE`               | Worker | 扫描批次最大大小             | `1000`    |
+| `SCAN_BATCH_SIZE`                   | Worker | 扫描批次大小                 | `10`      |
+| `MAX_PACKAGE_PHOTOS`                | Worker | 打包最大照片数               | `500`     |
+| `ENABLE_ALBUM_CACHE`                | Worker | 是否启用相册缓存             | `true`    |
+| `ALBUM_CACHE_TTL_MS`                | Worker | 相册缓存 TTL（毫秒）         | `300000`  |
+| `SHUTDOWN_TIMEOUT_MS`               | Worker | 优雅关闭超时时间（毫秒）     | `30000`   |
+| `ENABLE_FACE_RECOGNITION`           | Worker | 是否启用人脸识别             | `false`   |
+
+### FTP 服务器配置
+
+| 变量名           | 位置   | 说明                 | 默认值     |
+| ---------------- | ------ | -------------------- | ---------- |
+| `FTP_ROOT_DIR`   | Worker | FTP 根目录           | `temp_ftp` |
+| `FTP_PORT`       | Worker | FTP 端口             | `21`       |
+| `FTP_PASV_START` | Worker | FTP 被动模式端口起始 | `30000`    |
+| `FTP_PASV_END`   | Worker | FTP 被动模式端口结束 | `30009`    |
+| `FTP_PASV_URL`   | Worker | FTP 被动模式对外 IP  | 自动检测   |
 
 ### Cloudflare 配置
 
-| 变量名 | 位置 | 说明 | 示例值 |
-|--------|------|------|--------|
-| `CLOUDFLARE_API_TOKEN` | Vercel/Worker | Cloudflare API Token | `eefd8ypDgq_kJO2OivNQy7VFU6qj12KM7c1u03k3` |
-| `CLOUDFLARE_ZONE_ID` | Vercel/Worker | Cloudflare Zone ID | `55be2d2f25313170ff6a622cda4c37ec` |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Vercel | Turnstile 站点密钥 | `0x4AAAAAAA5vowVVc5g_-Gxl` |
-| `TURNSTILE_SECRET_KEY` | Vercel | Turnstile 密钥 | `0x4AAAAAAA5vowGPXhxUGUkqVTMvC-YaLNk` |
+| 变量名                           | 位置          | 说明                 | 示例值                                     |
+| -------------------------------- | ------------- | -------------------- | ------------------------------------------ |
+| `CLOUDFLARE_API_TOKEN`           | Vercel/Worker | Cloudflare API Token | `eefd8ypDgq_kJO2OivNQy7VFU6qj12KM7c1u03k3` |
+| `CLOUDFLARE_ZONE_ID`             | Vercel/Worker | Cloudflare Zone ID   | `55be2d2f25313170ff6a622cda4c37ec`         |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Vercel        | Turnstile 站点密钥   | `0x4AAAAAAA5vowVVc5g_-Gxl`                 |
+| `TURNSTILE_SECRET_KEY`           | Vercel        | Turnstile 密钥       | `0x4AAAAAAA5vowGPXhxUGUkqVTMvC-YaLNk`      |
 
 ---
 
@@ -485,11 +529,13 @@ docker port pis-minio
 ### 1. Worker 无法连接 MinIO
 
 **错误配置**:
+
 ```bash
 MINIO_ENDPOINT_HOST=192.168.50.10  # ❌ 错误：使用 IP 地址
 ```
 
 **正确配置**:
+
 ```bash
 MINIO_ENDPOINT_HOST=minio          # ✅ 正确：使用 Docker 服务名
 ```
@@ -497,11 +543,13 @@ MINIO_ENDPOINT_HOST=minio          # ✅ 正确：使用 Docker 服务名
 ### 2. 前端无法访问媒体服务器
 
 **错误配置**:
+
 ```bash
 NEXT_PUBLIC_MEDIA_URL=http://media.example.com/pis-photos  # ❌ 错误：使用 HTTP
 ```
 
 **正确配置**:
+
 ```bash
 NEXT_PUBLIC_MEDIA_URL=https://media.example.com/pis-photos  # ✅ 正确：使用 HTTPS
 ```
@@ -509,11 +557,13 @@ NEXT_PUBLIC_MEDIA_URL=https://media.example.com/pis-photos  # ✅ 正确：使�
 ### 3. Presigned URL 签名不匹配
 
 **错误配置**:
+
 ```bash
 STORAGE_PUBLIC_URL=http://192.168.50.10:19000  # ❌ 错误：使用内网地址
 ```
 
 **正确配置**:
+
 ```bash
 STORAGE_PUBLIC_URL=https://media.example.com  # ✅ 正确：使用公网 HTTPS 域名
 ```
@@ -555,6 +605,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ### 配置 PostgreSQL 数据库
 
 1. **创建数据库**:
+
    ```sql
    CREATE DATABASE pis;
    CREATE USER pis WITH PASSWORD 'your-secure-password';
@@ -584,12 +635,14 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ### 更新环境变量
 
 #### Vercel
+
 1. 登录 Vercel Dashboard
 2. 进入项目 → Settings → Environment Variables
 3. 添加或修改变量
 4. 重新部署应用
 
 #### Worker 服务器
+
 ```bash
 # 1. 编辑环境变量文件
 ssh root@192.168.50.10

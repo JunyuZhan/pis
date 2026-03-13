@@ -7,6 +7,7 @@
 ## 🎯 系统概述
 
 PIS (Private Instant Photo Sharing) 是一个**私有化即时摄影分享系统**，专为摄影师设计，支持：
+
 - 📸 相机 FTP 直传
 - 🖼️ 自动图片处理（缩略图、预览图、水印）
 - 🌐 Web 相册展示
@@ -97,6 +98,7 @@ Next.js Web 容器 (端口 3000)
 ```
 
 **关键点**：
+
 - ✅ **单端口入口**：所有 Web 访问都通过 8088 端口
 - ✅ **路径路由**：不同路径路由到不同服务
 - ✅ **内部通信**：服务间通过 Docker 网络通信（容器名）
@@ -131,7 +133,7 @@ Redis 队列 (process-photo)
 Worker 处理任务
     ├──→ 读取原图
     ├──→ 生成缩略图 (400px)
-    ├──→ 生成预览图 (2560px)
+    ├──→ 生成预览图 (1920px)
     ├──→ 应用水印 (如果配置)
     ├──→ 应用样式预设 (如果配置)
     ├──→ 上传到 MinIO (processed/thumbs/, processed/previews/)
@@ -183,7 +185,7 @@ Worker 从 Redis 队列获取任务
     ├──→ EXIF 自动旋转
     ├──→ 手动旋转 (如果配置)
     ├──→ 生成缩略图 (400px, 质量 85%)
-    ├──→ 生成预览图 (2560px, 质量 90%)
+    ├──→ 生成预览图 (1920px, 质量 90%)
     ├──→ 应用水印 (最多 6 个)
     ├──→ 应用样式预设 (色彩调整)
     └──→ 移除 EXIF GPS 数据 (隐私保护)
@@ -244,15 +246,16 @@ Next.js API Route (/media/[...path])
 
 **主要表结构**：
 
-| 表名 | 用途 | 关键字段 |
-|------|------|---------|
-| `users` | 用户管理 | id, email, password_hash, role |
-| `albums` | 相册管理 | id, title, slug, upload_token, watermark_config |
-| `photos` | 照片记录 | id, album_id, filename, original_key, thumb_key, preview_key, status |
-| `photo_groups` | 照片分组 | id, album_id, name |
-| `templates` | 相册模板 | id, name, config |
+| 表名           | 用途     | 关键字段                                                             |
+| -------------- | -------- | -------------------------------------------------------------------- |
+| `users`        | 用户管理 | id, email, password_hash, role                                       |
+| `albums`       | 相册管理 | id, title, slug, upload_token, watermark_config                      |
+| `photos`       | 照片记录 | id, album_id, filename, original_key, thumb_key, preview_key, status |
+| `photo_groups` | 照片分组 | id, album_id, name                                                   |
+| `templates`    | 相册模板 | id, name, config                                                     |
 
 **数据流**：
+
 ```
 用户操作 → Next.js API → PostgreSQL
                 ↓
@@ -264,6 +267,7 @@ Next.js API Route (/media/[...path])
 ### 对象存储 (MinIO)
 
 **存储结构**：
+
 ```
 pis-photos/
 ├── raw/                    # 原图（未处理）
@@ -275,12 +279,13 @@ pis-photos/
     │   └── {album_id}/
     │       └── {photo_id}.jpg
     │
-    └── previews/          # 预览图 (2560px)
+    └── previews/          # 预览图 (1920px)
         └── {album_id}/
             └── {photo_id}.jpg
 ```
 
 **访问方式**：
+
 - 内部：`http://pis-minio:9000/pis-photos/...`
 - 外部：`http://yourdomain.com:8088/media/...` (通过 Next.js 代理)
 
@@ -338,6 +343,7 @@ POST /api/auth/login
 ```
 
 **为什么使用轮询？**
+
 - Standalone 模式不使用 Supabase Realtime
 - 轮询简单可靠，无需 WebSocket
 - 3 秒间隔对用户体验影响小
@@ -362,6 +368,7 @@ Worker 并发处理
 ```
 
 **优势**：
+
 - ✅ 异步处理，不阻塞上传
 - ✅ 自动重试，提高可靠性
 - ✅ 并发控制，避免资源耗尽
@@ -392,6 +399,7 @@ Worker → Redis
 ```
 
 **关键点**：
+
 - ✅ 使用容器名而非 IP 地址
 - ✅ Docker 自动 DNS 解析
 - ✅ 同一网络内可直接通信
@@ -403,44 +411,48 @@ Worker → Redis
 
 ### 对外暴露的端口
 
-| 端口 | 服务 | 说明 |
-|------|------|------|
-| **8088** | Nginx | ✅ **唯一 Web 入口**，所有 Web 访问都通过此端口 |
-| 21 | Worker FTP | FTP 命令端口（相机上传） |
-| 30000-30009 | Worker FTP | FTP 被动模式端口范围 |
+| 端口        | 服务       | 说明                                            |
+| ----------- | ---------- | ----------------------------------------------- |
+| **8088**    | Nginx      | ✅ **唯一 Web 入口**，所有 Web 访问都通过此端口 |
+| 21          | Worker FTP | FTP 命令端口（相机上传）                        |
+| 30000-30009 | Worker FTP | FTP 被动模式端口范围                            |
 
 ### 内部端口（不暴露）
 
-| 端口 | 服务 | 访问方式 |
-|------|------|---------|
-| 3000 | Next.js Web | 通过 Nginx 代理 (`/`) |
-| 3001 | Worker API | 通过 Next.js 代理 (`/api/worker/*`) |
-| 9000 | MinIO API | 通过 Next.js 代理 (`/media/*`) |
+| 端口 | 服务          | 访问方式                               |
+| ---- | ------------- | -------------------------------------- |
+| 3000 | Next.js Web   | 通过 Nginx 代理 (`/`)                  |
+| 3001 | Worker API    | 通过 Next.js 代理 (`/api/worker/*`)    |
+| 9000 | MinIO API     | 通过 Next.js 代理 (`/media/*`)         |
 | 9001 | MinIO Console | 通过 Next.js 代理 (`/minio-console/*`) |
-| 5432 | PostgreSQL | 仅 Docker 内部网络 |
-| 6379 | Redis | 仅 Docker 内部网络 |
+| 5432 | PostgreSQL    | 仅 Docker 内部网络                     |
+| 6379 | Redis         | 仅 Docker 内部网络                     |
 
 ---
 
 ## 🎯 关键设计原则
 
 ### 1. 单端口入口
+
 - ✅ 所有 Web 访问通过 8088 端口
 - ✅ 其他服务不对外暴露
 - ✅ 最小化攻击面
 
 ### 2. 路径路由
+
 - ✅ `/` → Next.js 前端
 - ✅ `/api/*` → Next.js API
 - ✅ `/media/*` → MinIO 媒体文件
 - ✅ `/api/worker/*` → Worker API
 
 ### 3. 异步处理
+
 - ✅ 上传立即返回
 - ✅ 图片处理在后台队列进行
 - ✅ 不阻塞用户操作
 
 ### 4. 数据安全
+
 - ✅ 原图存储在 `raw/` 目录（不公开）
 - ✅ 处理后的图片在 `processed/` 目录（可公开）
 - ✅ EXIF GPS 数据自动移除
@@ -505,16 +517,19 @@ Worker → Redis
 ## 📊 性能优化
 
 ### 1. 图片优化
+
 - ✅ 多尺寸生成（缩略图、预览图）
 - ✅ 懒加载和占位符
 - ✅ CDN 缓存（如果配置）
 
 ### 2. 队列处理
+
 - ✅ 并发处理（最多 4 个任务）
 - ✅ 任务优先级
 - ✅ 失败自动重试
 
 ### 3. 数据库优化
+
 - ✅ 索引优化
 - ✅ 查询缓存
 - ✅ 连接池
@@ -532,6 +547,7 @@ Worker → Redis
 5. **易于扩展**：微服务架构，可独立扩展各组件
 
 **核心优势**：
+
 - ✅ 完全自托管，数据隐私
 - ✅ 相机 FTP 直传，无需手机 APP
 - ✅ 自动图片处理，专业级效果
