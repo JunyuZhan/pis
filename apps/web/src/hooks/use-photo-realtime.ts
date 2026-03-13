@@ -151,13 +151,16 @@ export function usePhotoRealtime({
     connectSSE();
 
     return () => {
-      // 清理
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
+      // 清理 - 先保存 ref 值到变量
+      const eventSource = eventSourceRef.current;
+      const retryTimeout = retryTimeoutRef.current;
+
+      if (eventSource) {
+        eventSource.close();
         eventSourceRef.current = null;
       }
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
         retryTimeoutRef.current = null;
       }
       knownPhotoIdsRef.current.clear();
@@ -256,12 +259,17 @@ export function usePhotoRealtimeAdmin({
     connectSSE();
 
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
+      // 清理 - 先保存 ref 值到变量
+      const eventSource = eventSourceRef.current;
+      const retryTimeout = retryTimeoutRef.current;
+
+      if (eventSource) {
+        eventSource.close();
         eventSourceRef.current = null;
       }
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+        retryTimeoutRef.current = null;
       }
       photoStatusMapRef.current.clear();
     };
