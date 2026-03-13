@@ -152,8 +152,11 @@ export function usePhotoRealtime({
 
     return () => {
       // 清理 - 先保存 ref 值到变量
+      /* eslint-disable react-hooks/exhaustive-deps */
       const eventSource = eventSourceRef.current;
       const retryTimeout = retryTimeoutRef.current;
+      const knownPhotoIds = knownPhotoIdsRef.current;
+      /* eslint-enable react-hooks/exhaustive-deps */
 
       if (eventSource) {
         eventSource.close();
@@ -163,7 +166,7 @@ export function usePhotoRealtime({
         clearTimeout(retryTimeout);
         retryTimeoutRef.current = null;
       }
-      knownPhotoIdsRef.current.clear();
+      knownPhotoIds.clear();
       isInitializedRef.current = false;
     };
   }, [albumId, albumSlug, enabled, connectSSE]);
@@ -260,8 +263,11 @@ export function usePhotoRealtimeAdmin({
 
     return () => {
       // 清理 - 先保存 ref 值到变量
+      /* eslint-disable react-hooks/exhaustive-deps */
       const eventSource = eventSourceRef.current;
       const retryTimeout = retryTimeoutRef.current;
+      const photoStatusMap = photoStatusMapRef.current;
+      /* eslint-enable react-hooks/exhaustive-deps */
 
       if (eventSource) {
         eventSource.close();
@@ -271,7 +277,7 @@ export function usePhotoRealtimeAdmin({
         clearTimeout(retryTimeout);
         retryTimeoutRef.current = null;
       }
-      photoStatusMapRef.current.clear();
+      photoStatusMap.clear();
     };
   }, [albumId, enabled, connectSSE]);
 }
