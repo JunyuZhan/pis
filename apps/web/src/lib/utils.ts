@@ -4,8 +4,8 @@
  * @description 提供项目常用的工具函数，包括类名合并、日期格式化等
  * @module lib/utils
  */
-import { clsx, type ClassValue } from 'clsx'
-import { twMerge } from 'tailwind-merge'
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
 /**
  * 合并 Tailwind CSS 类名
@@ -20,7 +20,7 @@ import { twMerge } from 'tailwind-merge'
  * ```
  */
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
 /**
@@ -35,11 +35,11 @@ export function cn(...inputs: ClassValue[]) {
  * ```
  */
 export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
 
 /**
@@ -50,17 +50,13 @@ export function formatFileSize(bytes: number): string {
  * @returns {string} 格式化后的日期字符串
  */
 export function formatDate(date: string | Date): string {
-  const d = new Date(date)
-  const year = d.getFullYear()
-  const month = d.getMonth() + 1
-  const day = d.getDate()
-  if (month < 1 || month > 12) return ''
-  
-  // 中文月份名称
-  const monthNames = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二']
-  const monthName = monthNames[month - 1]
-  
-  return `${year}年${monthName}月${day}日`
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  if (month < 1 || month > 12) return '';
+
+  return `${year}年${month}月${day}日`;
 }
 
 /**
@@ -73,23 +69,23 @@ export function formatDate(date: string | Date): string {
 export function formatRelativeTime(date: string | Date): string {
   // 服务端渲染时，返回固定格式的日期以避免 hydration 不匹配
   if (typeof window === 'undefined') {
-    return formatDate(date)
+    return formatDate(date);
   }
 
-  const now = new Date()
-  const target = new Date(date)
-  const diff = now.getTime() - target.getTime()
+  const now = new Date();
+  const target = new Date(date);
+  const diff = now.getTime() - target.getTime();
 
-  const minutes = Math.floor(diff / 60000)
-  const hours = Math.floor(diff / 3600000)
-  const days = Math.floor(diff / 86400000)
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
 
-  if (minutes < 1) return '刚刚'
-  if (minutes < 60) return `${minutes} 分钟前`
-  if (hours < 24) return `${hours} 小时前`
-  if (days < 30) return `${days} 天前`
+  if (minutes < 1) return '刚刚';
+  if (minutes < 60) return `${minutes} 分钟前`;
+  if (hours < 24) return `${hours} 小时前`;
+  if (days < 30) return `${days} 天前`;
 
-  return formatDate(date)
+  return formatDate(date);
 }
 
 /**
@@ -102,23 +98,23 @@ export function formatRelativeTime(date: string | Date): string {
 export function getAppBaseUrl(): string {
   // 服务端：使用环境变量
   if (typeof window === 'undefined') {
-    return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   }
-  
+
   // 客户端：智能处理域名/IP 不匹配的情况
-  const envUrl = process.env.NEXT_PUBLIC_APP_URL
-  const currentOrigin = window.location.origin
-  const currentHost = window.location.hostname
-  
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const currentOrigin = window.location.origin;
+  const currentHost = window.location.hostname;
+
   // 如果没有配置环境变量，使用当前域名
   if (!envUrl) {
-    return currentOrigin
+    return currentOrigin;
   }
-  
+
   try {
-    const url = new URL(envUrl)
-    const configuredHost = url.hostname
-    
+    const url = new URL(envUrl);
+    const configuredHost = url.hostname;
+
     // 核心逻辑：如果配置的主机与当前主机不同，使用当前域名
     // 这样无论是 localhost、IP 地址还是域名，只要不匹配就自动使用当前页面的域名
     // 这支持以下场景：
@@ -126,20 +122,20 @@ export function getAppBaseUrl(): string {
     // - 配置内网 IP，通过域名访问
     // - 配置域名 A，通过域名 B 访问（反向代理）
     if (configuredHost !== currentHost) {
-      return currentOrigin
+      return currentOrigin;
     }
-    
-    return envUrl
+
+    return envUrl;
   } catch {
     // URL 解析失败，使用当前域名
-    return currentOrigin
+    return currentOrigin;
   }
 }
 
 /**
  * 获取内部 API URL（用于服务端内部调用）
  *
- * @description 
+ * @description
  * - 服务端内部调用需要使用绝对 URL（因为服务端 fetch 不支持相对路径）
  * - 在容器内部，应该使用 localhost（因为服务端和 API 路由在同一个容器中）
  * - 客户端可以使用相对路径
@@ -148,53 +144,53 @@ export function getAppBaseUrl(): string {
  */
 export function getInternalApiUrl(path: string): string {
   // 确保路径以 / 开头
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`
-  
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+
   // 服务端：必须使用绝对 URL（服务端 fetch 不支持相对路径）
   if (typeof window === 'undefined') {
     // 优先使用 INTERNAL_API_URL（容器内部 URL，如 http://localhost:3000）
     // 如果没有设置，使用 localhost（因为服务端和 API 路由在同一个容器中）
-    const internalApiUrl = process.env.INTERNAL_API_URL
+    const internalApiUrl = process.env.INTERNAL_API_URL;
     if (internalApiUrl) {
-      return `${internalApiUrl.replace(/\/$/, '')}${normalizedPath}`
+      return `${internalApiUrl.replace(/\/$/, '')}${normalizedPath}`;
     }
-    
+
     // 默认使用 localhost（容器内部调用）
     // 注意：不要使用 NEXT_PUBLIC_APP_URL，因为那是公网 URL，服务端内部调用应该使用容器内部地址
-    const port = process.env.PORT || '3000'
-    const defaultUrl = `http://localhost:${port}`
-    return `${defaultUrl}${normalizedPath}`
+    const port = process.env.PORT || '3000';
+    const defaultUrl = `http://localhost:${port}`;
+    return `${defaultUrl}${normalizedPath}`;
   }
-  
+
   // 客户端：使用相对路径
-  return normalizedPath
+  return normalizedPath;
 }
 
 /**
  * 获取安全的媒体 URL（修复 localhost HTTPS 问题）
  *
- * @description 
+ * @description
  * - 如果媒体 URL 是 https://localhost，自动转换为相对路径或使用当前页面协议
  * - 如果媒体 URL 为空，使用相对路径 /media
  * - 开发环境：如果配置了 localhost:8080 但实际运行在 3000 端口，自动转换为相对路径
  * @returns {string} 安全的媒体 URL
  */
 export function getSafeMediaUrl(url?: string): string {
-  const mediaUrl = url || process.env.NEXT_PUBLIC_MEDIA_URL || ''
-  
+  const mediaUrl = url || process.env.NEXT_PUBLIC_MEDIA_URL || '';
+
   // 如果媒体 URL 为空，使用相对路径
   if (!mediaUrl) {
-    return '/media'
+    return '/media';
   }
-  
+
   // 如果已经是相对路径，直接返回
   if (mediaUrl.startsWith('/')) {
-    return mediaUrl
+    return mediaUrl;
   }
-  
+
   try {
-    const parsedUrl = new URL(mediaUrl)
-    
+    const parsedUrl = new URL(mediaUrl);
+
     // 服务端：使用相对路径（避免容器内无法访问外部 URL 的问题）
     // Next.js Image 优化器在服务端运行，如果 URL 是 localhost:8088，
     // 在容器内部是无法访问的，会导致 500 错误
@@ -202,15 +198,15 @@ export function getSafeMediaUrl(url?: string): string {
       // 服务端始终使用相对路径，这样：
       // 1. Next.js Image 可以通过内部路由访问图片
       // 2. 避免 localhost/IP 在容器内无法解析的问题
-      return parsedUrl.pathname || '/media'
+      return parsedUrl.pathname || '/media';
     }
-    
+
     // 客户端：智能处理域名/IP 不匹配和协议不匹配
-    const currentHost = window.location.hostname
-    const currentProtocol = window.location.protocol
-    const configuredHost = parsedUrl.hostname
-    const configuredProtocol = parsedUrl.protocol
-    
+    const currentHost = window.location.hostname;
+    const currentProtocol = window.location.protocol;
+    const configuredHost = parsedUrl.hostname;
+    const configuredProtocol = parsedUrl.protocol;
+
     // 核心逻辑：
     // 1. 如果配置的主机与当前主机不同，使用相对路径
     // 2. 如果配置的协议是 HTTP 但当前页面是 HTTPS，使用相对路径（避免混合内容警告）
@@ -219,15 +215,17 @@ export function getSafeMediaUrl(url?: string): string {
     // - 配置内网 IP，通过域名访问（frpc 反向代理）
     // - 配置域名 A，通过域名 B 访问
     // - 配置 HTTP，但通过 HTTPS 访问（避免混合内容警告）
-    if (configuredHost !== currentHost || 
-        (configuredProtocol === 'http:' && currentProtocol === 'https:')) {
-      return parsedUrl.pathname || '/media'
+    if (
+      configuredHost !== currentHost ||
+      (configuredProtocol === 'http:' && currentProtocol === 'https:')
+    ) {
+      return parsedUrl.pathname || '/media';
     }
-    
-    return mediaUrl
+
+    return mediaUrl;
   } catch {
     // URL 解析失败，可能是相对路径，直接返回
-    return mediaUrl || '/media'
+    return mediaUrl || '/media';
   }
 }
 
@@ -241,11 +239,11 @@ export function getSafeMediaUrl(url?: string): string {
 export function getAlbumShareUrl(slug: string): string {
   // 验证 slug 有效性
   if (!slug || typeof slug !== 'string' || slug.trim() === '') {
-    throw new Error('Invalid album slug')
+    throw new Error('Invalid album slug');
   }
   // 对 slug 进行 URL 编码，防止特殊字符导致 URL 无效
-  const encodedSlug = encodeURIComponent(slug.trim())
-  return `${getAppBaseUrl()}/album/${encodedSlug}`
+  const encodedSlug = encodeURIComponent(slug.trim());
+  return `${getAppBaseUrl()}/album/${encodedSlug}`;
 }
 
 /**
@@ -262,19 +260,19 @@ export function getAlbumShareUrl(slug: string): string {
  */
 export function generateAlbumSlug(): string {
   // 只使用小写字母（a-z），便于在相机上输入
-  const letters = 'abcdefghijklmnopqrstuvwxyz'
-  let result = ''
-  
+  const letters = 'abcdefghijklmnopqrstuvwxyz';
+  let result = '';
+
   // 服务端：使用 Node.js crypto 模块
   if (typeof window === 'undefined' && typeof require !== 'undefined') {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const crypto = require('crypto')
-      const bytes = crypto.randomBytes(8)
+      const crypto = require('crypto');
+      const bytes = crypto.randomBytes(8);
       for (let i = 0; i < 8; i++) {
-        result += letters[bytes[i] % 26]
+        result += letters[bytes[i] % 26];
       }
-      return result
+      return result;
     } catch {
       // 如果 require 失败，回退到其他方法
     }
@@ -282,32 +280,32 @@ export function generateAlbumSlug(): string {
 
   // 客户端或服务端回退方案：使用 Web Crypto API
   if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    const array = new Uint8Array(8)
-    crypto.getRandomValues(array)
+    const array = new Uint8Array(8);
+    crypto.getRandomValues(array);
     for (let i = 0; i < 8; i++) {
-      result += letters[array[i] % 26]
+      result += letters[array[i] % 26];
     }
-    return result
+    return result;
   }
 
   // 最后的回退方案：使用 Math.random
   for (let i = 0; i < 8; i++) {
-    result += letters[Math.floor(Math.random() * 26)]
+    result += letters[Math.floor(Math.random() * 26)];
   }
-  return result
+  return result;
 }
 
 /**
  * 截断文本
- * 
+ *
  * @param {string} text 文本内容
  * @param {number} maxLength 最大长度
  * @returns {string} 截断后的文本
  */
 export function truncateText(text: string, maxLength: number): string {
-  if (!text) return ''
-  if (text.length <= maxLength) return text
-  return text.slice(0, maxLength) + '...'
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength) + '...';
 }
 
 /**
@@ -315,7 +313,7 @@ export function truncateText(text: string, maxLength: number): string {
  *
  * @description 生成 8 位全数字的随机令牌，用于 FTP 密码
  * 为了便于在相机上输入，使用纯数字，避免字母和特殊字符
- * 
+ *
  * @param {number} [length=8] 令牌长度（默认 8 位数字）
  * @returns {string} 随机令牌字符串（8 位数字）
  *
@@ -327,19 +325,19 @@ export function truncateText(text: string, maxLength: number): string {
  */
 export function generateUploadToken(length: number = 8): string {
   // 只使用数字（0-9），便于在相机上输入
-  const digits = '0123456789'
-  let result = ''
-  
+  const digits = '0123456789';
+  let result = '';
+
   // 服务端：使用 Node.js crypto 模块
   if (typeof window === 'undefined' && typeof require !== 'undefined') {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const crypto = require('crypto')
-      const bytes = crypto.randomBytes(length)
+      const crypto = require('crypto');
+      const bytes = crypto.randomBytes(length);
       for (let i = 0; i < length; i++) {
-        result += digits[bytes[i] % 10]
+        result += digits[bytes[i] % 10];
       }
-      return result
+      return result;
     } catch {
       // 如果 require 失败，回退到其他方法
     }
@@ -347,19 +345,19 @@ export function generateUploadToken(length: number = 8): string {
 
   // 客户端或服务端回退方案：使用 Web Crypto API
   if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    const array = new Uint8Array(length)
-    crypto.getRandomValues(array)
+    const array = new Uint8Array(length);
+    crypto.getRandomValues(array);
     for (let i = 0; i < length; i++) {
-      result += digits[array[i] % 10]
+      result += digits[array[i] % 10];
     }
-    return result
+    return result;
   }
 
   // 最后的回退方案：使用 Math.random
   for (let i = 0; i < length; i++) {
-    result += digits[Math.floor(Math.random() * 10)]
+    result += digits[Math.floor(Math.random() * 10)];
   }
-  return result
+  return result;
 }
 
 /**
@@ -377,21 +375,21 @@ export function generateUploadToken(length: number = 8): string {
 export function getFtpServerHost(): string {
   // 优先使用环境变量
   if (process.env.FTP_HOST) {
-    return process.env.FTP_HOST
+    return process.env.FTP_HOST;
   }
 
   // 客户端：尝试从 window.location 获取
   if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname
+    const hostname = window.location.hostname;
     // 如果是 localhost，返回提示信息
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'localhost'
+      return 'localhost';
     }
-    return hostname
+    return hostname;
   }
 
   // 服务端：使用默认值或从环境变量获取
-  return process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '').split(':')[0] || 'localhost'
+  return process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '').split(':')[0] || 'localhost';
 }
 
 /**
@@ -401,6 +399,6 @@ export function getFtpServerHost(): string {
  * @returns {number} FTP 端口号
  */
 export function getFtpServerPort(): number {
-  const port = process.env.FTP_PORT || process.env.NEXT_PUBLIC_FTP_PORT || '21'
-  return parseInt(port, 10) || 21
+  const port = process.env.FTP_PORT || process.env.NEXT_PUBLIC_FTP_PORT || '21';
+  return parseInt(port, 10) || 21;
 }
