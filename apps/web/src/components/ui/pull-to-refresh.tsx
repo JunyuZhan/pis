@@ -39,7 +39,7 @@ export function PullToRefresh({
     const handleTouchStart = (e: TouchEvent) => {
       // 只有在完全滚动到顶部时（scrollTop <= 5）才允许下拉刷新
       if (container.scrollTop > 5) return;
-      
+
       startY.current = e.touches[0].clientY;
       setIsPulling(true);
     };
@@ -63,7 +63,6 @@ export function PullToRefresh({
         setPullDistance(dampedDistance);
         e.preventDefault();
       }
-    };
     };
 
     const handleTouchEnd = async () => {
