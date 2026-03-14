@@ -7,27 +7,29 @@
 **位置**: `apps/web/src/components/admin/photo-uploader.tsx:15`
 
 ```typescript
-const MAX_CONCURRENT_UPLOADS = 5 // 最大同时上传数量
+const MAX_CONCURRENT_UPLOADS = 5; // 最大同时上传数量
 ```
 
 **说明**:
+
 - 前端同时上传的文件数量限制
 - 默认值：**5 张**
 - 超过此数量的文件会进入等待队列
 
 ### 2. Worker 处理队列并发数
 
-**位置**: `services/worker/src/index.ts:214-216`
+**位置**: `services/worker/src/index.ts:210`
 
 ```typescript
 PHOTO_PROCESSING_CONCURRENCY: parseInt(
-  process.env.PHOTO_PROCESSING_CONCURRENCY || "5",
+  process.env.PHOTO_PROCESSING_CONCURRENCY || "8",
 ),
 ```
 
 **说明**:
+
 - Worker 同时处理的照片数量限制
-- 默认值：**5 张**
+- 默认值：**8 张**
 - 可通过环境变量 `PHOTO_PROCESSING_CONCURRENCY` 配置
 
 ### 3. 测试脚本并发数
@@ -39,17 +41,18 @@ CONCURRENT_UPLOADS="${CONCURRENT_UPLOADS:-5}"
 ```
 
 **说明**:
+
 - 测试脚本的并发上传数量
 - 默认值：**5 张**
 - 可通过环境变量 `CONCURRENT_UPLOADS` 配置
 
 ## 配置总结
 
-| 位置 | 配置项 | 默认值 | 可配置 |
-|------|--------|--------|--------|
-| 前端上传组件 | `MAX_CONCURRENT_UPLOADS` | 5 | 需修改代码 |
-| Worker 处理队列 | `PHOTO_PROCESSING_CONCURRENCY` | 5 | 环境变量 |
-| 测试脚本 | `CONCURRENT_UPLOADS` | 5 | 环境变量 |
+| 位置            | 配置项                         | 默认值 | 可配置     |
+| --------------- | ------------------------------ | ------ | ---------- |
+| 前端上传组件    | `MAX_CONCURRENT_UPLOADS`       | 5      | 需修改代码 |
+| Worker 处理队列 | `PHOTO_PROCESSING_CONCURRENCY` | 8      | 环境变量   |
+| 测试脚本        | `CONCURRENT_UPLOADS`           | 5      | 环境变量   |
 
 ## 如何修改
 
@@ -58,7 +61,7 @@ CONCURRENT_UPLOADS="${CONCURRENT_UPLOADS:-5}"
 编辑 `apps/web/src/components/admin/photo-uploader.tsx`:
 
 ```typescript
-const MAX_CONCURRENT_UPLOADS = 10 // 修改为 10 张
+const MAX_CONCURRENT_UPLOADS = 10; // 修改为 10 张
 ```
 
 ### 2. 修改 Worker 处理并发数
@@ -82,11 +85,11 @@ export CONCURRENT_UPLOADS=10
 
 ### 推荐配置
 
-| 服务器资源 | 前端并发 | Worker 并发 | 说明 |
-|------------|----------|-------------|------|
-| 低配置（2核2G） | 3 | 3 | 避免资源耗尽 |
-| 中配置（4核4G） | 5 | 5 | 默认配置 |
-| 高配置（8核8G+） | 10 | 10 | 提升吞吐量 |
+| 服务器资源       | 前端并发 | Worker 并发 | 说明         |
+| ---------------- | -------- | ----------- | ------------ |
+| 低配置（2核2G）  | 3        | 3           | 避免资源耗尽 |
+| 中配置（4核4G）  | 5        | 5           | 默认配置     |
+| 高配置（8核8G+） | 10       | 10          | 提升吞吐量   |
 
 ### 注意事项
 
