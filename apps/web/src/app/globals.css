@@ -221,10 +221,10 @@
 
   /* 输入框 */
   .input {
-    @apply w-full px-4 py-2 bg-surface-elevated border border-border
+    @apply w-full px-4 py-3 bg-surface-elevated border border-border
            text-text-primary placeholder:text-text-muted
            focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent
-           transition-all duration-200;
+           transition-all duration-200 min-h-[44px];
     border-radius: var(--radius-base);
   }
 
@@ -310,10 +310,10 @@
 
   /* 移动端输入框字体大小优化（防止自动缩放） */
   @media (max-width: 640px) {
-    input[type="text"],
-    input[type="number"],
-    input[type="email"],
-    input[type="password"],
+    input[type='text'],
+    input[type='number'],
+    input[type='email'],
+    input[type='password'],
     textarea,
     select {
       font-size: 16px !important;

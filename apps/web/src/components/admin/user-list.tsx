@@ -1,30 +1,41 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import { Plus, Search, Filter, Edit2, Trash2, Loader2, Shield, User, Palette, Eye } from 'lucide-react'
-import { CreateUserDialog } from './create-user-dialog'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { showSuccess, handleApiError } from '@/lib/toast'
-import { formatRelativeTime } from '@/lib/utils'
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  Plus,
+  Search,
+  Filter,
+  Edit2,
+  Trash2,
+  Loader2,
+  Shield,
+  User,
+  Palette,
+  Eye,
+} from 'lucide-react';
+import { CreateUserDialog } from './create-user-dialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { showSuccess, handleApiError } from '@/lib/toast';
+import { formatRelativeTime } from '@/lib/utils';
 
-type UserRole = 'admin' | 'photographer' | 'retoucher' | 'guest'
+type UserRole = 'admin' | 'photographer' | 'retoucher' | 'guest';
 
 interface User {
-  id: string
-  email: string
-  role: UserRole
-  is_active: boolean
-  last_login_at: string | null
-  created_at: string
-  updated_at: string
+  id: string;
+  email: string;
+  role: UserRole;
+  is_active: boolean;
+  last_login_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Pagination {
-  page: number
-  limit: number
-  total: number
-  totalPages: number
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
 const roleLabels: Record<UserRole, string> = {
@@ -32,81 +43,81 @@ const roleLabels: Record<UserRole, string> = {
   photographer: '摄影师',
   retoucher: '修图师',
   guest: '访客',
-}
+};
 
 const roleIcons: Record<UserRole, typeof Shield> = {
   admin: Shield,
   photographer: User,
   retoucher: Palette,
   guest: Eye,
-}
+};
 
 export function UserList() {
-  const router = useRouter()
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const router = useRouter();
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
     limit: 50,
     total: 0,
     totalPages: 0,
-  })
-  const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  });
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
-    open: boolean
-    title: string
-    message: string
-    onConfirm: () => void | Promise<void>
-    variant?: 'default' | 'danger'
-  } | null>(null)
+    open: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void | Promise<void>;
+    variant?: 'default' | 'danger';
+  } | null>(null);
 
   const loadUsers = useCallback(async () => {
     try {
-      setLoading(true)
+      setLoading(true);
       const params = new URLSearchParams({
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
-      })
+      });
 
       if (roleFilter !== 'all') {
-        params.append('role', roleFilter)
+        params.append('role', roleFilter);
       }
 
       if (statusFilter !== 'all') {
-        params.append('is_active', statusFilter === 'active' ? 'true' : 'false')
+        params.append('is_active', statusFilter === 'active' ? 'true' : 'false');
       }
 
       if (searchQuery.trim()) {
-        params.append('search', searchQuery.trim())
+        params.append('search', searchQuery.trim());
       }
 
-      const response = await fetch(`/api/admin/users?${params.toString()}`)
-      const data = await response.json()
+      const response = await fetch(`/api/admin/users?${params.toString()}`);
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error?.message || '加载用户列表失败')
+        throw new Error(data.error?.message || '加载用户列表失败');
       }
 
-      setUsers(data.data?.users || [])
+      setUsers(data.data?.users || []);
       setPagination((prev) => ({
         ...prev,
         total: data.data?.pagination?.total || 0,
         totalPages: data.data?.pagination?.totalPages || 0,
-      }))
+      }));
     } catch (error) {
-      handleApiError(error, '加载用户列表失败')
+      handleApiError(error, '加载用户列表失败');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [pagination.page, pagination.limit, roleFilter, statusFilter, searchQuery])
+  }, [pagination.page, pagination.limit, roleFilter, statusFilter, searchQuery]);
 
   useEffect(() => {
-    loadUsers()
-  }, [loadUsers])
+    loadUsers();
+  }, [loadUsers]);
 
   const handleDelete = (user: User) => {
     setConfirmDialog({
@@ -115,37 +126,37 @@ export function UserList() {
       message: `确定要删除用户 "${user.email}" 吗？此操作不可恢复。`,
       variant: 'danger',
       onConfirm: async () => {
-        setIsDeleting(user.id)
+        setIsDeleting(user.id);
         try {
           const response = await fetch(`/api/admin/users/${user.id}`, {
             method: 'DELETE',
-          })
+          });
 
           if (!response.ok) {
-            const data = await response.json()
-            throw new Error(data.error?.message || '删除失败')
+            const data = await response.json();
+            throw new Error(data.error?.message || '删除失败');
           }
 
-          showSuccess('用户已删除')
-          loadUsers()
+          showSuccess('用户已删除');
+          loadUsers();
         } catch (error) {
-          handleApiError(error, '删除用户失败')
+          handleApiError(error, '删除用户失败');
         } finally {
-          setIsDeleting(null)
-          setConfirmDialog(null)
+          setIsDeleting(null);
+          setConfirmDialog(null);
         }
       },
-    })
-  }
+    });
+  };
 
   const handleCreateSuccess = () => {
-    setCreateDialogOpen(false)
-    loadUsers()
-  }
+    setCreateDialogOpen(false);
+    loadUsers();
+  };
 
   const handlePageChange = (newPage: number) => {
-    setPagination((prev) => ({ ...prev, page: newPage }))
-  }
+    setPagination((prev) => ({ ...prev, page: newPage }));
+  };
 
   return (
     <div>
@@ -153,13 +164,11 @@ export function UserList() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 md:mb-8">
         <div>
           <h1 className="text-xl md:text-2xl font-serif font-bold">用户管理</h1>
-          <p className="text-text-secondary text-sm md:text-base mt-1">
-            管理系统用户和角色权限
-          </p>
+          <p className="text-text-secondary text-sm md:text-base mt-1">管理系统用户和角色权限</p>
         </div>
         <button
           onClick={() => setCreateDialogOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors"
+          className="flex items-center justify-center gap-2 px-4 py-3 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors min-h-[44px]"
         >
           <Plus className="w-4 h-4" />
           <span>创建用户</span>
@@ -175,10 +184,10 @@ export function UserList() {
             placeholder="搜索邮箱..."
             value={searchQuery}
             onChange={(e) => {
-              setSearchQuery(e.target.value)
-              setPagination((prev) => ({ ...prev, page: 1 }))
+              setSearchQuery(e.target.value);
+              setPagination((prev) => ({ ...prev, page: 1 }));
             }}
-            className="w-full pl-10 pr-4 py-2 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+            className="w-full pl-10 pr-4 py-3 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent min-h-[44px]"
           />
         </div>
 
@@ -187,10 +196,10 @@ export function UserList() {
           <select
             value={roleFilter}
             onChange={(e) => {
-              setRoleFilter(e.target.value as UserRole | 'all')
-              setPagination((prev) => ({ ...prev, page: 1 }))
+              setRoleFilter(e.target.value as UserRole | 'all');
+              setPagination((prev) => ({ ...prev, page: 1 }));
             }}
-            className="px-3 py-2 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+            className="px-3 py-3 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent min-h-[44px]"
           >
             <option value="all">全部角色</option>
             <option value="admin">管理员</option>
@@ -204,10 +213,10 @@ export function UserList() {
           <select
             value={statusFilter}
             onChange={(e) => {
-              setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')
-              setPagination((prev) => ({ ...prev, page: 1 }))
+              setStatusFilter(e.target.value as 'all' | 'active' | 'inactive');
+              setPagination((prev) => ({ ...prev, page: 1 }));
             }}
-            className="px-3 py-2 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+            className="px-3 py-3 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent min-h-[44px]"
           >
             <option value="all">全部状态</option>
             <option value="active">已激活</option>
@@ -233,24 +242,38 @@ export function UserList() {
               <table className="w-full">
                 <thead className="bg-background border-b border-border">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-text-primary">邮箱</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-text-primary">角色</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-text-primary">状态</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-text-primary">最后登录</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-text-primary">创建时间</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium text-text-primary">操作</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-text-primary">
+                      邮箱
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-text-primary">
+                      角色
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-text-primary">
+                      状态
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-text-primary">
+                      最后登录
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-text-primary">
+                      创建时间
+                    </th>
+                    <th className="px-4 py-3 text-right text-sm font-medium text-text-primary">
+                      操作
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {users.map((user) => {
-                    const RoleIcon = roleIcons[user.role]
+                    const RoleIcon = roleIcons[user.role];
                     return (
                       <tr key={user.id} className="hover:bg-background/50 transition-colors">
                         <td className="px-4 py-3 text-sm text-text-primary">{user.email}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <RoleIcon className="w-4 h-4 text-text-muted" />
-                            <span className="text-sm text-text-primary">{roleLabels[user.role]}</span>
+                            <span className="text-sm text-text-primary">
+                              {roleLabels[user.role]}
+                            </span>
                           </div>
                         </td>
                         <td className="px-4 py-3">
@@ -274,7 +297,7 @@ export function UserList() {
                           <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => router.push(`/admin/users/${user.id}`)}
-                              className="p-2 text-text-muted hover:text-text-primary hover:bg-background rounded-lg transition-colors"
+                              className="p-3 text-text-muted hover:text-text-primary hover:bg-background rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
                               title="编辑"
                             >
                               <Edit2 className="w-4 h-4" />
@@ -282,7 +305,7 @@ export function UserList() {
                             <button
                               onClick={() => handleDelete(user)}
                               disabled={isDeleting === user.id}
-                              className="p-2 text-text-muted hover:text-destructive hover:bg-background rounded-lg transition-colors disabled:opacity-50"
+                              className="p-3 text-text-muted hover:text-destructive hover:bg-background rounded-lg transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
                               title="删除"
                             >
                               {isDeleting === user.id ? (
@@ -294,7 +317,7 @@ export function UserList() {
                           </div>
                         </td>
                       </tr>
-                    )
+                    );
                   })}
                 </tbody>
               </table>
@@ -329,7 +352,11 @@ export function UserList() {
       </div>
 
       {/* 创建用户对话框 */}
-      <CreateUserDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} onSuccess={handleCreateSuccess} />
+      <CreateUserDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={handleCreateSuccess}
+      />
 
       {/* 确认对话框 */}
       {confirmDialog && (
@@ -341,11 +368,11 @@ export function UserList() {
           onConfirm={confirmDialog.onConfirm}
           onOpenChange={(open) => {
             if (!open) {
-              setConfirmDialog(null)
+              setConfirmDialog(null);
             }
           }}
         />
       )}
     </div>
-  )
+  );
 }

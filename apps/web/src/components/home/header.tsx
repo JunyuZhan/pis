@@ -1,32 +1,36 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import Image from 'next/image'
-import { Settings } from 'lucide-react'
-import { useTranslations } from 'next-intl'
-import { useSettings } from '@/hooks/use-settings'
-import { LanguageSwitcher } from '@/components/ui/language-switcher'
-import { ThemeToggle } from '@/components/theme-toggle'
+import Link from 'next/link';
+import Image from 'next/image';
+import { Settings } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { useSettings } from '@/hooks/use-settings';
+import { LanguageSwitcher } from '@/components/ui/language-switcher';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export function HomeHeader() {
-  const t = useTranslations('nav')
-  const tHome = useTranslations('home')
-  const { settings } = useSettings()
-  
+  const t = useTranslations('nav');
+  const tHome = useTranslations('home');
+  const { settings } = useSettings();
+
   // 优先使用设置中的 logo，其次使用环境变量，最后使用默认图标
-  const logoUrl = settings?.logo_url || 
-                  settings?.brand_logo || 
-                  process.env.NEXT_PUBLIC_LOGO_URL || 
-                  '/icons/icon-192x192.png'
-  
+  const logoUrl =
+    settings?.logo_url ||
+    settings?.brand_logo ||
+    process.env.NEXT_PUBLIC_LOGO_URL ||
+    '/icons/icon-192x192.png';
+
   // 品牌名称和标语
-  const brandName = settings?.brand_name || 'PIS'
-  const brandTagline = settings?.brand_tagline || tHome('description')
+  const brandName = settings?.brand_name || 'PIS';
+  const brandTagline = settings?.brand_tagline || tHome('description');
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border safe-area-top">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3 md:py-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 sm:gap-3 cursor-pointer group touch-manipulation">
+        <Link
+          href="/"
+          className="flex items-center gap-2 sm:gap-3 cursor-pointer group touch-manipulation"
+        >
           {/* Logo */}
           <Image
             src={logoUrl}
@@ -38,7 +42,9 @@ export function HomeHeader() {
           />
           {/* 品牌名称和说明 */}
           <div className="flex flex-col">
-            <span className="text-base sm:text-lg md:text-xl font-serif font-bold leading-tight">{brandName}</span>
+            <span className="text-base sm:text-lg md:text-xl font-serif font-bold leading-tight">
+              {brandName}
+            </span>
             <span className="text-[9px] sm:text-xs text-text-muted leading-tight">
               {brandTagline}
             </span>
@@ -47,16 +53,16 @@ export function HomeHeader() {
         <div className="flex items-center gap-1 sm:gap-2">
           <ThemeToggle size="sm" className="opacity-60 hover:opacity-100" />
           <LanguageSwitcher />
-          <Link 
-            href="/admin" 
-            className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 text-text-muted hover:text-text-secondary transition-colors cursor-pointer group rounded-md hover:bg-surface touch-manipulation active:bg-surface-elevated"
+          <Link
+            href="/admin"
+            className="flex items-center justify-center w-10 h-10 sm:w-9 sm:h-9 text-text-muted hover:text-text-secondary transition-colors cursor-pointer group rounded-md hover:bg-surface touch-manipulation active:bg-surface-elevated min-h-[44px] min-w-[44px]"
             prefetch={false}
             title={t('admin')}
           >
-            <Settings className="w-4 h-4 sm:w-5 sm:h-5 opacity-60 group-hover:opacity-100 transition-opacity" />
+            <Settings className="w-5 h-5 sm:w-5 sm:h-5 opacity-60 group-hover:opacity-100 transition-opacity" />
           </Link>
         </div>
       </div>
     </header>
-  )
+  );
 }
