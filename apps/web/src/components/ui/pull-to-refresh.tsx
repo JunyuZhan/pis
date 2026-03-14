@@ -36,9 +36,19 @@ export function PullToRefresh({
     const container = containerRef.current;
     if (!container) return;
 
+    // 获取滚动元素和滚动位置
+    const getScrollInfo = () => {
+      // 如果容器可滚动（内容溢出），则使用容器，否则使用文档根元素
+      const isContainerScrollable = container.scrollHeight > container.clientHeight;
+      const scrollElement = isContainerScrollable ? container : document.documentElement;
+      const scrollTop = isContainerScrollable ? container.scrollTop : window.scrollY;
+      return { scrollElement, scrollTop, isContainerScrollable };
+    };
+
     const handleTouchStart = (e: TouchEvent) => {
+      const { scrollTop } = getScrollInfo();
       // 只有在完全滚动到顶部时（scrollTop <= 5）才允许下拉刷新
-      if (container.scrollTop > 5) return;
+      if (scrollTop > 5) return;
 
       startY.current = e.touches[0].clientY;
       setIsPulling(true);
@@ -58,7 +68,8 @@ export function PullToRefresh({
       }
 
       // 向下拉且在顶部附近时，触发下拉刷新
-      if (distance > 0 && container.scrollTop <= 5) {
+      const { scrollTop } = getScrollInfo();
+      if (distance > 0 && scrollTop <= 5) {
         const dampedDistance = Math.min(distance * 0.5, threshold * 1.5);
         setPullDistance(dampedDistance);
         e.preventDefault();
@@ -103,6 +114,7 @@ export function PullToRefresh({
       className={cn('relative w-full', className)}
       style={{
         WebkitOverflowScrolling: 'touch',
+        overscrollBehavior: 'contain',
       }}
     >
       {/* 下拉刷新指示器 */}
