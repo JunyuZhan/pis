@@ -37,9 +37,9 @@ export function PullToRefresh({
     if (!container) return;
 
     const handleTouchStart = (e: TouchEvent) => {
-      // 只在顶部时允许下拉
-      if (container.scrollTop > 0) return;
-
+      // 只有在完全滚动到顶部时（scrollTop <= 5）才允许下拉刷新
+      if (container.scrollTop > 5) return;
+      
       startY.current = e.touches[0].clientY;
       setIsPulling(true);
     };
@@ -50,18 +50,20 @@ export function PullToRefresh({
       currentY.current = e.touches[0].clientY;
       const distance = currentY.current - startY.current;
 
-      // 只有在向下拉（distance > 0）且滚动到顶部时，才阻止默认行为
-      // 向上滚动时始终允许默认滚动行为
-      if (distance > 0 && container.scrollTop <= 10) {
-        // 计算阻尼效果
+      // 向上滚动（distance < 0）- 立即重置状态，允许正常滚动
+      if (distance < 0) {
+        setIsPulling(false);
+        setPullDistance(0);
+        return;
+      }
+
+      // 向下拉且在顶部附近时，触发下拉刷新
+      if (distance > 0 && container.scrollTop <= 5) {
         const dampedDistance = Math.min(distance * 0.5, threshold * 1.5);
         setPullDistance(dampedDistance);
         e.preventDefault();
-      } else if (distance < 0) {
-        // 向上滚动时立即重置状态
-        setIsPulling(false);
-        setPullDistance(0);
       }
+    };
     };
 
     const handleTouchEnd = async () => {
