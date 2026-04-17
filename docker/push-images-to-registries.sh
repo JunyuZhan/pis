@@ -72,4 +72,4 @@ if [[ -n "${HUB_WORKER}" ]]; then
   docker push "${HUB_WORKER}:${PIS_IMAGE_TAG}"
 fi
 
-echo "==> Done. 部署机在 .env 中只配置一套 PIS_WEB_IMAGE / PIS_WORKER_IMAGE 指向实际拉取的 Registry。"
+echo "==> Done. 运行环境在 .env 中只配置一套 PIS_WEB_IMAGE / PIS_WORKER_IMAGE 指向实际拉取的 Registry。"

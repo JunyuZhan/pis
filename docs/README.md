@@ -8,9 +8,9 @@
 
 | 文档 | 说明 |
 |------|------|
-| [部署指南（中文）](./i18n/zh-CN/DEPLOYMENT.md) | 生产/测试环境部署主文档 |
+| [部署指南（中文）](./i18n/zh-CN/DEPLOYMENT.md) | 自托管与测试环境部署主文档 |
 | [部署指南（English）](./i18n/en/DEPLOYMENT.md) | English deployment guide |
-| [Docker 说明](../docker/README.md) | Compose、私有镜像、客户单文件入口等 |
+| [Docker 说明](../docker/README.md) | Compose、Registry 镜像、合并入口 compose 等 |
 | [Docker Compose 文件说明](../docker/DOCKER_COMPOSE_FILES.md) | 各 `docker-compose*.yml` 用途 |
 
 ---
