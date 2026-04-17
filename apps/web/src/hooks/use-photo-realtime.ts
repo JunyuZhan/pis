@@ -6,6 +6,8 @@ import type { Photo } from '@/types/database';
 interface UsePhotoRealtimeOptions {
   albumId: string;
   albumSlug: string;
+  /** 与页面 `?albumPassword=` 一致，供无 Cookie 时 SSE / 初始化拉片（慎用书签） */
+  albumPassword?: string | null;
   enabled?: boolean;
   onInsert?: (photo: Photo) => void;
   onUpdate?: (photo: Photo) => void;
@@ -39,6 +41,7 @@ interface UsePhotoRealtimeOptions {
 export function usePhotoRealtime({
   albumId,
   albumSlug,
+  albumPassword,
   enabled = true,
   onInsert,
   onUpdate,
@@ -67,8 +70,13 @@ export function usePhotoRealtime({
 
     // 创建 SSE 连接（经 Next 代理附加 Worker API Key，见 /api/realtime/photos/[albumId]）。
     // 验密后的 HttpOnly Cookie 会随同源请求发送；无 Cookie 时可选 `albumPassword`（与公开 API 一致，慎用）。
-    const streamUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/realtime/photos/${albumId}?slug=${encodeURIComponent(albumSlug)}`;
-    const eventSource = new EventSource(streamUrl);
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const stream = new URL(`${origin}/api/realtime/photos/${albumId}`);
+    stream.searchParams.set("slug", albumSlug);
+    if (albumPassword) {
+      stream.searchParams.set("albumPassword", albumPassword);
+    }
+    const eventSource = new EventSource(stream.toString());
     eventSourceRef.current = eventSource;
 
     // 连接成功
@@ -134,8 +142,17 @@ export function usePhotoRealtime({
       }
     });
 
+    const photosUrl = new URL(
+      `${origin}/api/public/albums/${encodeURIComponent(albumSlug)}/photos`,
+    );
+    photosUrl.searchParams.set("limit", "100");
+    photosUrl.searchParams.set("sort", "capture_desc");
+    if (albumPassword) {
+      photosUrl.searchParams.set("albumPassword", albumPassword);
+    }
+
     // 初始化时获取当前照片列表
-    fetch(`/api/public/albums/${albumSlug}/photos?limit=100&sort=capture_desc`)
+    fetch(photosUrl.toString())
       .then((res) => res.json())
       .then((data) => {
         const photos = data.photos || [];
@@ -143,7 +160,7 @@ export function usePhotoRealtime({
         isInitializedRef.current = true;
       })
       .catch((err) => console.error('[SSE] Failed to fetch initial photos:', err));
-  }, [albumId, albumSlug, enabled]);
+  }, [albumId, albumSlug, albumPassword, enabled]);
 
   useEffect(() => {
     if (!enabled || !albumId || !albumSlug) return;

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Eye, Heart, Calendar, MapPin, Clock, ChevronDown, ArrowLeft } from 'lucide-react'
@@ -15,6 +16,8 @@ interface AlbumHeroProps {
 }
 
 export function AlbumHero({ album, coverPhoto, from }: AlbumHeroProps) {
+  const searchParams = useSearchParams()
+  const albumPasswordParam = searchParams.get('albumPassword')
   const [isLoaded, setIsLoaded] = useState(false)
   const [mounted, setMounted] = useState(false)
   // 确保正确读取初始浏览次数
@@ -33,8 +36,12 @@ export function AlbumHero({ album, coverPhoto, from }: AlbumHeroProps) {
     if (!mounted) return
 
     // 调用API增加浏览次数（每次访问都计数，不限制）
-    fetch(`/api/public/albums/${album.slug}/view`, {
+    fetch(`/api/public/albums/${encodeURIComponent(album.slug)}/view`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(
+        albumPasswordParam ? { albumPassword: albumPasswordParam } : {},
+      ),
     })
       .then((res) => {
         if (!res.ok) {
@@ -58,7 +65,7 @@ export function AlbumHero({ album, coverPhoto, from }: AlbumHeroProps) {
         // API 失败时乐观更新
         setViewCount((prev: number) => prev + 1)
       })
-  }, [album.id, album.slug, mounted])
+  }, [album.id, album.slug, mounted, albumPasswordParam])
 
   // 获取封面图 URL（添加时间戳作为缓存破坏参数，旋转已在 Worker 处理时应用）
   // 只使用 updated_at 作为时间戳，避免 Date.now() 导致的 hydration mismatch

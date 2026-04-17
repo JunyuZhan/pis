@@ -2,7 +2,7 @@
  * 登录 API 路由测试
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { POST } from './route'
 import { createMockRequest } from '@/test/test-utils'
 import { checkRateLimit } from '@/middleware-rate-limit'

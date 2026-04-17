@@ -121,6 +121,7 @@
   - **`POST .../search-face`**：**`albumSlugSchema`**、**`allow_share`**、限流（约 **20/分钟/IP**）、**`assertGuestAlbumAccess`**；**`FormData`** 可选 **`albumPassword`**；上传约 **12MB** 上限。
   - **`GET /api/public/albums/[slug]`**（相册元数据）：在 **`allow_share` / 过期** 校验之后增加 **`assertGuestAlbumAccess`**，支持 **`?albumPassword=`**；未通过时不再返回标题/描述等（**`ALBUM_PASSWORD_REQUIRED`** 或 **403**），与 **API-003** 一致。
 - **访客相册 RSC 与 API-003 对齐（代码修复）**：**`app/album/[slug]/page.tsx`** 在 **`generateMetadata`** 与页面数据加载中复用 **`evaluateGuestAlbumAccess`**（**`cookies()`** + 查询参数 **`albumPassword`**）；未通过门禁时不生成含相册标题/封面等的 OG 元数据，**不在 HTML 中 SSR 照片行、分组、封面媒体**；**`password` 字段不进入客户端 props**。逻辑与 **`assertGuestAlbumAccess`** 一致，抽取见 **`src/lib/public-album-guest-access.ts`** 之 **`evaluateGuestAlbumAccess`**。
+- **访客相册客户端与 `?albumPassword=` 对齐**：**`album-client`**（照片列表 + **`usePhotoRealtime`**）、**`photo-group-filter`**、**`album-header`**（批量下载）、**`album-hero`**（**`POST .../view`** JSON）、**`face-search-modal`**（**`FormData`**）在存在 URL 查询参数 **`albumPassword`** 时将其传给对应公开 API，与 RSC 门禁及 **HttpOnly Cookie** 二选一模型一致；**`appendAlbumPasswordIfPresent`** 见 **`src/lib/album-guest-url.ts`**。
 - **回归**：`pnpm exec vitest run src/app/api/public` 绿；相关单测文件含 **`@vitest-environment node`**（与 **`jose`** 访客 JWT 一致）。
 
 ---
