@@ -2,7 +2,9 @@
 
 > 📋 **Docker Compose 文件说明**: 请参考 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md) 了解不同配置文件的用途
 
-**仅提供 Docker 镜像、不提供应用源码时**：客户机只需私有仓库中的 `web` / `worker` 镜像，外加你们随版本分发的 **部署包**（`docker/` 编排与初始化文件等，不含 `apps/`、`services/`）。目录约定、文件清单与升级方式见 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md) 中的「仅镜像交付」一节；启动使用 `bash start-from-registry.sh`（或 `--secrets`）。脚本内部使用单入口文件 `docker-compose.customer.yml`（或 `docker-compose.customer-secrets.yml`）；客户也可自行执行 `docker compose -f docker-compose.customer.yml ...`，详见 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md)。
+**仅提供 Docker 镜像、不提供应用源码时**：客户机只需**已发布 Registry**（私有仓库或 Docker Hub 等）中的 `web` / `worker` 镜像，外加你们随版本分发的 **部署包**（`docker/` 编排与初始化文件等，不含 `apps/`、`services/`）。目录约定、文件清单与升级方式见 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md) 中的「仅镜像交付」一节；启动使用 `bash start-from-registry.sh`（或 `--secrets`）。脚本内部使用单入口文件 `docker-compose.customer.yml`（或 `docker-compose.customer-secrets.yml`）；客户也可自行执行 `docker compose -f docker-compose.customer.yml ...`，详见 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md)。
+
+**构建端同时推私有 + Docker Hub**：在仓库根目录配置环境变量后执行 `bash docker/push-images-to-registries.sh`（详见 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md)「多 Registry 推送」）。部署机 `.env` 中 `PIS_WEB_IMAGE` / `PIS_WORKER_IMAGE` 仍只指向**一处**拉取地址。
 
 ## 部署架构
 
@@ -83,7 +85,7 @@ docker compose -f docker-compose.yml -f docker-compose.ai.yml up -d
 
 ### 使用私有镜像仓库（不在服务器上构建 Web / Worker）
 
-若已将 `web`、`worker` 镜像推送到私有仓库（例如 `hub.albertzhan.top`），在部署机配置 `.env` 中的 `PIS_WEB_IMAGE`、`PIS_WORKER_IMAGE` 后执行：
+若已将 `web`、`worker` 镜像推送到私有仓库、Docker Hub 或其它 Registry，在部署机配置 `.env` 中的 `PIS_WEB_IMAGE`、`PIS_WORKER_IMAGE`（全名含标签，与推送目标一致）后执行：
 
 ```bash
 cd docker

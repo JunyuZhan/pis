@@ -31,7 +31,7 @@ curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/deploy/on
 
 国内镜像示例：`curl -sSL https://ghproxy.com/https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/deploy/one-click-deploy.sh | bash`
 
-**使用已构建的 web / worker 镜像部署**（私有仓库或 Docker Hub + `docker/` 目录，目标机不再构建应用镜像）：见 **[docker/README.md](docker/README.md)**、**[docker/DOCKER_COMPOSE_FILES.md](docker/DOCKER_COMPOSE_FILES.md)**，配置 `.env` 后在 `docker` 目录执行 `bash start-from-registry.sh` 等。
+**使用已构建的 web / worker 镜像部署**（私有仓库或 Docker Hub + `docker/` 目录，目标机不再构建应用镜像）：见 **[docker/README.md](docker/README.md)**、**[docker/DOCKER_COMPOSE_FILES.md](docker/DOCKER_COMPOSE_FILES.md)**，配置 `.env` 后在 `docker` 目录执行 `bash start-from-registry.sh` 等。构建机可同时推多仓库：`bash docker/push-images-to-registries.sh`（见 `DOCKER_COMPOSE_FILES.md`「多 Registry 推送」）。
 
 默认 Docker 方案常通过 **8088**（Nginx）对外访问。完整说明见 **[部署指南](docs/i18n/zh-CN/DEPLOYMENT.md)**。
 

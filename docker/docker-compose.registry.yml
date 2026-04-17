@@ -13,11 +13,15 @@
 # 否则 compose 可能优先走本地构建。升级版本前先 pull 再 up --no-build。
 #
 # 环境变量（可写入项目根目录 .env）：
-#   PIS_WEB_IMAGE     默认 hub.albertzhan.top/pis/web:latest
+#   PIS_WEB_IMAGE     默认 hub.albertzhan.top/pis/web:latest（可改为 Docker Hub 等任意 Registry 全名）
 #   PIS_WORKER_IMAGE  默认 hub.albertzhan.top/pis/worker:latest
 #
-# 部署前在目标机登录私有仓库：
+# 部署机在 .env 中只填「实际要从哪拉」的一套地址；构建机可同时 push 到私有与 Hub，
+# 见 DOCKER_COMPOSE_FILES.md「多 Registry 推送」与 docker/push-images-to-registries.sh。
+#
+# 部署前在目标机登录对应 Registry，例如：
 #   docker login hub.albertzhan.top
+#   docker login              # Docker Hub（registry-1.docker.io）
 
 services:
   web:

@@ -29,7 +29,7 @@ bash deploy.sh
 curl -sSL https://raw.githubusercontent.com/JunyuZhan/pis/main/scripts/deploy/one-click-deploy.sh | bash
 ```
 
-**Deploy from pre-built `web` / `worker` images** (private registry or Docker Hub + `docker/` bundle, no app build on the server): see **[docker/README.md](docker/README.md)** and **[docker/DOCKER_COMPOSE_FILES.md](docker/DOCKER_COMPOSE_FILES.md)** — e.g. `cd docker && bash start-from-registry.sh` after `.env` is set.
+**Deploy from pre-built `web` / `worker` images** (private registry or Docker Hub + `docker/` bundle, no app build on the server): see **[docker/README.md](docker/README.md)** and **[docker/DOCKER_COMPOSE_FILES.md](docker/DOCKER_COMPOSE_FILES.md)** — e.g. `cd docker && bash start-from-registry.sh` after `.env` is set. To build and push to multiple registries from the repo root: `bash docker/push-images-to-registries.sh` (see *Multi-registry push* in `DOCKER_COMPOSE_FILES.md`).
 
 Default Docker layout often exposes the app on **port 8088** (Nginx). Details: **[Deployment guide](docs/i18n/en/DEPLOYMENT.md)**.
 
