@@ -1,7 +1,9 @@
 /**
  * 公开相册照片列表 API 路由测试
- * 
+ *
  * 测试 GET 方法
+ *
+ * @vitest-environment node
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -42,6 +44,7 @@ describe('GET /api/public/albums/[slug]/photos', () => {
       const mockChain = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
           data: null,
           error: { message: 'Not found' },
@@ -60,12 +63,16 @@ describe('GET /api/public/albums/[slug]/photos', () => {
     it('should return 404 if allow_share is false', async () => {
       const mockAlbum = {
         id: validAlbumId,
+        slug: 'test-slug',
+        is_public: true,
+        password: null,
         allow_share: false,
       }
 
       const mockChain = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
           data: mockAlbum,
           error: null,
@@ -87,6 +94,9 @@ describe('GET /api/public/albums/[slug]/photos', () => {
 
       const mockAlbum = {
         id: validAlbumId,
+        slug: 'test-slug',
+        is_public: true,
+        password: null,
         allow_share: true,
         expires_at: expiredDate.toISOString(),
       }
@@ -94,6 +104,7 @@ describe('GET /api/public/albums/[slug]/photos', () => {
       const mockChain = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
           data: mockAlbum,
           error: null,
@@ -114,9 +125,12 @@ describe('GET /api/public/albums/[slug]/photos', () => {
     it('should return photos with default pagination', async () => {
       const mockAlbum = {
         id: validAlbumId,
+        slug: 'test-slug',
+        password: null,
         sort_rule: 'capture_desc',
         allow_share: true,
         expires_at: null,
+        is_public: true,
       }
 
       const mockPhotos = [
@@ -143,6 +157,7 @@ describe('GET /api/public/albums/[slug]/photos', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
+            is: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({
               data: { ...mockAlbum, is_public: true },
               error: null,
@@ -171,6 +186,8 @@ describe('GET /api/public/albums/[slug]/photos', () => {
     it('should handle custom pagination parameters', async () => {
       const mockAlbum = {
         id: validAlbumId,
+        slug: 'test-slug',
+        password: null,
         sort_rule: 'capture_desc',
         allow_share: true,
         expires_at: null,
@@ -196,6 +213,7 @@ describe('GET /api/public/albums/[slug]/photos', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
+            is: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({
               data: mockAlbum,
               error: null,
@@ -223,6 +241,8 @@ describe('GET /api/public/albums/[slug]/photos', () => {
     it('should sort by capture_desc by default', async () => {
       const mockAlbum = {
         id: validAlbumId,
+        slug: 'test-slug',
+        password: null,
         sort_rule: null,
         allow_share: true,
         expires_at: null,
@@ -248,6 +268,7 @@ describe('GET /api/public/albums/[slug]/photos', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
+            is: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({
               data: mockAlbum,
               error: null,
@@ -269,6 +290,8 @@ describe('GET /api/public/albums/[slug]/photos', () => {
     it('should sort by capture_asc when specified', async () => {
       const mockAlbum = {
         id: validAlbumId,
+        slug: 'test-slug',
+        password: null,
         sort_rule: null,
         allow_share: true,
         expires_at: null,
@@ -294,6 +317,7 @@ describe('GET /api/public/albums/[slug]/photos', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
+            is: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({
               data: mockAlbum,
               error: null,
@@ -315,6 +339,8 @@ describe('GET /api/public/albums/[slug]/photos', () => {
     it('should sort by manual when specified', async () => {
       const mockAlbum = {
         id: validAlbumId,
+        slug: 'test-slug',
+        password: null,
         sort_rule: null,
         allow_share: true,
         expires_at: null,
@@ -340,6 +366,7 @@ describe('GET /api/public/albums/[slug]/photos', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
+            is: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({
               data: mockAlbum,
               error: null,
@@ -363,9 +390,12 @@ describe('GET /api/public/albums/[slug]/photos', () => {
     it('should return empty result if group has no photos', async () => {
       const mockAlbum = {
         id: validAlbumId,
+        slug: 'test-slug',
+        password: null,
         sort_rule: null,
         allow_share: true,
         expires_at: null,
+        is_public: true,
       }
 
       mockSupabaseClient.from.mockImplementation((table: string) => {
@@ -373,6 +403,7 @@ describe('GET /api/public/albums/[slug]/photos', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
+            is: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({
               data: mockAlbum,
               error: null,
@@ -403,6 +434,8 @@ describe('GET /api/public/albums/[slug]/photos', () => {
     it('should filter photos by group when group specified', async () => {
       const mockAlbum = {
         id: validAlbumId,
+        slug: 'test-slug',
+        password: null,
         sort_rule: null,
         allow_share: true,
         expires_at: null,
@@ -439,6 +472,7 @@ describe('GET /api/public/albums/[slug]/photos', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
+            is: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({
               data: mockAlbum,
               error: null,
@@ -485,6 +519,8 @@ describe('GET /api/public/albums/[slug]/photos', () => {
     it('should return 500 on database error', async () => {
       const mockAlbum = {
         id: validAlbumId,
+        slug: 'test-slug',
+        password: null,
         sort_rule: null,
         allow_share: true,
         expires_at: null,
@@ -510,6 +546,7 @@ describe('GET /api/public/albums/[slug]/photos', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
+            is: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({
               data: mockAlbum,
               error: null,

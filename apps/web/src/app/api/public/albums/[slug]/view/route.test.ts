@@ -1,7 +1,9 @@
 /**
  * 查看相册 API 路由测试
- * 
+ *
  * 测试 POST 方法（增加浏览次数）
+ *
+ * @vitest-environment node
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -84,6 +86,11 @@ describe('POST /api/public/albums/[slug]/view', () => {
       const slug = 'test-album'
       const album = {
         id: 'album-123',
+        slug: 'test-album',
+        is_public: true,
+        password: null,
+        allow_share: true,
+        expires_at: null,
       }
 
       // Mock album exists
@@ -146,6 +153,11 @@ describe('POST /api/public/albums/[slug]/view', () => {
       const slug = 'test-album'
       const album = {
         id: 'album-123',
+        slug: 'test-album',
+        is_public: true,
+        password: null,
+        allow_share: true,
+        expires_at: null,
       }
 
       // Mock album exists
@@ -220,7 +232,14 @@ describe('POST /api/public/albums/[slug]/view', () => {
       const mockEqAlbum = vi.fn().mockReturnThis()
       const mockIsAlbum = vi.fn().mockReturnThis()
       const mockSingleAlbum = vi.fn().mockResolvedValue({
-        data: { id: 'album-123' },
+        data: {
+          id: 'album-123',
+          slug: 'test-album',
+          is_public: true,
+          password: null,
+          allow_share: true,
+          expires_at: null,
+        },
         error: null,
       })
 

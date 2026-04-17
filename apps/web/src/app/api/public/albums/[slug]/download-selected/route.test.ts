@@ -36,7 +36,9 @@ describe('GET /api/public/albums/[slug]/download-selected', () => {
     global.fetch = mockFetch as any
     
     const { createClient } = await import('@/lib/database')
-    mockDb = (await createClient()) as { from: ReturnType<typeof vi.fn> }
+    mockDb = (await createClient()) as unknown as {
+      from: ReturnType<typeof vi.fn>
+    }
   })
 
   afterEach(() => {

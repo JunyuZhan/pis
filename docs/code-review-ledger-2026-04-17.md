@@ -110,6 +110,17 @@
 - **问题**：`GET /api/realtime/photos/[albumId]` 对未登录访客仅校验 **`slug` + `is_public`**，**有访问密码的相册**在仅知道 `slug`/`albumId` 时仍可能建立 SSE，与验密 / Cookie 模型不一致。
 - **修复**：匿名分支改为 **`assertGuestAlbumAccess`**（与选片 / 批量下载一致），并支持 **`?albumPassword=`**；同源下 **`pis-album-access` Cookie** 仍随 `EventSource` 发送。单测见 **`apps/web/src/app/api/realtime/photos/[albumId]/route.test.ts`**。
 
+**其余公开相册路由与 API-003 对齐（代码修复）**
+
+- **问题**：部分 **`/api/public/...`** 仅凭 `slug` 或照片 `id` 返回数据，与「验密 / Cookie / 可选密码」模型不一致；带密码或受限分享的相册存在信息泄露面。
+- **修复要点**：
+  - **`GET .../photos`**：相册查询含 **`slug`**、**`deleted_at IS NULL`**；列表前 **`assertGuestAlbumAccess`**，支持 **`?albumPassword=`**；需密码时 **`ALBUM_PASSWORD_REQUIRED`**。
+  - **`GET /api/public/download/[id]`**：按相册门禁字段校验 **`allow_download`**、过期、删除后 **`assertGuestAlbumAccess`**（**`?albumPassword=`**）。
+  - **`GET .../groups`**：**`allow_share`**、过期；**`assertGuestAlbumAccess`**；相册链路与 **`photos`** 一致；单测 mock 补 **`.is('deleted_at', null)`**。
+  - **`POST .../view`**：**`allow_share`**、过期、**`getTrustedClientIp` + `checkRateLimit`**（约 **120/分钟/slug**，IP 非 `unknown` 时）；**`assertGuestAlbumAccess`**；JSON 体可选 **`albumPassword`**。
+  - **`POST .../search-face`**：**`albumSlugSchema`**、**`allow_share`**、限流（约 **20/分钟/IP**）、**`assertGuestAlbumAccess`**；**`FormData`** 可选 **`albumPassword`**；上传约 **12MB** 上限。
+- **回归**：`pnpm exec vitest run src/app/api/public`（**91** 例）绿；相关单测文件含 **`@vitest-environment node`**（与 **`jose`** 访客 JWT 一致）。
+
 ---
 
 ## 台账总览
@@ -122,7 +133,7 @@
 | OPS-002 | 可观测性 | 低 | **已修复** | 移除 middleware 一次性打印 JWT/AUTH 环境变量键名 |
 | API-001 | 公开 API | 中 | **已修复** | 生产环境 `/api/debug/album/*` 返回 404 |
 | API-002 | 数据访问 | 中 | **已修复** | 公开 `download-selected` / `select` 使用 `createClient`；与访客访问校验同路径 |
-| API-003 | 业务一致性 | 低 | **已修复** | `verify-password` → `pis-album-access`；选片/下载/实时 SSE 匿名路径均 **`assertGuestAlbumAccess`**（可选 **`albumPassword`**） |
+| API-003 | 业务一致性 | 低 | **已修复** | `verify-password` → `pis-album-access`；选片/批量下载/实时 SSE 及 **`public` 下 `photos` / `download` / `groups` / `view` / `search-face`** 均 **`assertGuestAlbumAccess`**（可选 **`albumPassword`**） |
 | API-004 | Admin API 契约 | 低 | **已修复** | 占位 `collaborations` / `collaborators` 路由增加 `getCurrentUser` 401 |
 | ANA-001 | 分析埋点 | 中 | **已修复** | `analytics/track` 增加 IP 维度的 `checkRateLimit`（120/分钟） |
 | WKR-001 | Worker / SSE | 高 | **已修复** | Worker 侧 SSE 移至 API Key 校验之后；Web 经 `/api/realtime/photos/[albumId]` 代理并做访客/登录校验 |
@@ -274,9 +285,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 ### API-003 — 公开选片与相册可见性
 
-**状态**：**已修复**。`POST .../verify-password` 在验密成功或无密码相册访问确认后下发 **`pis-album-access`** HttpOnly Cookie（JWT 载荷含 `sub`=`albumId`、`slug`、`scope: album_access`）。`GET`/`PATCH .../select` 与 **`GET .../download-selected`** 调用 **`assertGuestAlbumAccess`**；可选 **`albumPassword`**（PATCH 体或 GET 查询参数）用于无 Cookie 的一次性请求。
+**状态**：**已修复**。`POST .../verify-password` 在验密成功或无密码相册访问确认后下发 **`pis-album-access`** HttpOnly Cookie（JWT 载荷含 `sub`=`albumId`、`slug`、`scope: album_access`）。以下匿名路径在返回敏感数据或副作用前均调用 **`assertGuestAlbumAccess`**（并视路由支持 **`albumPassword`** 查询参数或 JSON / FormData）：
 
-**原问题摘要**：非公开相册一律 403，与密码相册访客流程不一致。
+- `GET`/`PATCH .../select`、`GET .../download-selected`
+- `GET /api/realtime/photos/[albumId]`（匿名分支）
+- `GET .../photos`、`GET /api/public/download/[id]`、`GET .../groups`、`POST .../view`、`POST .../search-face`
+
+**原问题摘要**：非公开相册一律 403，与密码相册访客流程不一致；部分公开接口曾仅凭 `slug`/资源 id 绕过门禁。
 
 ---
 
