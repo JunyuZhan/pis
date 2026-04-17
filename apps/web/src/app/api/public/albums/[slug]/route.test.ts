@@ -1,12 +1,18 @@
 /**
  * 公开相册信息 API 路由测试
- * 
+ *
  * 测试 GET 方法
+ *
+ * @vitest-environment node
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { GET } from './route'
 import { createMockRequest } from '@/test/test-utils'
+import {
+  ALBUM_ACCESS_COOKIE_NAME,
+  createAlbumAccessJwt,
+} from '@/lib/auth/album-access-jwt'
 
 // Mock dependencies
 const { mockSupabaseClient } = vi.hoisted(() => {
@@ -30,15 +36,24 @@ describe('GET /api/public/albums/[slug]', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks()
-    
+    vi.stubEnv(
+      'AUTH_JWT_SECRET',
+      'test-secret-key-minimum-32-characters-long!',
+    )
+
     const { createClient } = await import('@/lib/database')
     mockSupabaseClient = await createClient()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
   })
 
   describe('album retrieval', () => {
     it('should return album information successfully', async () => {
       const mockAlbum = {
         id: 'album-123',
+        slug: 'test-slug',
         title: 'Test Album',
         description: 'Test Description',
         layout: 'masonry',
@@ -77,10 +92,16 @@ describe('GET /api/public/albums/[slug]', () => {
       expect(data.is_public).toBe(true)
     })
 
-    it('should return requires_password=true when password is set', async () => {
+    it('should return ALBUM_PASSWORD_REQUIRED when password is set and guest has no access', async () => {
       const mockAlbum = {
         id: 'album-123',
+        slug: 'test-slug',
         title: 'Test Album',
+        description: null,
+        layout: 'masonry',
+        allow_download: false,
+        show_exif: false,
+        photo_count: 0,
         password: 'secret',
         expires_at: null,
         is_public: false,
@@ -106,9 +127,51 @@ describe('GET /api/public/albums/[slug]', () => {
       const response = await GET(request, { params: Promise.resolve({ slug: 'test-slug' }) })
       const data = await response.json()
 
+      expect(response.status).toBe(403)
+      expect(data.error.code).toBe('ALBUM_PASSWORD_REQUIRED')
+    })
+
+    it('should return album info when albumPassword query matches', async () => {
+      const mockAlbum = {
+        id: 'album-123',
+        slug: 'test-slug',
+        title: 'Secret Album',
+        description: 'Desc',
+        layout: 'masonry',
+        allow_download: true,
+        show_exif: true,
+        photo_count: 3,
+        password: 'secret',
+        expires_at: null,
+        is_public: false,
+        allow_share: true,
+      }
+
+      const mockSelect = vi.fn().mockReturnThis()
+      const mockEq = vi.fn().mockReturnThis()
+      const mockIs = vi.fn().mockReturnThis()
+      const mockSingle = vi.fn().mockResolvedValue({
+        data: mockAlbum,
+        error: null,
+      })
+
+      mockSupabaseClient.from.mockReturnValue({
+        select: mockSelect,
+        eq: mockEq,
+        is: mockIs,
+        single: mockSingle,
+      })
+
+      const request = createMockRequest(
+        'http://localhost:3000/api/public/albums/test-slug?albumPassword=secret',
+      )
+      const response = await GET(request, { params: Promise.resolve({ slug: 'test-slug' }) })
+      const data = await response.json()
+
       expect(response.status).toBe(200)
+      expect(data.title).toBe('Secret Album')
       expect(data.requires_password).toBe(true)
-      expect(data.password).toBeUndefined() // 密码不应返回
+      expect(data.password).toBeUndefined()
     })
 
     it('should return 404 if album does not exist', async () => {
@@ -232,7 +295,14 @@ describe('GET /api/public/albums/[slug]', () => {
 
       const mockAlbum = {
         id: 'album-123',
+        slug: 'test-slug',
         title: 'Test Album',
+        description: null,
+        layout: 'masonry',
+        allow_download: true,
+        show_exif: true,
+        photo_count: 1,
+        password: null,
         expires_at: futureDate.toISOString(),
         allow_share: true,
         is_public: true,
@@ -266,7 +336,14 @@ describe('GET /api/public/albums/[slug]', () => {
     it('should set public cache headers for public albums', async () => {
       const mockAlbum = {
         id: 'album-123',
+        slug: 'test-slug',
         title: 'Test Album',
+        description: null,
+        layout: 'masonry',
+        allow_download: true,
+        show_exif: true,
+        photo_count: 0,
+        password: null,
         is_public: true,
         allow_share: true,
         expires_at: null,
@@ -299,7 +376,14 @@ describe('GET /api/public/albums/[slug]', () => {
     it('should set private cache headers for private albums', async () => {
       const mockAlbum = {
         id: 'album-123',
+        slug: 'test-slug',
         title: 'Test Album',
+        description: null,
+        layout: 'masonry',
+        allow_download: false,
+        show_exif: false,
+        photo_count: 0,
+        password: null,
         is_public: false,
         allow_share: true,
         expires_at: null,
@@ -320,7 +404,12 @@ describe('GET /api/public/albums/[slug]', () => {
         single: mockSingle,
       })
 
-      const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug')
+      const token = await createAlbumAccessJwt(mockAlbum.id, mockAlbum.slug)
+      const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug', {
+        headers: {
+          Cookie: `${ALBUM_ACCESS_COOKIE_NAME}=${token}`,
+        },
+      })
       const response = await GET(request, { params: Promise.resolve({ slug: 'test-slug' }) })
 
       expect(response.status).toBe(200)
@@ -332,7 +421,14 @@ describe('GET /api/public/albums/[slug]', () => {
     it('should include ETag header', async () => {
       const mockAlbum = {
         id: 'album-123',
+        slug: 'test-slug',
         title: 'Test Album',
+        description: null,
+        layout: 'masonry',
+        allow_download: true,
+        show_exif: true,
+        photo_count: 0,
+        password: null,
         is_public: true,
         allow_share: true,
         expires_at: null,
@@ -365,7 +461,14 @@ describe('GET /api/public/albums/[slug]', () => {
     it('should return 304 if If-None-Match matches ETag', async () => {
       const mockAlbum = {
         id: 'album-123',
+        slug: 'test-slug',
         title: 'Test Album',
+        description: null,
+        layout: 'masonry',
+        allow_download: true,
+        show_exif: true,
+        photo_count: 0,
+        password: null,
         is_public: true,
         allow_share: true,
         expires_at: null,

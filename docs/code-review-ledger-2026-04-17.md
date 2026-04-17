@@ -119,7 +119,8 @@
   - **`GET .../groups`**：**`allow_share`**、过期；**`assertGuestAlbumAccess`**；相册链路与 **`photos`** 一致；单测 mock 补 **`.is('deleted_at', null)`**。
   - **`POST .../view`**：**`allow_share`**、过期、**`getTrustedClientIp` + `checkRateLimit`**（约 **120/分钟/slug**，IP 非 `unknown` 时）；**`assertGuestAlbumAccess`**；JSON 体可选 **`albumPassword`**。
   - **`POST .../search-face`**：**`albumSlugSchema`**、**`allow_share`**、限流（约 **20/分钟/IP**）、**`assertGuestAlbumAccess`**；**`FormData`** 可选 **`albumPassword`**；上传约 **12MB** 上限。
-- **回归**：`pnpm exec vitest run src/app/api/public`（**91** 例）绿；相关单测文件含 **`@vitest-environment node`**（与 **`jose`** 访客 JWT 一致）。
+  - **`GET /api/public/albums/[slug]`**（相册元数据）：在 **`allow_share` / 过期** 校验之后增加 **`assertGuestAlbumAccess`**，支持 **`?albumPassword=`**；未通过时不再返回标题/描述等（**`ALBUM_PASSWORD_REQUIRED`** 或 **403**），与 **API-003** 一致。
+- **回归**：`pnpm exec vitest run src/app/api/public` 绿；相关单测文件含 **`@vitest-environment node`**（与 **`jose`** 访客 JWT 一致）。
 
 ---
 
@@ -133,7 +134,7 @@
 | OPS-002 | 可观测性 | 低 | **已修复** | 移除 middleware 一次性打印 JWT/AUTH 环境变量键名 |
 | API-001 | 公开 API | 中 | **已修复** | 生产环境 `/api/debug/album/*` 返回 404 |
 | API-002 | 数据访问 | 中 | **已修复** | 公开 `download-selected` / `select` 使用 `createClient`；与访客访问校验同路径 |
-| API-003 | 业务一致性 | 低 | **已修复** | `verify-password` → `pis-album-access`；选片/批量下载/实时 SSE 及 **`public` 下 `photos` / `download` / `groups` / `view` / `search-face`** 均 **`assertGuestAlbumAccess`**（可选 **`albumPassword`**） |
+| API-003 | 业务一致性 | 低 | **已修复** | `verify-password` → `pis-album-access`；选片/批量下载/实时 SSE 及 **`public` 下根级 **`GET .../[slug]`**、`photos` / `download` / `groups` / `view` / `search-face`** 均 **`assertGuestAlbumAccess`**（可选 **`albumPassword`**） |
 | API-004 | Admin API 契约 | 低 | **已修复** | 占位 `collaborations` / `collaborators` 路由增加 `getCurrentUser` 401 |
 | ANA-001 | 分析埋点 | 中 | **已修复** | `analytics/track` 增加 IP 维度的 `checkRateLimit`（120/分钟） |
 | WKR-001 | Worker / SSE | 高 | **已修复** | Worker 侧 SSE 移至 API Key 校验之后；Web 经 `/api/realtime/photos/[albumId]` 代理并做访客/登录校验 |
@@ -289,7 +290,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 - `GET`/`PATCH .../select`、`GET .../download-selected`
 - `GET /api/realtime/photos/[albumId]`（匿名分支）
-- `GET .../photos`、`GET /api/public/download/[id]`、`GET .../groups`、`POST .../view`、`POST .../search-face`
+- `GET /api/public/albums/[slug]`（元数据）、`GET .../photos`、`GET /api/public/download/[id]`、`GET .../groups`、`POST .../view`、`POST .../search-face`
 
 **原问题摘要**：非公开相册一律 403，与密码相册访客流程不一致；部分公开接口曾仅凭 `slug`/资源 id 绕过门禁。
 
