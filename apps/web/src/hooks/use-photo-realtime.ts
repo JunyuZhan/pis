@@ -65,7 +65,8 @@ export function usePhotoRealtime({
       eventSourceRef.current = null;
     }
 
-    // 创建 SSE 连接（经 Next 代理附加 Worker API Key，见 /api/realtime/photos/[albumId]）
+    // 创建 SSE 连接（经 Next 代理附加 Worker API Key，见 /api/realtime/photos/[albumId]）。
+    // 验密后的 HttpOnly Cookie 会随同源请求发送；无 Cookie 时可选 `albumPassword`（与公开 API 一致，慎用）。
     const streamUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/realtime/photos/${albumId}?slug=${encodeURIComponent(albumSlug)}`;
     const eventSource = new EventSource(streamUrl);
     eventSourceRef.current = eventSource;

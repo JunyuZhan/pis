@@ -94,6 +94,24 @@
 
 ---
 
+### 2026-04-17 — P3 路由枚举 + SSE 代理与 API-003 对齐
+
+**`page.tsx` 路径枚举（关键词 `debug` / `test` / `dev` / `playground` / `internal`）**
+
+- 仅 **`apps/web/src/app/test-turnstile/page.tsx`**；生产由 **`middleware.ts`** 对 **`/test-turnstile`** 返回 **404**（**WEB-001**）。
+- **`apps/web/src/app/api/debug/album/[slug]`**：生产 **404**（**API-001**）。
+
+**Worker 顺序复核（`services/worker/src/index.ts`）**
+
+- **`authenticateRequest`** 在 **`GET /api/sse/photos/:albumId`** 处理之前执行（约 **1293–1311** 行），与 **WKR-001**「SSE 需 API Key」一致。
+
+**匿名 SSE 与 API-003 对齐（代码修复）**
+
+- **问题**：`GET /api/realtime/photos/[albumId]` 对未登录访客仅校验 **`slug` + `is_public`**，**有访问密码的相册**在仅知道 `slug`/`albumId` 时仍可能建立 SSE，与验密 / Cookie 模型不一致。
+- **修复**：匿名分支改为 **`assertGuestAlbumAccess`**（与选片 / 批量下载一致），并支持 **`?albumPassword=`**；同源下 **`pis-album-access` Cookie** 仍随 `EventSource` 发送。单测见 **`apps/web/src/app/api/realtime/photos/[albumId]/route.test.ts`**。
+
+---
+
 ## 台账总览
 
 | ID | 领域 | 严重级别 | 状态 | 摘要 |
@@ -104,7 +122,7 @@
 | OPS-002 | 可观测性 | 低 | **已修复** | 移除 middleware 一次性打印 JWT/AUTH 环境变量键名 |
 | API-001 | 公开 API | 中 | **已修复** | 生产环境 `/api/debug/album/*` 返回 404 |
 | API-002 | 数据访问 | 中 | **已修复** | 公开 `download-selected` / `select` 使用 `createClient`；与访客访问校验同路径 |
-| API-003 | 业务一致性 | 低 | **已修复** | `verify-password` 签发 HttpOnly `pis-album-access` JWT；选片/批量下载支持 Cookie 或 `albumPassword` 查询/体参 |
+| API-003 | 业务一致性 | 低 | **已修复** | `verify-password` → `pis-album-access`；选片/下载/实时 SSE 匿名路径均 **`assertGuestAlbumAccess`**（可选 **`albumPassword`**） |
 | API-004 | Admin API 契约 | 低 | **已修复** | 占位 `collaborations` / `collaborators` 路由增加 `getCurrentUser` 401 |
 | ANA-001 | 分析埋点 | 中 | **已修复** | `analytics/track` 增加 IP 维度的 `checkRateLimit`（120/分钟） |
 | WKR-001 | Worker / SSE | 高 | **已修复** | Worker 侧 SSE 移至 API Key 校验之后；Web 经 `/api/realtime/photos/[albumId]` 代理并做访客/登录校验 |
