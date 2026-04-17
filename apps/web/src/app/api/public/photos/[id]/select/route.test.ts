@@ -1,29 +1,27 @@
 /**
  * 照片选择 API 路由测试
- * 
+ *
  * 测试 GET 和 PATCH 方法
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+/** @vitest-environment node */
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { GET, PATCH } from './route'
 import { createMockRequest } from '@/test/test-utils'
 
 // Mock dependencies
-const { mockAdminClient, mockSupabaseClient } = vi.hoisted(() => {
+const { mockSupabaseClient } = vi.hoisted(() => {
   return {
-    mockAdminClient: {
+    mockSupabaseClient: {
       from: vi.fn(),
       update: vi.fn(),
     },
-    mockSupabaseClient: {
-      from: vi.fn(),
-    }
   }
 })
 
 vi.mock('@/lib/database', () => ({
   createClient: vi.fn().mockResolvedValue(mockSupabaseClient),
-  createAdminClient: vi.fn().mockResolvedValue(mockAdminClient),
 }))
 
 describe('GET /api/public/photos/[id]/select', () => {
@@ -46,7 +44,9 @@ describe('GET /api/public/photos/[id]/select', () => {
 
       const mockAlbum = {
         id: '550e8400-e29b-41d4-a716-446655440001',
+        slug: 'test-album-slug',
         is_public: true,
+        password: null,
         deleted_at: null,
         expires_at: null,
       }
@@ -136,7 +136,9 @@ describe('GET /api/public/photos/[id]/select', () => {
 
       const mockAlbum = {
         id: '550e8400-e29b-41d4-a716-446655440001',
+        slug: 'private-slug',
         is_public: false,
+        password: null,
         deleted_at: null,
         expires_at: null,
       }
@@ -180,7 +182,9 @@ describe('GET /api/public/photos/[id]/select', () => {
 
       const mockAlbum = {
         id: '550e8400-e29b-41d4-a716-446655440001',
+        slug: 'test-album-slug',
         is_public: true,
+        password: null,
         deleted_at: null,
         expires_at: expiredDate.toISOString(),
       }
@@ -249,14 +253,16 @@ describe('GET /api/public/photos/[id]/select', () => {
 
 describe('PATCH /api/public/photos/[id]/select', () => {
   let mockSupabaseClient: any
-  let mockAdminClient: any
 
   beforeEach(async () => {
     vi.clearAllMocks()
     
-    const { createClient, createAdminClient } = await import('@/lib/database')
+    const { createClient } = await import('@/lib/database')
     mockSupabaseClient = await createClient()
-    mockAdminClient = await createAdminClient()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
   })
 
   describe('request validation', () => {
@@ -391,7 +397,9 @@ describe('PATCH /api/public/photos/[id]/select', () => {
 
       const mockAlbum = {
         id: '550e8400-e29b-41d4-a716-446655440001',
+        slug: 'private-slug',
         is_public: false,
+        password: null,
         deleted_at: null,
         expires_at: null,
       }
@@ -438,7 +446,9 @@ describe('PATCH /api/public/photos/[id]/select', () => {
 
       const mockAlbum = {
         id: '550e8400-e29b-41d4-a716-446655440001',
+        slug: 'test-album-slug',
         is_public: true,
+        password: null,
         deleted_at: null,
         expires_at: expiredDate.toISOString(),
       }
@@ -485,8 +495,10 @@ describe('PATCH /api/public/photos/[id]/select', () => {
       
       const mockAlbum = {
         id: '550e8400-e29b-41d4-a716-446655440001',
+        slug: 'test-album-slug',
         deleted_at: null,
         is_public: true,
+        password: null,
         expires_at: null,
       }
 
@@ -516,7 +528,7 @@ describe('PATCH /api/public/photos/[id]/select', () => {
         single: mockSingle,
       })
 
-      mockAdminClient.update.mockResolvedValue({
+      mockSupabaseClient.update.mockResolvedValue({
         data: [mockUpdatedPhoto],
         error: null,
       })
@@ -543,8 +555,10 @@ describe('PATCH /api/public/photos/[id]/select', () => {
       
       const mockAlbum = {
         id: '550e8400-e29b-41d4-a716-446655440001',
+        slug: 'test-album-slug',
         deleted_at: null,
         is_public: true,
+        password: null,
         expires_at: null,
       }
 
@@ -573,7 +587,7 @@ describe('PATCH /api/public/photos/[id]/select', () => {
         single: mockSingle,
       })
 
-      mockAdminClient.update.mockResolvedValue({
+      mockSupabaseClient.update.mockResolvedValue({
         data: [mockUpdatedPhoto],
         error: null,
       })
@@ -615,8 +629,10 @@ describe('PATCH /api/public/photos/[id]/select', () => {
       
       const mockAlbum = {
         id: '550e8400-e29b-41d4-a716-446655440001',
+        slug: 'test-album-slug',
         deleted_at: null,
         is_public: true,
+        password: null,
         expires_at: null,
       }
 
@@ -640,7 +656,7 @@ describe('PATCH /api/public/photos/[id]/select', () => {
         single: mockSingle,
       })
 
-      mockAdminClient.update.mockResolvedValue({
+      mockSupabaseClient.update.mockResolvedValue({
         data: null,
         error: { message: 'Update failed' },
       })

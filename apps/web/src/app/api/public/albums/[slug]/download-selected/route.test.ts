@@ -1,8 +1,10 @@
 /**
  * 下载选中照片 API 路由测试
- * 
+ *
  * 测试 GET 方法
  */
+
+/** @vitest-environment node */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { GET } from './route'
@@ -10,13 +12,12 @@ import { createMockRequest } from '@/test/test-utils'
 
 // Mock dependencies
 vi.mock('@/lib/database', () => {
-  const mockAdminClient = {
+  const mockDb = {
     from: vi.fn(),
   }
 
   return {
-    createAdminClient: vi.fn().mockReturnValue(mockAdminClient),
-    createClient: vi.fn().mockReturnValue(mockAdminClient), // In case it uses createClient too
+    createClient: vi.fn().mockResolvedValue(mockDb),
   }
 })
 
@@ -25,7 +26,7 @@ const originalFetch = global.fetch
 let mockFetch: ReturnType<typeof vi.fn>
 
 describe('GET /api/public/albums/[slug]/download-selected', () => {
-  let mockAdminClient: any
+  let mockDb: { from: ReturnType<typeof vi.fn> }
 
   beforeEach(async () => {
     vi.clearAllMocks()
@@ -34,8 +35,8 @@ describe('GET /api/public/albums/[slug]/download-selected', () => {
     mockFetch = vi.fn()
     global.fetch = mockFetch as any
     
-    const { createAdminClient } = await import('@/lib/database')
-    mockAdminClient = await createAdminClient()
+    const { createClient } = await import('@/lib/database')
+    mockDb = (await createClient()) as { from: ReturnType<typeof vi.fn> }
   })
 
   afterEach(() => {
@@ -52,7 +53,7 @@ describe('GET /api/public/albums/[slug]/download-selected', () => {
         error: { message: 'Not found' },
       })
 
-      mockAdminClient.from.mockReturnValue({
+      mockDb.from.mockReturnValue({
         select: mockSelect,
         eq: mockEq,
         is: mockIs,
@@ -70,7 +71,11 @@ describe('GET /api/public/albums/[slug]/download-selected', () => {
     it('should return 403 if album does not allow download', async () => {
       const mockAlbum = {
         id: 'album-123',
+        slug: 'test-slug',
         title: 'Test Album',
+        is_public: true,
+        password: null,
+        expires_at: null,
         allow_download: false,
         allow_batch_download: true,
       }
@@ -83,7 +88,7 @@ describe('GET /api/public/albums/[slug]/download-selected', () => {
         error: null,
       })
 
-      mockAdminClient.from.mockReturnValue({
+      mockDb.from.mockReturnValue({
         select: mockSelect,
         eq: mockEq,
         is: mockIs,
@@ -102,7 +107,11 @@ describe('GET /api/public/albums/[slug]/download-selected', () => {
     it('should return 403 if album does not allow batch download', async () => {
       const mockAlbum = {
         id: 'album-123',
+        slug: 'test-slug',
         title: 'Test Album',
+        is_public: true,
+        password: null,
+        expires_at: null,
         allow_download: true,
         allow_batch_download: false,
       }
@@ -115,7 +124,7 @@ describe('GET /api/public/albums/[slug]/download-selected', () => {
         error: null,
       })
 
-      mockAdminClient.from.mockReturnValue({
+      mockDb.from.mockReturnValue({
         select: mockSelect,
         eq: mockEq,
         is: mockIs,
@@ -136,7 +145,11 @@ describe('GET /api/public/albums/[slug]/download-selected', () => {
     it('should return download links for selected photos successfully', async () => {
       const mockAlbum = {
         id: 'album-123',
+        slug: 'test-slug',
         title: 'Test Album',
+        is_public: true,
+        password: null,
+        expires_at: null,
         allow_download: true,
         allow_batch_download: true,
       }
@@ -174,7 +187,7 @@ describe('GET /api/public/albums/[slug]/download-selected', () => {
         error: null,
       })
 
-      mockAdminClient.from
+      mockDb.from
         .mockReturnValueOnce({
           select: mockSelect,
           eq: mockEq,
@@ -244,7 +257,11 @@ describe('GET /api/public/albums/[slug]/download-selected', () => {
     it('should return 400 if no photos are selected', async () => {
       const mockAlbum = {
         id: 'album-123',
+        slug: 'test-slug',
         title: 'Test Album',
+        is_public: true,
+        password: null,
+        expires_at: null,
         allow_download: true,
         allow_batch_download: true,
       }
@@ -267,7 +284,7 @@ describe('GET /api/public/albums/[slug]/download-selected', () => {
         error: null,
       })
 
-      mockAdminClient.from
+      mockDb.from
         .mockReturnValueOnce({
           select: mockSelect,
           eq: mockEq,
@@ -299,7 +316,11 @@ describe('GET /api/public/albums/[slug]/download-selected', () => {
     it('should return 500 on database error when querying photos', async () => {
       const mockAlbum = {
         id: 'album-123',
+        slug: 'test-slug',
         title: 'Test Album',
+        is_public: true,
+        password: null,
+        expires_at: null,
         allow_download: true,
         allow_batch_download: true,
       }
@@ -322,7 +343,7 @@ describe('GET /api/public/albums/[slug]/download-selected', () => {
         error: { message: 'Database error' },
       })
 
-      mockAdminClient.from
+      mockDb.from
         .mockReturnValueOnce({
           select: mockSelect,
           eq: mockEq,

@@ -40,7 +40,7 @@
 
 - **占位接口（无鉴权）**：`collaborators`、`collaborations` 共 4 个文件为 TODO/501 桩实现，当前返回空数据或 501，但**未校验登录态**；记入 **API-004**（一致性与演进风险）。
 - **误报排除**：`retouch/[id]/upload`、`retouch/tasks` 使用 `requireRetoucherOrAdmin`，**鉴权存在**。
-- **`createAdminClient` @ `public`**：仍为 **`download-selected`**、**`photos/[id]/select`** 两处，与 **API-002** 一致，无新增。
+- **`createAdminClient` @ `public`**：**已移除**（`download-selected`、`photos/[id]/select` 改为 `createClient()`，并配合访客相册 JWT / 密码校验）；CI 由 `scripts/utils/check-security.sh` 第 9 步门禁。
 
 **本轮新增条目**：**API-004**、**ANA-001**。
 
@@ -50,23 +50,25 @@
 
 **入口文件**：`services/worker/src/index.ts`（`http.createServer` 自约 1206 行起）。
 
-**鉴权总规则**
+**鉴权总规则（评审时快照）**
 
 | 顺序 | 路径 / 条件 | `authenticateRequest` |
 |------|-------------|------------------------|
 | 1 | `GET /health` | **跳过**（监控） |
-| 2 | `GET /api/sse/photos/:albumId` | **跳过**（代码注释：SSE 不需要认证） |
+| 2 | `GET /api/sse/photos/:albumId` | 评审时曾**跳过**（见原 **WKR-001**） |
 | 3 | 其余在分支树中的业务路由 | **必须通过**，否则 **401** |
 
-`authenticateRequest` 实现见台账 **SEC-002**；单点调用约在 `index.ts` **1277–1287** 行（SSE 匹配之后、`/api/presign` 等之前）。
+**当前实现说明（与台账条目对齐）**：**WKR-001** 已在 Worker 将 SSE 纳入 API Key 校验之后；Web 侧经 **`/api/realtime/photos/[albumId]`** 代理。**WKR-002** 已对 `expirySeconds` 做钳制（含 multipart 等分支）。下文保留评审时证据式描述，便于对照历史结论。
 
-**抽样结论（预签名 / 分片）**
+`authenticateRequest` 实现见台账 **SEC-002**；Worker 路由树以仓库当前 `services/worker/src/index.ts` 为准。
+
+**抽样结论（预签名 / 分片）— 评审时**
 
 - **`POST /api/presign`**：仅校验 `key` 存在即 `getPresignedPutUrl(key)`；**无** key 前缀/格式白名单（在已持有 `WORKER_API_KEY` 的前提下等价于对桶内任意对象的 PUT 预签名能力——属**服务端密钥信任模型**，需在部署上保证 Worker 不可被公网直连或密钥泄露）。
-- **`POST /api/presign/get`**：从 body 读取 `expirySeconds`（默认 300）并传入 `getPresignedGetUrl(key, expirySeconds)`；**未见**对 `expirySeconds` 的类型与**最大值钳制**（见 **WKR-002**）。
-- **分片**：`/api/multipart/init`、`/api/multipart/presign-part` 等对 `key` / `uploadId` / `partNumber` 以**存在性**校验为主；`presign-part` 的 `expirySeconds` 默认 3600，仍可由客户端覆盖，同样归入 **WKR-002**。
+- **`POST /api/presign/get`**：从 body 读取 `expirySeconds`（默认 300）并传入 `getPresignedGetUrl(key, expirySeconds)`；**未见**对 `expirySeconds` 的类型与**最大值钳制**（见 **WKR-002**，已修复）。
+- **分片**：`/api/multipart/init`、`/api/multipart/presign-part` 等对 `key` / `uploadId` / `partNumber` 以**存在性**校验为主；`presign-part` 的 `expirySeconds` 默认 3600，仍可由客户端覆盖，同样归入 **WKR-002**（已钳制）。
 
-**本轮新增条目**：**WKR-001**（SSE 绕过 API Key）、**WKR-002**（预签名有效期未钳制）。
+**本轮新增条目**：**WKR-001**、**WKR-002**（均已修复，见总览表）。
 
 **下一计划（P3）**：`NEXT_PUBLIC_*` 与测试页（台账 **WEB-001**）、前端是否存在直连 Worker SSE/上传 URL 的配置路径（与 **WKR-001** 威胁模型相关）。
 
@@ -81,13 +83,13 @@
 | OPS-001 | 配置 / 部署 | 中 | **已修复** | `getWorkerUrl` 不再回退 `NEXT_PUBLIC_WORKER_URL`；`.env.example` 补充说明 |
 | OPS-002 | 可观测性 | 低 | **已修复** | 移除 middleware 一次性打印 JWT/AUTH 环境变量键名 |
 | API-001 | 公开 API | 中 | **已修复** | 生产环境 `/api/debug/album/*` 返回 404 |
-| API-002 | 数据访问 | 中 | 持续治理 | 未改 RLS 模型；仍以业务校验为主（后续可专项重构） |
-| API-003 | 业务一致性 | 低 | 待产品确认 | 未改（需产品与「密码相册」流程对齐后再动） |
+| API-002 | 数据访问 | 中 | **已修复** | 公开 `download-selected` / `select` 使用 `createClient`；与访客访问校验同路径 |
+| API-003 | 业务一致性 | 低 | **已修复** | `verify-password` 签发 HttpOnly `pis-album-access` JWT；选片/批量下载支持 Cookie 或 `albumPassword` 查询/体参 |
 | API-004 | Admin API 契约 | 低 | **已修复** | 占位 `collaborations` / `collaborators` 路由增加 `getCurrentUser` 401 |
 | ANA-001 | 分析埋点 | 中 | **已修复** | `analytics/track` 增加 IP 维度的 `checkRateLimit`（120/分钟） |
 | WKR-001 | Worker / SSE | 高 | **已修复** | Worker 侧 SSE 移至 API Key 校验之后；Web 经 `/api/realtime/photos/[albumId]` 代理并做访客/登录校验 |
 | WKR-002 | Worker / 预签名 | 中 | **已修复** | `expirySeconds` 经 `parseExpirySeconds` 钳制；可选 `WORKER_MAX_*` 环境变量 |
-| NET-001 | 速率限制 | 中 | **已修复** | 新增 `getTrustedClientIp`；默认不信任转发头；`PIS_TRUST_PROXY_HEADERS=true` 时恢复代理 IP 解析（登录/验密/分析已接入） |
+| NET-001 | 速率限制 | 中 | **已修复** | `getTrustedClientIp`；登录/验密/分析/`setup-password`/管理端上传限流等已接入 |
 | WEB-001 | 前端暴露面 | 低 | **已修复** | 生产环境 `/test-turnstile` 中间件 404 |
 | CRY-001 | 密码学实现 | 低 | **已修复** | Worker API Key 使用 `timingSafeEqual` |
 
@@ -224,39 +226,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 ### API-002 — 公开路由使用 `createAdminClient`
 
-**证据示例**：批量下载已选照片使用管理端客户端读相册与照片。  
+**状态**：**已修复**（`development`）。`download-selected` 与 `photos/[id]/select` 使用 `createClient()`；与 **`assertGuestAlbumAccess`**（Cookie JWT 或 `albumPassword`）一致后再读相册/照片。
 
-```43:75:apps/web/src/app/api/public/albums/[slug]/download-selected/route.ts
-    const { slug } = slugValidation.data
-    const db = await createAdminClient()
-    // ...
-    const photosResult = await db
-      .from<...>('photos')
-      .select('id, filename, original_key')
-      .eq('album_id', album.id)
-      .eq('is_selected', true)
-```
+**原问题摘要**：公开路由使用 `createAdminClient` 扩大数据面并弱化 RLS 边界。
 
-**影响**：绕过 RLS；未来若查询条件漏写 `album_id` / `slug` 关联，可能造成横向数据越权。当前片段在静态阅读下条件较窄，但属于**高敏感代码路径**，需纳入变更评审清单。  
-
-**修复方案**：在可行时改为服务端受限角色 + RLS；若必须 admin，则集中封装「公开相册只读」查询模块并加集成测试覆盖所有 filter。  
+**残余治理**：数据库层仍以业务校验为主；若后续引入 RLS 专项，可再收紧 anon 策略。
 
 ---
 
 ### API-003 — 公开选片与相册可见性
 
-**证据**：非公开相册直接 403。  
+**状态**：**已修复**。`POST .../verify-password` 在验密成功或无密码相册访问确认后下发 **`pis-album-access`** HttpOnly Cookie（JWT 载荷含 `sub`=`albumId`、`slug`、`scope: album_access`）。`GET`/`PATCH .../select` 与 **`GET .../download-selected`** 调用 **`assertGuestAlbumAccess`**；可选 **`albumPassword`**（PATCH 体或 GET 查询参数）用于无 Cookie 的一次性请求。
 
-```95:98:apps/web/src/app/api/public/photos/[id]/select/route.ts
-    // 验证相册访问权限
-    if (!album.is_public) {
-      return ApiError.forbidden('禁止访问非公开相册')
-    }
-```
-
-**影响**：若产品存在「非公开但凭相册密码可访问并选片」的流程，则当前 API 与前端流程可能不一致（功能缺陷或安全过度二选一）。  
-
-**修复方案**：产品确认后，统一在「已验证相册会话」（Cookie/token）后再允许 PATCH，或明确仅公开相册支持选片并在 UI 禁用。  
+**原问题摘要**：非公开相册一律 403，与密码相册访客流程不一致。
 
 ---
 

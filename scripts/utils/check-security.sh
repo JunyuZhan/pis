@@ -170,6 +170,19 @@ else
 fi
 echo ""
 
+# 9. 公开 API 不得使用 Service Role（createAdminClient）
+echo "🔟 检查 apps/web 公开 API 是否误用 createAdminClient..."
+# 仅扫描 route 实现文件，排除 *.test.ts 等
+PUBLIC_ADMIN=$(grep -r "createAdminClient" apps/web/src/app/api/public --include="route.ts" 2>/dev/null || true)
+if [ -n "$PUBLIC_ADMIN" ]; then
+    echo -e "${RED}❌ 公开 API 目录下发现 createAdminClient（应使用 anon 客户端 + 业务校验）：${NC}"
+    echo "$PUBLIC_ADMIN" | head -20
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✅ 公开 API 未使用 createAdminClient${NC}"
+fi
+echo ""
+
 # 总结
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 if [ $ERRORS -eq 0 ] && [ $WARNINGS -eq 0 ]; then
