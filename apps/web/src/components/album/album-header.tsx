@@ -43,10 +43,12 @@ export function AlbumHeader({ album, currentSort, currentLayout }: AlbumHeaderPr
         return
       }
 
-      const data = await response.json()
-      
-      // 逐个下载照片
-      for (const photo of data.photos) {
+      const json = await response.json()
+      const payload = json?.data ?? json
+      const photos = Array.isArray(payload?.photos) ? payload.photos : []
+
+      // 逐个下载照片（API 使用 createSuccessResponse，列表在 data.photos）
+      for (const photo of photos) {
         const link = document.createElement('a')
         link.href = photo.url
         link.download = photo.filename
