@@ -86,7 +86,11 @@ export async function middleware(request: NextRequest) {
       })
       
       if (settingsResponse.ok) {
-        const settings = await settingsResponse.json()
+        const body = (await settingsResponse.json()) as {
+          data?: { allow_public_home?: boolean }
+          allow_public_home?: boolean
+        }
+        const settings = body.data ?? body
         const allowPublicHome = settings.allow_public_home !== false // 默认允许
 
         // 如果不允许公开访问首页，检查用户是否已登录（先尝试 refresh 写回 access）

@@ -124,6 +124,7 @@
 - **访客相册客户端与 `?albumPassword=` 对齐**：**`album-client`**（照片列表 + **`usePhotoRealtime`**）、**`photo-group-filter`**、**`album-header`**（批量下载）、**`album-hero`**（**`POST .../view`** JSON）、**`face-search-modal`**（**`FormData`**）、**`lightbox`**（单张 **`/download`** + **`PATCH .../select`**）、**`masonry`**（卡片选片 + 卡片单张下载）在存在 URL 查询参数 **`albumPassword`** 时将其传给对应公开 API，与 RSC 门禁及 **HttpOnly Cookie** 二选一模型一致；**`appendAlbumPasswordIfPresent`** 见 **`src/lib/album-guest-url.ts`**。
 - **回归**：`pnpm exec vitest run src/app/api/public` 绿；相关单测文件含 **`@vitest-environment node`**（与 **`jose`** 访客 JWT 一致）。
 - **客户端与 `createSuccessResponse` 对齐**：**`GET .../download-selected`** 成功体为 **`{ success, data: { photos, ... } }`**；**`album-header`** 批量下载需从 **`data.photos`** 读取列表（此前误读顶层 **`photos`** 会导致批量下载静默无效）。
+- **首页门禁与公开设置契约**：**`GET /api/public/settings`** 成功体为 **`{ success, data }`**；**`middleware`** 曾读 **`settings.allow_public_home`**（恒为 **`undefined`**，等价始终放行首页）。已改为读取 **`body.data`**，并在设置接口中**单独查询**库内 **`allow_public_home`**（不放宽其它 `is_public=false` 项）并入 **`data`**，使「关闭游客首页」配置生效。
 
 ---
 

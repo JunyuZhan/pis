@@ -88,6 +88,30 @@ export async function GET() {
       ...result,
     }
 
+    // `allow_public_home` 在库中通常为 is_public=false（管理项），但 Edge middleware
+    // 需依赖公开接口判断首页是否对游客开放；在此单独读取并并入 data，不扩大其它非公开项。
+    const allowHomeResult = await db
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'allow_public_home')
+      .maybeSingle()
+
+    if (!allowHomeResult.error && allowHomeResult.data) {
+      let v: unknown = allowHomeResult.data.value
+      if (typeof v === 'string') {
+        try {
+          v = JSON.parse(v)
+        } catch {
+          const s = v.trim()
+          if (s === 'true') v = true
+          else if (s === 'false') v = false
+        }
+      }
+      if (typeof v === 'boolean') {
+        merged.allow_public_home = v
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: merged,
@@ -131,6 +155,8 @@ function getDefaultPublicSettings(): Record<string, unknown> {
     social_phone: '',
     // 功能
     polling_interval: parseInt(process.env.NEXT_PUBLIC_POLLING_INTERVAL || '3000', 10),
+    /** 与 middleware 首页门禁一致；可被库中 `allow_public_home` 覆盖 */
+    allow_public_home: true,
     // 主题
     theme_mode: 'system',
     theme_primary_color: '#D4AF37',
