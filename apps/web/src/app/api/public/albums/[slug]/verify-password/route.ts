@@ -3,6 +3,7 @@ import { createClient } from '@/lib/database'
 import { checkRateLimit } from '@/middleware-rate-limit'
 import { verifyPasswordSchema, albumSlugSchema } from '@/lib/validation/schemas'
 import { safeValidate, handleError, createSuccessResponse, ApiError } from '@/lib/validation/error-handler'
+import { getTrustedClientIp } from '@/lib/request-client-ip'
 
 interface RouteParams {
   params: Promise<{ slug: string }>
@@ -59,20 +60,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     
     const { slug } = slugValidation.data
     
-    // 获取客户端 IP 地址（与登录API使用相同的IP提取逻辑）
-    const forwardedFor = request.headers.get('x-forwarded-for')
-    const realIp = request.headers.get('x-real-ip')
-    const cfConnectingIp = request.headers.get('cf-connecting-ip') // Cloudflare
-    
-    let ip = 'unknown'
-    if (cfConnectingIp) {
-      ip = cfConnectingIp
-    } else if (forwardedFor) {
-      // x-forwarded-for 可能包含多个 IP，取第一个（客户端真实 IP）
-      ip = forwardedFor.split(',')[0].trim()
-    } else if (realIp) {
-      ip = realIp
-    }
+    const ip = getTrustedClientIp(request)
     
     // 检测是否是内网 IP（内网部署时，所有请求可能来自同一个 IP）
     const isPrivateIP = (ipAddr: string): boolean => {

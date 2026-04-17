@@ -86,7 +86,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     }
 
     // 4. 通过 Worker API 生成 presigned URL
-    const workerUrl = process.env.WORKER_API_URL || process.env.WORKER_URL || process.env.NEXT_PUBLIC_WORKER_URL || 'http://localhost:3001'
+    const workerUrl = process.env.WORKER_URL || process.env.WORKER_API_URL || 'http://localhost:3001'
     const workerApiKey = process.env.WORKER_API_KEY
     
     if (!workerApiKey) {

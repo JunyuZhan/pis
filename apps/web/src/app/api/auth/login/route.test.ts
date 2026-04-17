@@ -59,12 +59,17 @@ vi.mock('next/headers', () => ({
 describe('POST /api/auth/login', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubEnv('PIS_TRUST_PROXY_HEADERS', 'true')
     // 默认允许速率限制
     vi.mocked(checkRateLimit).mockResolvedValue({
       allowed: true,
       remaining: 4,
       resetAt: Date.now() + 60000,
     })
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
   })
 
   it('should return 400 for invalid request body', async () => {

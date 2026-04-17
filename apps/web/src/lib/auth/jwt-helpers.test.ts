@@ -47,6 +47,7 @@ describe('jwt-helpers', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(verifyToken).mockReset()
     process.env.NODE_ENV = 'test'
   })
 
@@ -96,7 +97,7 @@ describe('jwt-helpers', () => {
       expect(verifyToken).toHaveBeenCalledWith('invalid-token')
     })
 
-    it('应该在没有访问令牌但刷新令牌有效时返回用户', async () => {
+    it('应该在没有访问令牌但刷新令牌有效时返回 null（refresh 仅由 middleware 处理）', async () => {
       const mockRefreshPayload = {
         sub: testUser.id,
         email: testUser.email,
@@ -114,13 +115,11 @@ describe('jwt-helpers', () => {
 
       const user = await getUserFromRequest(request)
 
-      expect(user).not.toBeNull()
-      expect(user?.id).toBe(testUser.id)
-      expect(user?.email).toBe(testUser.email)
-      expect(verifyToken).toHaveBeenCalledWith('valid-refresh-token')
+      expect(user).toBeNull()
+      expect(verifyToken).not.toHaveBeenCalled()
     })
 
-    it('应该在访问令牌无效但刷新令牌有效时返回用户', async () => {
+    it('应该在访问令牌无效但刷新令牌有效时返回 null（由 middleware 刷新 access）', async () => {
       const mockRefreshPayload = {
         sub: testUser.id,
         email: testUser.email,
@@ -132,7 +131,7 @@ describe('jwt-helpers', () => {
       }
       vi.mocked(verifyToken)
         .mockResolvedValueOnce(null) // 访问令牌无效
-        .mockResolvedValueOnce(mockRefreshPayload) // 刷新令牌有效
+        .mockResolvedValueOnce(mockRefreshPayload) // 刷新令牌有效（本函数不再用其作为已登录身份）
       
       const request = createMockRequest({
         [COOKIE_NAME]: 'invalid-access-token',
@@ -141,9 +140,8 @@ describe('jwt-helpers', () => {
 
       const user = await getUserFromRequest(request)
 
-      expect(user).not.toBeNull()
-      expect(user?.id).toBe(testUser.id)
-      expect(user?.email).toBe(testUser.email)
+      expect(user).toBeNull()
+      expect(verifyToken).toHaveBeenCalledWith('invalid-access-token')
     })
 
     it('应该在刷新令牌无效时返回 null', async () => {
@@ -156,7 +154,7 @@ describe('jwt-helpers', () => {
       const user = await getUserFromRequest(request)
 
       expect(user).toBeNull()
-      expect(verifyToken).toHaveBeenCalledWith('invalid-refresh-token')
+      expect(verifyToken).not.toHaveBeenCalled()
     })
 
     it('应该优先使用访问令牌而不是刷新令牌', async () => {
@@ -305,6 +303,17 @@ describe('jwt-helpers', () => {
     })
 
     it('应该处理多个 cookie', async () => {
+      const mockAccessPayload = {
+        sub: testUser.id,
+        email: testUser.email,
+        type: 'access' as const,
+        iss: 'pis-auth',
+        aud: 'pis-app',
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      }
+      vi.mocked(verifyToken).mockResolvedValue(mockAccessPayload)
+
       const accessToken = await createAccessToken(testUser)
       const request = createMockRequest({
         [COOKIE_NAME]: accessToken,

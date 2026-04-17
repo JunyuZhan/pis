@@ -80,12 +80,8 @@ export async function updateSession(request: NextRequest) {
   // 优先使用刷新后的用户信息
   let user = refreshedUser;
 
-  // 如果 token 没有被刷新，从 request 中读取
-  // 但如果 refresh token 有效但 access token 无效，getUserFromRequest 会返回用户
-  // 此时中间件已经刷新了 token，所以应该优先使用 refreshedUser
+  // access 有效时 refreshedUser 已带当前用户；access 无效但 refresh 有效时上面已刷新并返回 refreshedUser。
   if (!user) {
-    // 如果 refreshedUser 为 null，说明 token 有效，不需要刷新
-    // 从原始 request 中读取用户信息
     user = await getUserFromRequest(request);
   }
 

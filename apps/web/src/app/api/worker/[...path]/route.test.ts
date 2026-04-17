@@ -556,7 +556,7 @@ describe('Worker API Proxy', () => {
       )
     })
 
-    it('should fallback to NEXT_PUBLIC_WORKER_URL', async () => {
+    it('should not use NEXT_PUBLIC_WORKER_URL for server proxy (OPS-001)', async () => {
       delete process.env.WORKER_URL
       delete process.env.WORKER_API_URL
       process.env.NEXT_PUBLIC_WORKER_URL = 'http://public-worker:3001'
@@ -575,7 +575,7 @@ describe('Worker API Proxy', () => {
       await GET(request, { params: Promise.resolve({ path: ['health'] }) })
 
       expect(global.fetch).toHaveBeenCalledWith(
-        'http://public-worker:3001/health',
+        'http://localhost:3001/health',
         expect.any(Object)
       )
     })

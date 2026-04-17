@@ -14,8 +14,7 @@ import { verifyToken, createAccessToken, COOKIE_NAME, REFRESH_COOKIE_NAME, type 
  * 从请求中获取用户（用于 API Routes 和 Middleware）
  *
  * @description
- * 如果访问令牌过期但刷新令牌有效，会尝试刷新访问令牌。
- * 注意：在 API Routes 中，刷新后的 token 需要通过 response headers 返回给客户端。
+ * 仅识别有效 **access** JWT。refresh 由 `updateSessionMiddleware` 等在响应中写回新 access cookie。
  *
  * @param {NextRequest} request Next.js 请求对象
  * @returns {Promise<AuthUser|null>} 用户对象，未认证返回 null
@@ -67,31 +66,13 @@ export async function getUserFromRequest(request: NextRequest): Promise<AuthUser
     }
   }
 
-  // 如果访问令牌无效（不存在或过期）且刷新令牌存在，尝试刷新
-  // 注意：在 API Routes 中，我们不能直接设置 cookie，但中间件应该已经处理了刷新
-  // 这里我们返回 null，让调用者知道需要重新认证
-  // 实际上，中间件应该已经刷新了 token，所以后续请求应该能够读取到新的 token
-  if (refreshToken) {
+  // 仅接受有效 access token；refresh 仅由 middleware / 专用刷新路由处理并写回新 access cookie。
+  if (refreshToken && process.env.NODE_ENV === 'development') {
     const refreshPayload = await verifyToken(refreshToken)
     if (refreshPayload && refreshPayload.type === 'refresh') {
-      // 刷新令牌有效，但访问令牌无效
-      // 在 API Routes 中，我们不能设置 cookie，所以返回用户信息
-      // 调用者需要确保中间件已经刷新了 token
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[Auth getUserFromRequest] Refresh token valid for user: ${refreshPayload.email}, but access token invalid`)
-      }
-      return {
-        id: refreshPayload.sub,
-        email: refreshPayload.email,
-      }
-    } else {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Auth getUserFromRequest] Refresh token invalid or expired')
-      }
-    }
-  } else {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[Auth getUserFromRequest] Refresh token not found')
+      console.log(
+        `[Auth getUserFromRequest] Refresh token valid for user: ${refreshPayload.email}, but access invalid — returning null until middleware refreshes access cookie`,
+      )
     }
   }
 

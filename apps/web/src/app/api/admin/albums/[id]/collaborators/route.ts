@@ -6,14 +6,20 @@
  * 注意：此功能正在开发中，数据库表已创建但 API 尚未完全实现
  */
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { getCurrentUser } from '@/lib/auth/api-helpers'
 
 interface RouteParams {
   params: Promise<{ id: string }>
 }
 
 // 获取相册协作者列表
-export async function GET(_request: Request, { params }: RouteParams) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
+  const user = await getCurrentUser(request)
+  if (!user) {
+    return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: '请先登录' } }, { status: 401 })
+  }
+
   const { id: albumId } = await params
   
   // TODO: 实现协作者功能
@@ -25,7 +31,12 @@ export async function GET(_request: Request, { params }: RouteParams) {
 }
 
 // 添加协作者
-export async function POST(_request: Request, { params }: RouteParams) {
+export async function POST(request: NextRequest, { params }: RouteParams) {
+  const user = await getCurrentUser(request)
+  if (!user) {
+    return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: '请先登录' } }, { status: 401 })
+  }
+
   const { id: albumId } = await params
   
   // TODO: 实现协作者功能

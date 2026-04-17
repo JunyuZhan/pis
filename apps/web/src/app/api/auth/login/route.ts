@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { checkRateLimit } from '@/middleware-rate-limit';
+import { getTrustedClientIp } from '@/lib/request-client-ip';
 import { getAuthDatabase } from '@/lib/auth';
 import {
   createAccessToken,
@@ -62,22 +63,7 @@ try {
  */
 export async function POST(request: NextRequest) {
   try {
-    // 获取客户端 IP 地址（改进的 IP 提取逻辑）
-    const forwardedFor = request.headers.get('x-forwarded-for');
-    const realIp = request.headers.get('x-real-ip');
-    const cfConnectingIp = request.headers.get('cf-connecting-ip'); // Cloudflare
-
-    // 优先使用 Cloudflare IP，然后是 x-forwarded-for 的第一个 IP，最后是 x-real-ip
-    // 注意：NextRequest 没有 ip 属性，需要通过 headers 获取
-    let ip = 'unknown';
-    if (cfConnectingIp) {
-      ip = cfConnectingIp;
-    } else if (forwardedFor) {
-      // x-forwarded-for 可能包含多个 IP，取第一个（客户端真实 IP）
-      ip = forwardedFor.split(',')[0].trim();
-    } else if (realIp) {
-      ip = realIp;
-    }
+    const ip = getTrustedClientIp(request);
 
     // 解析和验证请求体
     let body: unknown;

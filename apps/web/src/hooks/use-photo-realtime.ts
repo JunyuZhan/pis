@@ -65,9 +65,9 @@ export function usePhotoRealtime({
       eventSourceRef.current = null;
     }
 
-    // 创建 SSE 连接
-    const workerUrl = process.env.NEXT_PUBLIC_WORKER_URL || '';
-    const eventSource = new EventSource(`${workerUrl}/api/sse/photos/${albumId}`);
+    // 创建 SSE 连接（经 Next 代理附加 Worker API Key，见 /api/realtime/photos/[albumId]）
+    const streamUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/realtime/photos/${albumId}?slug=${encodeURIComponent(albumSlug)}`;
+    const eventSource = new EventSource(streamUrl);
     eventSourceRef.current = eventSource;
 
     // 连接成功
@@ -200,8 +200,8 @@ export function usePhotoRealtimeAdmin({
       eventSourceRef.current = null;
     }
 
-    const workerUrl = process.env.NEXT_PUBLIC_WORKER_URL || '';
-    const eventSource = new EventSource(`${workerUrl}/api/sse/photos/${albumId}`);
+    const streamUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/realtime/photos/${albumId}`;
+    const eventSource = new EventSource(streamUrl);
     eventSourceRef.current = eventSource;
 
     eventSource.onerror = () => {
