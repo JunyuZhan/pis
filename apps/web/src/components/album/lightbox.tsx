@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, useEffect, useMemo, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import type React from "react";
 import Lightbox from "yet-another-react-lightbox";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
@@ -10,6 +11,7 @@ import "yet-another-react-lightbox/plugins/captions.css";
 import { Download, Heart, RotateCw, RotateCcw, Share2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn, getSafeMediaUrl } from "@/lib/utils";
+import { appendAlbumPasswordIfPresent } from "@/lib/album-guest-url";
 import { handleApiError, showSuccess } from "@/lib/toast";
 import { usePhotoViewTracker, trackDownload } from "@/hooks/use-analytics";
 import type { Photo } from "@/types/database";
@@ -34,6 +36,8 @@ export function PhotoLightbox({
   onIndexChange,
 }: PhotoLightboxProps) {
   const t = useTranslations("album.lightbox");
+  const searchParams = useSearchParams();
+  const albumPassword = searchParams.get("albumPassword");
 
   // 使用安全的媒体 URL（自动修复 localhost HTTPS 问题）
   const safeMediaUrl = getSafeMediaUrl();
@@ -305,8 +309,12 @@ export function PhotoLightbox({
       console.log("[Download] Starting download for photo:", currentPhotoId);
 
       try {
-        // 获取下载链接
-        const downloadApiUrl = `/api/public/download/${currentPhotoId}`;
+        const downloadUrlObj = new URL(
+          `/api/public/download/${encodeURIComponent(currentPhotoId)}`,
+          window.location.origin,
+        );
+        appendAlbumPasswordIfPresent(downloadUrlObj, albumPassword);
+        const downloadApiUrl = downloadUrlObj.toString();
         console.log("[Download] Fetching download URL from:", downloadApiUrl);
 
         const res = await fetch(downloadApiUrl);
@@ -418,7 +426,7 @@ export function PhotoLightbox({
         handleApiError(error, "下载失败，请重试");
       }
     },
-    [currentPhotoId, currentIndex, photos, safeMediaUrl],
+    [currentPhotoId, currentIndex, photos, safeMediaUrl, albumPassword],
   );
 
   // 选片功能
@@ -430,11 +438,18 @@ export function PhotoLightbox({
     setSelectedMap((prev) => ({ ...prev, [photoId]: newSelected }));
 
     try {
-      const res = await fetch(`/api/public/photos/${photoId}/select`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isSelected: newSelected }),
-      });
+      const res = await fetch(
+        `/api/public/photos/${encodeURIComponent(photoId)}/select`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            albumPassword
+              ? { isSelected: newSelected, albumPassword }
+              : { isSelected: newSelected },
+          ),
+        },
+      );
 
       if (!res.ok) {
         // 回滚
@@ -453,7 +468,7 @@ export function PhotoLightbox({
       setSelectedMap((prev) => ({ ...prev, [photoId]: !newSelected }));
       handleApiError(error, "选片失败");
     }
-  }, [currentPhoto, selectedMap, onSelectChange]);
+  }, [currentPhoto, selectedMap, onSelectChange, albumPassword]);
 
   // 处理双击放大
   // 处理视图变化，使用 useCallback 避免在渲染期间更新状态
