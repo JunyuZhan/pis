@@ -87,13 +87,15 @@ bash docker/push-images-to-registries.sh
 
 #### GitHub Actions：推送 `v*` 标签后自动推 Docker Hub
 
-可用「GitHub 账号」在 **hub.docker.com** 登录，但 **CI 不能使用 GitHub 密码** 推镜像。请在 Docker Hub 创建 **Access Token**，再按下面步骤在 GitHub 配置。
+可用「GitHub 账号」在 **hub.docker.com** 登录，但 **CI 不能使用 GitHub 密码** 推镜像。请在 Docker Hub 的 **Personal access tokens** 处创建令牌，再按下面步骤在 GitHub 配置。
 
-**1. 在 Docker Hub 创建 Access Token**
+**1. 在 Docker Hub 创建 Personal access token**
+
+页面上若显示 **「Personal access tokens」**（说明可用令牌代替密码做 Docker CLI 认证），即此处创建。步骤：
 
 1. 打开 [https://hub.docker.com](https://hub.docker.com) 并登录。  
-2. 右上角头像 → **Account settings**（或 **My Account**）→ **Security** → **New Access Token**。  
-3. 填写描述（如 `pis-github-actions`），权限选 **Read, Write, Delete**（或至少能 **push** 的写权限），生成后**立刻复制**保存（只显示一次）。
+2. 右上角头像 → **Account settings**（或 **My Account**）→ **Security** → **New access token**（或 **Generate new token**，界面文案可能略有差异）。  
+3. 填写描述（如 `pis-github-actions`），权限选 **Read, Write, Delete**（或至少包含能 **push** 镜像的写权限），生成后**立刻复制**保存（只显示一次）。该字符串即 GitHub Secret **`DOCKERHUB_TOKEN`** 的值。
 
 **2. 在 GitHub 仓库里添加 Secrets（本仓库 → Actions 用）**
 
@@ -106,7 +108,7 @@ bash docker/push-images-to-registries.sh
 | Secret | 说明 |
 |--------|------|
 | `DOCKERHUB_USERNAME` | Docker Hub 用户名（或组织下有权推送的机器人账号用户名） |
-| `DOCKERHUB_TOKEN` | 粘贴上一步在 Hub 生成的 **Access Token**（不要填 GitHub 密码） |
+| `DOCKERHUB_TOKEN` | 粘贴上一步在 Hub 生成的 **Personal access token**（不要填 GitHub 密码，也不要填 Hub 登录密码） |
 
 6. 保存后列表中应出现 `DOCKERHUB_USERNAME`、`DOCKERHUB_TOKEN`；**Secret 的值创建后不可再查看**，只能 **Update** 或删除后重建。
 

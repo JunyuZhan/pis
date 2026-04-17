@@ -1,5 +1,5 @@
 # 在推送 git 标签 v*（例如 v1.2.0）后，将 web / worker 构建并推送到 Docker Hub。
-# 与用「GitHub 账号登录 Docker Hub」无关：CI 使用 Hub 的 Access Token（见文档）。
+# 与用「GitHub 账号登录 Docker Hub」无关：CI 使用 Hub 的 Personal access token（见文档）。
 name: Publish Docker images (Docker Hub)
 
 on:
