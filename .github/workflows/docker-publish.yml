@@ -1,0 +1,78 @@
+# 在推送 git 标签 v*（例如 v1.2.0）后，将 web / worker 构建并推送到 Docker Hub。
+# 与用「GitHub 账号登录 Docker Hub」无关：CI 使用 Hub 的 Access Token（见文档）。
+name: Publish Docker images (Docker Hub)
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: docker-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  docker-hub:
+    name: Build and push to Docker Hub
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Parse version from tag
+        id: meta
+        run: |
+          REF="${GITHUB_REF_NAME}"
+          case "$REF" in
+            v*) ;;
+            *)
+              echo "Expected tag v*, got: $REF" >&2
+              exit 1
+              ;;
+          esac
+          VERSION="${REF#v}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "Git tag: ${REF} -> image tags: ${VERSION}, ${REF}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Resolve image namespace (Docker Hub user or org)
+        id: ns
+        env:
+          VAR_NS: ${{ vars.DOCKERHUB_IMAGE_NAMESPACE }}
+        run: |
+          NS="${VAR_NS}"
+          if [ -z "${NS}" ]; then
+            NS="${{ secrets.DOCKERHUB_USERNAME }}"
+          fi
+          echo "namespace=${NS}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build and push web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/web.Dockerfile
+          push: true
+          tags: |
+            docker.io/${{ steps.ns.outputs.namespace }}/pis-web:${{ steps.meta.outputs.version }}
+            docker.io/${{ steps.ns.outputs.namespace }}/pis-web:${{ github.ref_name }}
+
+      - name: Build and push worker
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/worker.Dockerfile
+          push: true
+          tags: |
+            docker.io/${{ steps.ns.outputs.namespace }}/pis-worker:${{ steps.meta.outputs.version }}
+            docker.io/${{ steps.ns.outputs.namespace }}/pis-worker:${{ github.ref_name }}

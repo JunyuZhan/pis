@@ -85,6 +85,30 @@ bash docker/push-images-to-registries.sh
 
 不设 `PIS_DOCKERHUB_*` 时，脚本行为与仅推私有仓库一致。
 
+#### GitHub Actions：推送 `v*` 标签后自动推 Docker Hub
+
+可用「GitHub 账号」在 **hub.docker.com** 登录，但 **CI 不能使用 GitHub 密码** 推镜像。请在 Docker Hub 创建 **Access Token**，并在 GitHub 仓库 **Settings → Secrets and variables → Actions** 中配置：
+
+| Secret | 说明 |
+|--------|------|
+| `DOCKERHUB_USERNAME` | Docker Hub 用户名（或组织下有权推送的机器人账号用户名） |
+| `DOCKERHUB_TOKEN` | Hub → Account Settings → Security → **New Access Token** |
+
+可选 **Repository variable**（同一 Settings 页 Variables）：
+
+| Variable | 说明 |
+|----------|------|
+| `DOCKERHUB_IMAGE_NAMESPACE` | 镜像命名空间；不填时默认与 `DOCKERHUB_USERNAME` 相同。若镜像推送到 **Docker Hub Organization**，填该组织名。 |
+
+工作流文件：仓库根目录 **`.github/workflows/docker-publish.yml`**。当你推送 **`v*`** 形式的 git 标签（例如 `v1.2.0`）时，会构建 `docker/web.Dockerfile` 与 `docker/worker.Dockerfile`，并推送到：
+
+- `docker.io/<命名空间>/pis-web:<无v版本>` 与 `...:v1.2.0`（与标签一致）
+- `docker.io/<命名空间>/pis-worker:<无v版本>` 与 `...:v1.2.0`
+
+Hub 上需存在（或首次推送创建）仓库 **`pis-web`**、**`pis-worker`**；若你使用其它仓库名，请自行修改该 workflow 中的镜像名。
+
+与现有 **`release.yml`**（同标签触发创建 GitHub Release）可并行执行，互不依赖。
+
 **手动等价（二次 `docker tag` + `docker push`）**
 
 ```bash
