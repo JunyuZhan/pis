@@ -87,18 +87,44 @@ bash docker/push-images-to-registries.sh
 
 #### GitHub Actions：推送 `v*` 标签后自动推 Docker Hub
 
-可用「GitHub 账号」在 **hub.docker.com** 登录，但 **CI 不能使用 GitHub 密码** 推镜像。请在 Docker Hub 创建 **Access Token**，并在 GitHub 仓库 **Settings → Secrets and variables → Actions** 中配置：
+可用「GitHub 账号」在 **hub.docker.com** 登录，但 **CI 不能使用 GitHub 密码** 推镜像。请在 Docker Hub 创建 **Access Token**，再按下面步骤在 GitHub 配置。
+
+**1. 在 Docker Hub 创建 Access Token**
+
+1. 打开 [https://hub.docker.com](https://hub.docker.com) 并登录。  
+2. 右上角头像 → **Account settings**（或 **My Account**）→ **Security** → **New Access Token**。  
+3. 填写描述（如 `pis-github-actions`），权限选 **Read, Write, Delete**（或至少能 **push** 的写权限），生成后**立刻复制**保存（只显示一次）。
+
+**2. 在 GitHub 仓库里添加 Secrets（本仓库 → Actions 用）**
+
+1. 打开 GitHub 上的**目标仓库**（例如 `JunyuZhan/pis`）。  
+2. 顶部 **Settings**（需对该仓库有 **Admin** 或具备「管理 Actions secrets」的权限）。  
+3. 左侧 **Secrets and variables** → **Actions**。  
+4. 打开 **Secrets** 标签页 → **New repository secret**。  
+5. 依次新建两条（名称须与 workflow 中一致，区分大小写）：
 
 | Secret | 说明 |
 |--------|------|
 | `DOCKERHUB_USERNAME` | Docker Hub 用户名（或组织下有权推送的机器人账号用户名） |
-| `DOCKERHUB_TOKEN` | Hub → Account Settings → Security → **New Access Token** |
+| `DOCKERHUB_TOKEN` | 粘贴上一步在 Hub 生成的 **Access Token**（不要填 GitHub 密码） |
 
-可选 **Repository variable**（同一 Settings 页 Variables）：
+6. 保存后列表中应出现 `DOCKERHUB_USERNAME`、`DOCKERHUB_TOKEN`；**Secret 的值创建后不可再查看**，只能 **Update** 或删除后重建。
+
+**组织（Organization）仓库**：若仓库属于 Org，Secrets 可能在 **Organization → Settings → Secrets and variables → Actions** 中配置（需 Org 管理员），或在仓库 Settings 里为该仓库单独配置，视你们 Org 策略而定。
+
+**3.（可选）添加 Variables**
+
+仍在 **Settings → Secrets and variables → Actions**，切到 **Variables** 标签页 → **New repository variable**：
 
 | Variable | 说明 |
 |----------|------|
 | `DOCKERHUB_IMAGE_NAMESPACE` | 镜像命名空间；不填时默认与 `DOCKERHUB_USERNAME` 相同。若镜像推送到 **Docker Hub Organization**，填该组织名。 |
+
+**4. 验证**
+
+推送测试标签（例如 `v0.0.0-test`，用完可删 tag）或在 **Actions** 页找到 **Publish Docker images (Docker Hub)** 工作流查看运行结果；失败时展开 **Login to Docker Hub** 步骤核对用户名与 Token。
+
+---
 
 工作流文件：仓库根目录 **`.github/workflows/docker-publish.yml`**。当你推送 **`v*`** 形式的 git 标签（例如 `v1.2.0`）时，会构建 `docker/web.Dockerfile` 与 `docker/worker.Dockerfile`，并推送到：
 
