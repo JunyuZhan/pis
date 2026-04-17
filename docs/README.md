@@ -1,169 +1,72 @@
 # PIS 文档索引
 
-> Private Instant Photo Sharing - 私有化照片分享系统
+> Private Instant Photo Sharing — 与仓库内**实际存在的文件**对齐（定期维护）。Docker 编排的详细说明在仓库根目录 **[docker/README.md](../docker/README.md)**。
 
 ---
 
-## 📚 核心文档
+## 部署与运维
 
-| 文档 | 描述 |
+| 文档 | 说明 |
 |------|------|
-| [部署指南 (中文)](./i18n/zh-CN/DEPLOYMENT.md) | 详细部署步骤和配置说明 |
-| [部署指南 (English)](./i18n/en/DEPLOYMENT.md) | Deployment guide in English |
-| [部署检查清单](./DEPLOYMENT_CHECKLIST.md) | 部署前检查清单和快速参考 |
-| [架构示例](./ARCHITECTURE.example.md) | 系统架构概览（不含敏感信息） |
-| [开发指南](./DEVELOPMENT.md) | 开发环境设置和代码规范 |
-| [快速开始](./QUICK_START.md) | 3 步上手指南 |
+| [部署指南（中文）](./i18n/zh-CN/DEPLOYMENT.md) | 生产/测试环境部署主文档 |
+| [部署指南（English）](./i18n/en/DEPLOYMENT.md) | English deployment guide |
+| [Docker 说明](../docker/README.md) | Compose、私有镜像、客户单文件入口等 |
+| [Docker Compose 文件说明](../docker/DOCKER_COMPOSE_FILES.md) | 各 `docker-compose*.yml` 用途 |
 
 ---
 
-## 🔐 安全文档
+## 使用产品
 
-| 文档 | 描述 |
+| 文档 | 说明 |
 |------|------|
-| [安全指南](./SECURITY.md) | 安全最佳实践和配置建议 |
-| [开源检查清单](./OPEN_SOURCE_CHECKLIST.md) | 开源发布前检查清单 |
+| [用户指南](./USER_GUIDE.md) | 管理员与摄影师功能说明 |
+| [功能速查：风格预设与批量下载等](./QUICK_START.md) | 面向**已部署系统**的功能上手，非安装教程 |
 
 ---
 
-## 🚀 发布文档
+## 安全与配置
 
-| 文档 | 描述 |
+| 文档 | 说明 |
 |------|------|
-| [快速发布指南](./QUICK_RELEASE_GUIDE.md) | 5 分钟完成版本发布 |
-| [发布前检查清单](./RELEASE_CHECKLIST.md) | 详细的发布前检查清单 |
-| [发布说明模板](./RELEASE_NOTES_TEMPLATE.md) | GitHub Release Notes 模板 |
+| [安全指南](./SECURITY.md) | 安全实践与配置建议 |
+| [环境变量](./ENVIRONMENT_VARIABLES.md) | 变量说明（请勿将含真实密钥的副本提交到 Git） |
 
 ---
 
-## 🎨 功能文档
+## 架构与实现原理
 
-| 文档 | 描述 |
+| 文档 | 说明 |
 |------|------|
-| [用户指南](./USER_GUIDE.md) | 完整的功能使用说明 |
-| [图片风格预设设计](./IMAGE_STYLE_PRESET_DESIGN.md) | 相册风格预设功能设计 |
-| [风格预设参数列表](./STYLE_PRESETS_PARAMETERS.md) | 所有风格预设的详细参数参考 |
-| [上传队列逻辑](./UPLOAD_QUEUE_LOGIC.md) | 照片上传和处理队列说明 |
-| [移动端优化](./MOBILE_OPTIMIZATION.md) | 移动端用户体验优化 |
+| [系统工作原理](./HOW_IT_WORKS.md) | 架构、数据流、工作流程（偏说明性） |
+| [架构文档](./ARCHITECTURE.md) | 组件、部署拓扑与工程师向说明（示例域名等仅为说明） |
 
 ---
 
-## 🧪 测试文档
+## 开发与测试
 
-| 文档 | 描述 |
+| 文档 | 说明 |
 |------|------|
-| [测试指南](./testing/TESTING.md) | 完整的测试使用指南（包含快速开始、测试流程、调试方法） |
-| [测试覆盖分析](./testing/TEST_COVERAGE_ANALYSIS.md) | 详细的测试覆盖分析报告 |
-
+| [开发指南](./DEVELOPMENT.md) | 本地开发、命令、规范 |
+| [测试说明](./testing/TESTING.md) | 测试运行与流程 |
+| [测试覆盖分析](./testing/TEST_COVERAGE_ANALYSIS.md) | 覆盖率相关说明 |
+| [贡献指南](./project/CONTRIBUTING.md) | Issue / PR 与协作约定 |
+| [行为准则](./project/CODE_OF_CONDUCT.md) | 社区准则 |
+| [更新日志](./project/CHANGELOG.md) | 版本变更记录 |
 
 ---
 
-## 🔧 配置和故障排查
+## 归档（非主入口）
 
-| 文档 | 描述 |
+| 路径 | 说明 |
 |------|------|
-| [字体配置指南](./FONTS.md) | 字体文件下载和配置 |
-| [环境变量配置](./ENVIRONMENT_VARIABLES.md) | 环境变量详细说明（敏感信息版本） |
-| [数据库重置](./RESET_DATABASE.md) | 数据库重置和清理 |
-| [日志配置](./LOGGING.md) | 日志系统配置 |
-| [日志位置](./LOG_LOCATIONS.md) | 日志文件位置说明 |
-| [SSL 问题修复](./SSL_FIX.md) | macOS 开发环境 SSL 证书问题 |
+| [archive/README.md](./archive/README.md) | 归档策略说明 |
+| [archive/SERVER_DEPLOYMENT_GUIDE.md](./archive/SERVER_DEPLOYMENT_GUIDE.md) | 旧版「服务器部署」备忘，已由 i18n 部署指南与 docker 文档取代 |
 
 ---
 
-## 🐳 Docker 部署相关
+## 其他
 
-| 文档 | 描述 |
-|------|------|
-| [Docker 容器和存储卷](./DOCKER_CONTAINERS_AND_VOLUMES.md) | 容器命名和组织说明 |
-| [Docker 网络和端口](./DOCKER_NETWORK_AND_PORTS.md) | 网络配置和端口说明 |
-| [统一入口架构](./UNIFIED_ENTRY_ARCHITECTURE.md) | 统一入口架构设计说明 |
-| [端口冲突解决方案](./PORT_CONFLICT_SOLUTIONS.md) | 端口冲突处理方案 |
-| [Frpc/DDNSTO 配置指南](./FRPC_DDNSTO_SETUP.md) | 内网穿透配置指南 |
+- [国际化文档索引](./i18n/README.md)  
+- [素材说明](./assets/support/README.md)  
 
----
-
-## 🏗️ 架构文档
-
-| 文档 | 描述 |
-|------|------|
-| [架构示例](./ARCHITECTURE.example.md) | 系统架构概览（公开版本） |
-| [架构路径](./ARCHITECTURE_PATHS.md) | 系统路径和路由说明 |
-
----
-
-## 📋 开发计划
-
-| 文档 | 描述 |
-|------|------|
-| [开发计划](./TODOLIST.md) | 功能开发计划和优先级 |
-| [项目路线图](./project/TODO.md) | 长期路线图与实施计划 |
-
----
-
-## 📁 文档结构
-
-```
-docs/
-├── README.md                      # 文档索引（本文件）
-├── DEPLOYMENT_CHECKLIST.md        # 部署检查清单
-├── DEVELOPMENT.md                 # 开发指南
-├── SECURITY.md                    # 安全指南
-├── TESTING.md                     # 测试指南
-├── QUICK_RELEASE_GUIDE.md         # 快速发布指南
-├── RELEASE_CHECKLIST.md           # 发布前检查清单
-├── RELEASE_NOTES_TEMPLATE.md      # 发布说明模板
-├── ARCHITECTURE.example.md        # 架构示例（公开版本）
-├── FONTS.md                       # 字体配置指南
-├── QUICK_START.md                 # 快速开始
-├── USER_GUIDE.md                  # 用户指南
-└── i18n/
-    ├── README.md
-    ├── en/
-    │   └── DEPLOYMENT.md          # 英文部署指南
-    └── zh-CN/
-        └── DEPLOYMENT.md          # 中文部署指南
-```
-
----
-
-## 🔒 敏感文档（不提交到 Git）
-
-以下文档包含敏感信息，仅保存在本地：
-
-- `ARCHITECTURE.md` - 完整架构文档（含真实配置）
-- `ENVIRONMENT_VARIABLES.md` - 环境变量详细说明（含真实密钥）
-
-> ⚠️ 这些文件已在 `.gitignore` 中排除
-
----
-
-## 📝 文档维护说明
-
-文档已进行清理和整合：
-
-**2026-02-07（第二次清理）**：
-- ✅ **临时审查文档**：已删除 `DEPLOYMENT_SCRIPT_REVIEW.md`（部署脚本审查报告）
-- ✅ **临时操作文档**：已删除 `SERVER_GIT_PULL_GUIDE.md`（Git 拉取操作指南，可合并到部署指南）
-
-**2026-02-07（第一次清理）**：
-- ✅ **测试文档**：已合并 `TESTING.md`, `TESTING_GUIDE.md`, `HOW_TO_TEST.md` → `testing/TESTING.md`
-- ✅ **临时文档**：已删除临时分析文档（密码分析、部署配置报告等）
-- ✅ **测试报告**：已清理 `reports/` 目录下的临时报告
-- ✅ **开源文档**：已合并 `OPEN_SOURCE_CHECKLIST.md` 和 `OPEN_SOURCE_READINESS_REPORT.md`
-- ✅ **文档格式**：已统一文档格式和结构
-- ✅ **文档索引**：已更新文档索引，移除过时引用
-
----
-
-## 📝 贡献
-
-如果你发现文档有错误或需要改进，欢迎提交 Issue 或 Pull Request。
-
----
-
-## 🔗 相关链接
-
-- [GitHub 仓库](https://github.com/JunyuZhan/pis)
-- [问题反馈](https://github.com/JunyuZhan/pis/issues)
-- [功能请求](https://github.com/JunyuZhan/pis/issues/new)
+若发现索引链接失效或文档重复，欢迎提交 Issue / Pull Request。

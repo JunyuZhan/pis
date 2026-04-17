@@ -2,6 +2,8 @@
 
 > 📋 **Docker Compose 文件说明**: 请参考 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md) 了解不同配置文件的用途
 
+**仅提供 Docker 镜像、不提供应用源码时**：客户机只需私有仓库中的 `web` / `worker` 镜像，外加你们随版本分发的 **部署包**（`docker/` 编排与初始化文件等，不含 `apps/`、`services/`）。目录约定、文件清单与升级方式见 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md) 中的「仅镜像交付」一节；启动使用 `bash start-from-registry.sh`（或 `--secrets`）。脚本内部使用单入口文件 `docker-compose.customer.yml`（或 `docker-compose.customer-secrets.yml`）；客户也可自行执行 `docker compose -f docker-compose.customer.yml ...`，详见 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md)。
+
 ## 部署架构
 
 **完全自托管（推荐）**
@@ -22,6 +24,8 @@
 | **存储/Worker** | 自建服务器 | MinIO + Redis + Worker 服务 |
 
 ## 快速开始（一键部署）
+
+以下「克隆仓库」方式面向**持有完整源码**的自托管用户。若你们**只向客户提供镜像**，请跳过本节的 curl / `git clone`，改用 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md) 中的「仅镜像交付」与「私有 Docker 镜像仓库」。
 
 ### 方法一：完全自动化部署（推荐）
 
@@ -76,6 +80,17 @@ docker compose -f docker-compose.yml -f docker-compose.ai.yml up -d
 - 初始化数据库和创建管理员账号
 
 ## 手动部署
+
+### 使用私有镜像仓库（不在服务器上构建 Web / Worker）
+
+若已将 `web`、`worker` 镜像推送到私有仓库（例如 `hub.albertzhan.top`），在部署机配置 `.env` 中的 `PIS_WEB_IMAGE`、`PIS_WORKER_IMAGE` 后执行：
+
+```bash
+cd docker
+bash start-from-registry.sh
+```
+
+使用 Secrets 版 compose 时：`bash start-from-registry.sh --secrets`。说明与命令细节见 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md) 中的「私有 Docker 镜像仓库」一节。
 
 ### 1. 配置数据库
 

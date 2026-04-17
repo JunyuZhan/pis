@@ -1,0 +1,27 @@
+# 使用私有镜像仓库中的 Web / Worker 镜像，而不是在部署机上 docker build。
+#
+# 与以下任一文件叠加使用：
+#   docker compose -f docker-compose.yml -f docker-compose.registry.yml pull web worker
+#   docker compose -f docker-compose.yml -f docker-compose.registry.yml up -d --no-build
+#
+# 或使用脚本（推荐，已包含 pull 与 --no-build）：
+#   bash docker/start-from-registry.sh
+#   bash docker/start-from-registry.sh --secrets
+#
+# 主 compose 仍为 web/worker 定义了 build；合并后 build 段仍存在，因此必须用
+#   --no-build
+# 否则 compose 可能优先走本地构建。升级版本前先 pull 再 up --no-build。
+#
+# 环境变量（可写入项目根目录 .env）：
+#   PIS_WEB_IMAGE     默认 hub.albertzhan.top/pis/web:latest
+#   PIS_WORKER_IMAGE  默认 hub.albertzhan.top/pis/worker:latest
+#
+# 部署前在目标机登录私有仓库：
+#   docker login hub.albertzhan.top
+
+services:
+  web:
+    image: ${PIS_WEB_IMAGE:-hub.albertzhan.top/pis/web:latest}
+
+  worker:
+    image: ${PIS_WORKER_IMAGE:-hub.albertzhan.top/pis/worker:latest}

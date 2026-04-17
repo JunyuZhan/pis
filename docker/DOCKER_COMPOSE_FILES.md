@@ -7,7 +7,11 @@
 | `docker-compose.yml` | 生产环境配置（默认） | 包含所有基础服务，AI 服务已禁用 |
 | `docker-compose.ai.yml` | AI 服务覆盖配置 | 用于启用 AI 服务，需与 `docker-compose.yml` 一起使用 |
 | `docker-compose.dev.yml` | 开发环境配置 | 只包含基础服务（PostgreSQL、MinIO、Redis） |
+| `docker-compose.registry.yml` | 私有镜像覆盖 | 为 `web` / `worker` 指定仓库镜像，与主 compose 叠加；需配合 `--no-build` 或 `start-from-registry.sh` |
+| `docker-compose.customer.yml` | 客户单文件入口 | `include` 合并 `docker-compose.yml` + `docker-compose.registry.yml`；客户只需 `-f` 此文件（需 Compose v2.20+） |
+| `docker-compose.customer-secrets.yml` | 客户单文件入口（Secrets） | 同上，合并 `docker-compose.secrets.yml` + `docker-compose.registry.yml` |
 | `start-with-ai.sh` | AI 服务启动脚本 | 一键启动包含 AI 服务的完整环境 |
+| `start-from-registry.sh` | 私有镜像启动 | `pull` web/worker 后以 `--no-build` 启动，避免走本地 `build` |
 
 ## 使用方法
 
@@ -44,6 +48,104 @@ docker compose -f docker-compose.yml -f docker-compose.ai.yml up -d
 cd docker
 docker compose -f docker-compose.dev.yml up -d
 ```
+
+### 私有 Docker 镜像仓库（生产机只拉镜像、不构建）
+
+1. 在 CI 或构建机构建并推送镜像（示例标签请按版本修改）：
+
+   ```bash
+   docker build -f docker/web.Dockerfile -t hub.albertzhan.top/pis/web:1.1.0 ..
+   docker build -f docker/worker.Dockerfile -t hub.albertzhan.top/pis/worker:1.1.0 ..
+   docker push hub.albertzhan.top/pis/web:1.1.0
+   docker push hub.albertzhan.top/pis/worker:1.1.0
+   ```
+
+2. 在部署机登录私有仓库：`docker login hub.albertzhan.top`
+
+3. 在项目根目录 `.env` 中设置镜像全名（含标签），例如：
+
+   ```bash
+   PIS_WEB_IMAGE=hub.albertzhan.top/pis/web:1.1.0
+   PIS_WORKER_IMAGE=hub.albertzhan.top/pis/worker:1.1.0
+   ```
+
+4. 启动（推荐脚本，已包含 `pull` 与 `--no-build`）：
+
+   ```bash
+   cd docker
+   bash start-from-registry.sh
+   ```
+
+   使用 Docker Secrets 生产配置时：
+
+   ```bash
+   cd docker
+   bash start-from-registry.sh --secrets
+   ```
+
+   客户若希望**只指定一个 Compose 文件**（类似单文件 `version` + `services` 的用法），可直接使用合并入口（需 Docker Compose **v2.20+**，且支持 `include` 的 `path` 列表）：
+
+   ```bash
+   cd docker
+   docker compose -f docker-compose.customer.yml pull web worker
+   docker compose -f docker-compose.customer.yml up -d --no-build
+   ```
+
+   Secrets 版：
+
+   ```bash
+   cd docker
+   docker compose -f docker-compose.customer-secrets.yml pull web worker
+   docker compose -f docker-compose.customer-secrets.yml up -d --no-build
+   ```
+
+   手动等价命令（**必须**带 `--no-build**，否则 compose 仍可能执行本地 `build`）：
+
+   ```bash
+   cd docker
+   docker compose -f docker-compose.yml -f docker-compose.registry.yml pull web worker
+   docker compose -f docker-compose.yml -f docker-compose.registry.yml up -d --no-build
+   ```
+
+### 仅镜像交付（不向客户提供应用源码）
+
+若商业或内网场景**只提供已构建的 `web` / `worker` 镜像**（例如推送到 `hub.albertzhan.top`），客户机上**不需要** `apps/`、`services/` 等源码树；仍需要一份 **部署包**：与容器编排、数据库初始化、反向代理相关的文件，以及由客户填写的环境变量。
+
+**推荐宿主机目录布局**（与当前 compose 中 `env_file: ../.env`、`web` 挂载「`docker` 的上一级」为项目根的习惯一致）：
+
+```text
+/opt/pis/
+  .env                 # 客户根据你们提供的说明填写密钥与域名等
+  docker/              # 部署包内容：与仓库中 `docker/` 目录一致（见下）
+    docker-compose.yml
+    docker-compose.registry.yml
+    docker-compose.customer.yml           # 客户单 -f 入口（合并上两者）
+    docker-compose.customer-secrets.yml    # Secrets 场景单 -f 入口
+    docker-compose.secrets.yml    # 若走 Secrets 生产配置
+    start-from-registry.sh
+    nginx/
+    init-postgresql-db.sql
+    init-postgresql.sh
+    migrations/
+    run-migrations.sh
+    secrets/                        # Secrets 流程时配合 DEPLOY-SECURE.md
+    …                               # 以及 compose 里 bind mount 引用的其他路径
+```
+
+**部署包中应包含的要点**（随版本发布打成一个压缩包或安装介质即可）：
+
+| 类别 | 说明 |
+|------|------|
+| Compose 与脚本 | `docker-compose.yml`、`docker-compose.registry.yml`；客户单入口 `docker-compose.customer.yml` / `docker-compose.customer-secrets.yml`；生产可选 `docker-compose.secrets.yml`；`start-from-registry.sh`；按需 `DEPLOY-SECURE.md`、`deploy.sh` 等 |
+| 反向代理与 TLS | `nginx/` 下被挂载的配置与证书路径 |
+| 数据库 | `init-postgresql-db.sql`、`init-postgresql.sh`；升级用的 `migrations/`、`run-migrations.sh` |
+| 环境变量 | 根目录 `.env` 模板与填写说明（可不包含真实密钥） |
+
+**客户侧运行方式**：配置 `PIS_WEB_IMAGE` / `PIS_WORKER_IMAGE`（或默认值）后，在 `docker/` 目录执行 `bash start-from-registry.sh`（或 `--secrets`），见上文「私有 Docker 镜像仓库」。
+
+**版本升级（无源码时）**：由你们在仓库中构建新 tag 并 `push`；客户在部署机更新 `.env` 中的镜像 tag（或固定 `latest` 由运维控制），执行 `docker compose ... pull web worker` 与 `... up -d --no-build`（或直接再跑 `start-from-registry.sh`）。
+
+**与「带源码部署」的差异**：管理后台中与**宿主机 Git / `scripts/deploy/quick-upgrade.sh`** 相关的「一键升级」能力，依赖挂载目录内存在对应脚本与仓库；**仅镜像且部署包不含这些脚本时，该路径不可用**，应以上述「拉取新镜像 + 重启」作为正式升级流程。
 
 ## 文件说明
 
