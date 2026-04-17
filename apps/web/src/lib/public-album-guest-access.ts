@@ -11,30 +11,34 @@ export type AlbumGateFields = {
   password: string | null;
 };
 
+export type GuestAlbumAccessResult =
+  | { ok: true }
+  | { ok: false; reason: "forbidden" | "password_required" };
+
 /**
- * 判断访客是否可对相册执行选片 / 批量下载等操作。
- * - 完全公开且无密码：允许。
- * - 否则：需 Cookie 中的相册 JWT（验密成功后签发），或本次请求提供正确相册密码。
+ * 与 {@link assertGuestAlbumAccess} 相同规则，供 RSC / `generateMetadata` 等无 `NextRequest` 场景使用。
  */
-export async function assertGuestAlbumAccess(
-  request: NextRequest,
+export async function evaluateGuestAlbumAccess(
   album: AlbumGateFields,
-  albumPasswordFromBody?: string | null,
-): Promise<{ ok: true } | { ok: false; reason: "forbidden" | "password_required" }> {
+  opts: {
+    rawAlbumAccessCookie?: string | undefined;
+    albumPassword?: string | null;
+  },
+): Promise<GuestAlbumAccessResult> {
   if (album.is_public && !album.password) {
     return { ok: true };
   }
 
+  const albumPassword = opts.albumPassword ?? null;
   if (
-    albumPasswordFromBody &&
+    albumPassword &&
     album.password &&
-    albumPasswordFromBody === album.password
+    albumPassword === album.password
   ) {
     return { ok: true };
   }
 
-  const raw = request.cookies.get(ALBUM_ACCESS_COOKIE_NAME)?.value;
-  const claims = await verifyAlbumAccessJwt(raw);
+  const claims = await verifyAlbumAccessJwt(opts.rawAlbumAccessCookie);
   if (
     claims &&
     claims.albumId === album.id &&
@@ -47,4 +51,21 @@ export async function assertGuestAlbumAccess(
     return { ok: false, reason: "password_required" };
   }
   return { ok: false, reason: "forbidden" };
+}
+
+/**
+ * 判断访客是否可对相册执行选片 / 批量下载等操作。
+ * - 完全公开且无密码：允许。
+ * - 否则：需 Cookie 中的相册 JWT（验密成功后签发），或本次请求提供正确相册密码。
+ */
+export async function assertGuestAlbumAccess(
+  request: NextRequest,
+  album: AlbumGateFields,
+  albumPasswordFromBody?: string | null,
+): Promise<GuestAlbumAccessResult> {
+  const raw = request.cookies.get(ALBUM_ACCESS_COOKIE_NAME)?.value;
+  return evaluateGuestAlbumAccess(album, {
+    rawAlbumAccessCookie: raw,
+    albumPassword: albumPasswordFromBody ?? null,
+  });
 }

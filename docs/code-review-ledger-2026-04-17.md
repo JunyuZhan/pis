@@ -120,6 +120,7 @@
   - **`POST .../view`**：**`allow_share`**、过期、**`getTrustedClientIp` + `checkRateLimit`**（约 **120/分钟/slug**，IP 非 `unknown` 时）；**`assertGuestAlbumAccess`**；JSON 体可选 **`albumPassword`**。
   - **`POST .../search-face`**：**`albumSlugSchema`**、**`allow_share`**、限流（约 **20/分钟/IP**）、**`assertGuestAlbumAccess`**；**`FormData`** 可选 **`albumPassword`**；上传约 **12MB** 上限。
   - **`GET /api/public/albums/[slug]`**（相册元数据）：在 **`allow_share` / 过期** 校验之后增加 **`assertGuestAlbumAccess`**，支持 **`?albumPassword=`**；未通过时不再返回标题/描述等（**`ALBUM_PASSWORD_REQUIRED`** 或 **403**），与 **API-003** 一致。
+- **访客相册 RSC 与 API-003 对齐（代码修复）**：**`app/album/[slug]/page.tsx`** 在 **`generateMetadata`** 与页面数据加载中复用 **`evaluateGuestAlbumAccess`**（**`cookies()`** + 查询参数 **`albumPassword`**）；未通过门禁时不生成含相册标题/封面等的 OG 元数据，**不在 HTML 中 SSR 照片行、分组、封面媒体**；**`password` 字段不进入客户端 props**。逻辑与 **`assertGuestAlbumAccess`** 一致，抽取见 **`src/lib/public-album-guest-access.ts`** 之 **`evaluateGuestAlbumAccess`**。
 - **回归**：`pnpm exec vitest run src/app/api/public` 绿；相关单测文件含 **`@vitest-environment node`**（与 **`jose`** 访客 JWT 一致）。
 
 ---
@@ -149,31 +150,11 @@
 
 ### SEC-001 — 刷新令牌被当作“已登录用户”用于 API 身份解析
 
-**证据**：`getUserFromRequest` 在访问 JWT 无效或缺失时，若刷新 JWT 有效则直接返回用户身份。  
+**状态（与台账历史结论对齐）**：当前实现已采用台账推荐的**严格模式（方案 1）**：**`getUserFromRequest`** 仅在 **`verifyToken(access)` 且 `payload.type === 'access'`** 时返回用户；**不因仅有 refresh 而返回身份**（refresh 由 **`updateSessionMiddleware`** 与专用刷新流程写回新 access）。
 
-```70:87:apps/web/src/lib/auth/jwt-helpers.ts
-  // 如果访问令牌无效（不存在或过期）且刷新令牌存在，尝试刷新
-  // ...
-  if (refreshToken) {
-    const refreshPayload = await verifyToken(refreshToken)
-    if (refreshPayload && refreshPayload.type === 'refresh') {
-      // 刷新令牌有效，但访问令牌无效
-      // ...
-      return {
-        id: refreshPayload.sub,
-        email: refreshPayload.email,
-      }
-```
+**历史问题摘要（评审时快照）**：旧版曾在 access 无效时凭有效 refresh 直接返回 `AuthUser`，导致「仅 refresh」在部分 API 上被当作已登录。
 
-**影响**：任何仅调用 `getCurrentUser` / `getUserFromRequest` 的 API，在 access 已过期/吊销但 refresh 仍有效时，仍会视为已认证；与“短生命周期 access + 可吊销”模型不一致，扩大 refresh 泄露后的有效操作面（直至 refresh 过期或被服务端废止）。  
-
-**修复方案（择一或组合）**：  
-
-1. **严格模式（推荐）**：`getUserFromRequest` 仅接受 `type === 'access'` 的有效载荷；刷新仅允许在专用路由（如 `/api/auth/refresh`）与 middleware 写回新 access 的流程中使用。  
-2. **折中**：为敏感 API（管理、备份、权限变更）单独使用 `requireAuth`（若其基于仅 access 的校验）或增加“必须带有效 access”的中间层。  
-3. **运维**：缩短 refresh 有效期、支持 refresh 旋转与服务端黑名单（需存储与校验成本）。  
-
-**验证**：针对 `/api/worker`、`/api/admin` 等分别构造「仅 refresh Cookie」请求，期望在方案 1 下返回 401。  
+**验证建议（仍建议在 CI / 手测保留）**：对 **`/api/worker`**、**`/api/admin`** 等构造「**仅 refresh Cookie、无有效 access**」请求，期望 **401** 或业务等价拒绝；middleware 刷新后带新 access 再请求应 **200**。
 
 ---
 
