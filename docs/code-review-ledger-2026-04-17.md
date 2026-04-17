@@ -38,7 +38,7 @@
 
 **人工复核结论**
 
-- **占位接口（无鉴权）**：`collaborators`、`collaborations` 共 4 个文件为 TODO/501 桩实现，当前返回空数据或 501，但**未校验登录态**；记入 **API-004**（一致性与演进风险）。
+- **占位接口（API-004）**：`collaborators`、`collaborations` 等曾为 TODO/501 且无登录态；现已与其它 admin 路由一致增加 **`getCurrentUser` → 401** 骨架（总览表「已修复」）。实装业务时仍需补 **资源级授权**，避免复制旧骨架漏鉴权。
 - **误报排除**：`retouch/[id]/upload`、`retouch/tasks` 使用 `requireRetoucherOrAdmin`，**鉴权存在**。
 - **`createAdminClient` @ `public`**：**已移除**（`download-selected`、`photos/[id]/select` 改为 `createClient()`，并配合访客相册 JWT / 密码校验）；CI 由 `scripts/utils/check-security.sh` 第 9 步门禁。
 
@@ -70,7 +70,27 @@
 
 **本轮新增条目**：**WKR-001**、**WKR-002**（均已修复，见总览表）。
 
-**下一计划（P3）**：`NEXT_PUBLIC_*` 与测试页（台账 **WEB-001**）、前端是否存在直连 Worker SSE/上传 URL 的配置路径（与 **WKR-001** 威胁模型相关）。
+**下一计划（P3）**：见下方 **「P3 / P4 延续」** 执行记录（本轮已抽样）。
+
+---
+
+### 2026-04-17 — P3 / P4 延续（`development` 工作区抽样）
+
+**P3 — `NEXT_PUBLIC_*`、测试页、客户端 Worker / SSE**
+
+| 检查项 | 结论 |
+|--------|------|
+| 浏览器端直连 Worker（`NEXT_PUBLIC_WORKER`、裸 `:3001`、`WORKER_URL` 等） | **`apps/web/src` 未命中**；与 **OPS-001 / WKR-001** 修复方向一致 |
+| SSE / 实时照片 | **`use-photo-realtime.ts`** 使用同源 **`/api/realtime/photos/${albumId}`**（访客带 `?slug=`），经 Next 代理；**未发现** `EventSource` 指向公网 Worker |
+| `NEXT_PUBLIC_*` 进入 bundle | **抽样**：`settings.ts`、`utils.ts`（`NEXT_PUBLIC_APP_URL` / `NEXT_PUBLIC_MEDIA_URL`）、`use-settings.tsx`（轮询间隔）、`lightbox`、`turnstile`、Supabase 等；**`src/components` 下未见**非 `NEXT_PUBLIC` / `NODE_ENV` 的 `process.env`（避免密钥进客户端） |
+| 测试页 | **`/test-turnstile`**：`middleware.ts` 在生产对路径 **404**（**WEB-001**）；页面文件仍存在于仓库，仅生产不可达 |
+
+**残余建议（非缺陷）**：新增面向浏览器的调试页时，沿用「生产 404 或仅本地路由」模式；`NEXT_PUBLIC_MEDIA_URL` 等为**有意公开**的配置，部署时仍应用 HTTPS 与 CDN 策略约束。
+
+**P4 — `pnpm audit`（供应链）**
+
+- 在默认 registry（如 **npmmirror**）下执行 `pnpm audit` 会得到 **`ERR_PNPM_AUDIT_ENDPOINT_NOT_EXISTS`**，**本地无法完成**官方漏洞审计。
+- **建议**：CI 或发布前使用 **`registry.npmjs.org`** 跑 `pnpm audit`，或启用 **Dependabot / 平台 SCA**；结果以 CI 工件或独立报告存档，不必强行写入本台账正文。
 
 ---
 
@@ -269,6 +289,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 **修复方案**：生产环境通过环境变量或 `middleware` 返回 404；或移入 Storybook/仅本地路由。  
 
+**验证（P3 延续）**：`apps/web/src/middleware.ts` 在 **`NODE_ENV === 'production'`** 且路径 **`/test-turnstile`** 时返回 **404**；源码路径仍存在，公网不可达。
+
 ---
 
 ### CRY-001 — API Key 比较方式
@@ -407,9 +429,9 @@ export async function POST(request: NextRequest) {
 ## 建议的后续动作（非代码）
 
 1. 将本台账中的 **SEC-001、SEC-002、API-001、ANA-001、WKR-001、WKR-002、NET-001** 纳入发布前检查表。  
-2. 对 `createAdminClient` 在 `app/api/public/**` 下的使用做一次**依赖图式枚举**（脚本或 CI），每次变更强制 code owner 审核。  
+2. **`check-security.sh`** 已包含对 **`app/api/public/**/route.ts`** 的 **`createAdminClient`** 扫描；合并前保持该脚本在 CI 或 `pre-commit` 中执行。  
 3. 补充 E2E：无 Cookie 访问 admin/worker 代理、仅 refresh 访问敏感 API（与目标策略一致）。  
-4. 占位 admin 路由（**API-004**）在合并进主干前完成 **401 骨架**，避免命名空间误导。  
+4. **供应链**：在可使用 **`registry.npmjs.org`** 的环境定期执行 **`pnpm audit`**（或 Dependabot），与当前镜像源审计缺失解耦。  
 
 ---
 
