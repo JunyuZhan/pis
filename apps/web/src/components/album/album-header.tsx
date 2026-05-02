@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { ChevronDown, ChevronUp, Download, Heart, Loader2 } from 'lucide-react'
 import { SortToggle, type SortRule } from './sort-toggle'
 import { LayoutToggle, type LayoutMode } from './layout-toggle'
 import { LanguageSwitcher } from '@/components/ui/language-switcher'
 import { handleApiError } from '@/lib/toast'
+import { appendAlbumPasswordIfPresent } from '@/lib/album-guest-url'
 import type { Album } from '@/types/database'
 
 interface AlbumHeaderProps {
@@ -15,6 +17,7 @@ interface AlbumHeaderProps {
 }
 
 export function AlbumHeader({ album, currentSort, currentLayout }: AlbumHeaderProps) {
+  const searchParams = useSearchParams()
   const [isExpanded, setIsExpanded] = useState(false)
   const [downloading, setDownloading] = useState(false)
   
@@ -28,17 +31,24 @@ export function AlbumHeader({ album, currentSort, currentLayout }: AlbumHeaderPr
     
     setDownloading(true)
     try {
-      const response = await fetch(`/api/public/albums/${album.slug}/download-selected`)
+      const url = new URL(
+        `/api/public/albums/${encodeURIComponent(album.slug)}/download-selected`,
+        typeof window !== 'undefined' ? window.location.origin : 'http://localhost',
+      )
+      appendAlbumPasswordIfPresent(url, searchParams.get('albumPassword'))
+      const response = await fetch(url.toString())
       if (!response.ok) {
         const error = await response.json()
         handleApiError(new Error(error.error?.message || '下载失败'))
         return
       }
 
-      const data = await response.json()
-      
-      // 逐个下载照片
-      for (const photo of data.photos) {
+      const json = await response.json()
+      const payload = json?.data ?? json
+      const photos = Array.isArray(payload?.photos) ? payload.photos : []
+
+      // 逐个下载照片（API 使用 createSuccessResponse，列表在 data.photos）
+      for (const photo of photos) {
         const link = document.createElement('a')
         link.href = photo.url
         link.download = photo.filename

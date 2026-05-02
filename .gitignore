@@ -118,6 +118,9 @@ temp/
 .codeartsdoer/
 .trae/
 
+# Internal code-review ledgers (agent/session notes; not for the public tree)
+docs/code-review-ledger*.md
+
 # Reports (keep structure but ignore temporary reports)
 reports/**/*.tmp
 reports/**/*.temp

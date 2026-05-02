@@ -2,7 +2,7 @@
  * 上传凭证 API 路由测试
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { POST } from './route'
 import { createMockRequest } from '@/test/test-utils'
 import { checkRateLimit } from '@/middleware-rate-limit'
@@ -65,6 +65,10 @@ describe('POST /api/admin/albums/[id]/upload', () => {
   const VALID_ALBUM_ID = '123e4567-e89b-12d3-a456-426614174000'
   const VALID_USER_ID = '123e4567-e89b-12d3-a456-426614174001'
   const VALID_PHOTO_ID = '123e4567-e89b-12d3-a456-426614174002'
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
 
   beforeEach(async () => {
     vi.clearAllMocks()
@@ -842,6 +846,7 @@ describe('POST /api/admin/albums/[id]/upload', () => {
     })
 
     it('should handle IP extraction from x-real-ip header', async () => {
+      vi.stubEnv('PIS_TRUST_PROXY_HEADERS', 'true')
       const request = new NextRequest('http://localhost:3000/api/admin/albums/123e4567-e89b-12d3-a456-426614174000/upload', {
         method: 'POST',
         headers: {
@@ -1074,6 +1079,7 @@ describe('POST /api/admin/albums/[id]/upload', () => {
     })
 
     it('should handle x-forwarded-for IP extraction', async () => {
+      vi.stubEnv('PIS_TRUST_PROXY_HEADERS', 'true')
       const request = new NextRequest('http://localhost:3000/api/admin/albums/123e4567-e89b-12d3-a456-426614174000/upload', {
         method: 'POST',
         headers: {

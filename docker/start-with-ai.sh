@@ -27,11 +27,12 @@ if ! docker compose version &> /dev/null && ! command -v docker-compose &> /dev/
     exit 1
 fi
 
-# 确定使用的 compose 命令
+# 确定使用的 compose 命令（启用 AI 需 Compose v2 的 --profile）
 if docker compose version &> /dev/null; then
     COMPOSE_CMD="docker compose"
 else
-    COMPOSE_CMD="docker-compose"
+    echo -e "${RED}错误: 启用 AI 需要 Docker Compose V2（命令为 \`docker compose\`），请安装插件后重试${NC}"
+    exit 1
 fi
 
 echo -e "${CYAN}========================================${NC}"
@@ -42,11 +43,6 @@ echo ""
 # 检查配置文件是否存在
 if [ ! -f "docker-compose.yml" ]; then
     echo -e "${RED}错误: 找不到 docker-compose.yml 文件${NC}"
-    exit 1
-fi
-
-if [ ! -f "docker-compose.ai.yml" ]; then
-    echo -e "${RED}错误: 找不到 docker-compose.ai.yml 文件${NC}"
     exit 1
 fi
 
@@ -88,8 +84,8 @@ fi
 echo -e "${CYAN}正在启动服务（包含 AI 服务）...${NC}"
 echo ""
 
-# 启动服务（合并两个配置文件）
-if $COMPOSE_CMD -f docker-compose.yml -f docker-compose.ai.yml up -d; then
+# 启动服务（同一 docker-compose.yml，--profile ai 启用 AI 容器）
+if $COMPOSE_CMD --profile ai -f docker-compose.yml up -d; then
     echo ""
     echo -e "${GREEN}✓ 服务启动成功${NC}"
     echo ""
@@ -103,13 +99,13 @@ if $COMPOSE_CMD -f docker-compose.yml -f docker-compose.ai.yml up -d; then
     echo -e "  - ${GREEN}AI (人脸识别服务)${NC}"
     echo ""
     echo -e "${CYAN}查看服务状态：${NC}"
-    echo "  $COMPOSE_CMD -f docker-compose.yml -f docker-compose.ai.yml ps"
+    echo "  $COMPOSE_CMD --profile ai -f docker-compose.yml ps"
     echo ""
     echo -e "${CYAN}查看日志：${NC}"
-    echo "  $COMPOSE_CMD -f docker-compose.yml -f docker-compose.ai.yml logs -f"
+    echo "  $COMPOSE_CMD --profile ai -f docker-compose.yml logs -f"
     echo ""
     echo -e "${CYAN}停止服务：${NC}"
-    echo "  $COMPOSE_CMD -f docker-compose.yml -f docker-compose.ai.yml down"
+    echo "  $COMPOSE_CMD --profile ai -f docker-compose.yml down"
     echo ""
     echo -e "${YELLOW}注意：AI 服务首次启动需要下载模型（约 500MB），可能需要几分钟${NC}"
 else
@@ -117,7 +113,7 @@ else
     echo -e "${RED}✗ 服务启动失败${NC}"
     echo ""
     echo -e "${CYAN}故障排查：${NC}"
-    echo "  1. 查看日志: $COMPOSE_CMD -f docker-compose.yml -f docker-compose.ai.yml logs"
-    echo "  2. 查看容器状态: $COMPOSE_CMD -f docker-compose.yml -f docker-compose.ai.yml ps"
+    echo "  1. 查看日志: $COMPOSE_CMD --profile ai -f docker-compose.yml logs"
+    echo "  2. 查看容器状态: $COMPOSE_CMD --profile ai -f docker-compose.yml ps"
     exit 1
 fi

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Folder } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { appendAlbumPasswordIfPresent } from '@/lib/album-guest-url'
 import type { PhotoGroup } from '@/types/database'
 
 interface PhotoGroupFilterProps {
@@ -30,16 +31,26 @@ export function PhotoGroupFilter({
   
   // 使用外部传入的 selectedGroupId，如果没有则从 URL 参数获取
   const selectedGroupId = externalSelectedGroupId ?? searchParams.get('group')
+  const albumPassword = searchParams.get('albumPassword')
 
   useEffect(() => {
     const loadGroups = async () => {
       try {
         // 使用 slug 或 albumId 获取分组列表
         const identifier = albumSlug || albumId
-        const response = await fetch(`/api/public/albums/${identifier}/groups`)
+        const url = new URL(
+          `/api/public/albums/${encodeURIComponent(identifier)}/groups`,
+          typeof window !== 'undefined' ? window.location.origin : 'http://localhost',
+        )
+        appendAlbumPasswordIfPresent(url, albumPassword)
+        const response = await fetch(url.toString())
         if (response.ok) {
           const data = await response.json()
-          setGroups(data.groups || [])
+          const list =
+            (data?.data?.groups as GroupWithCount[] | undefined) ??
+            (data?.groups as GroupWithCount[] | undefined) ??
+            []
+          setGroups(list)
         }
       } catch (error) {
         console.error('Failed to load groups:', error)
@@ -50,7 +61,7 @@ export function PhotoGroupFilter({
     if (albumId || albumSlug) {
       loadGroups()
     }
-  }, [albumId, albumSlug])
+  }, [albumId, albumSlug, albumPassword])
 
   const handleGroupSelect = (groupId: string | null) => {
     // 如果外部提供了 onGroupSelect，优先使用

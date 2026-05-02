@@ -9,6 +9,7 @@ import { Loader2, ImageIcon, RefreshCw, X, ScanFace } from 'lucide-react'
 import { usePhotoRealtime } from '@/hooks/use-photo-realtime'
 import { useTrackAlbumView } from '@/hooks/use-analytics'
 import { useTemplate } from './template-style-provider'
+import { appendAlbumPasswordIfPresent } from '@/lib/album-guest-url'
 import type { Album, Photo } from '@/types/database'
 import type { LayoutMode } from './layout-toggle'
 
@@ -40,6 +41,7 @@ export function AlbumClient({ album, initialPhotos, layout = 'masonry' }: AlbumC
   const groupId = searchParams.get('group')
   const searchMode = searchParams.get('search')
   const from = searchParams.get('from')
+  const albumPassword = searchParams.get('albumPassword')
   const queryClient = useQueryClient()
   const t = useTranslations('album')
   
@@ -85,13 +87,21 @@ export function AlbumClient({ album, initialPhotos, layout = 'masonry' }: AlbumC
     isLoading,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ['album-photos', album.slug, sort, groupId, searchMode],
+    queryKey: [
+      'album-photos',
+      album.slug,
+      sort,
+      groupId,
+      searchMode,
+      albumPassword ?? '',
+    ],
     queryFn: async ({ pageParam = 1 }) => {
       const origin = typeof window !== 'undefined' ? window.location.origin : ''
       const url = new URL(`/api/public/albums/${album.slug}/photos`, origin)
       url.searchParams.set('page', pageParam.toString())
       url.searchParams.set('limit', '20')
       url.searchParams.set('sort', sort)
+      appendAlbumPasswordIfPresent(url, albumPassword)
       if (groupId) {
         url.searchParams.set('group', groupId)
       }
@@ -143,6 +153,7 @@ export function AlbumClient({ album, initialPhotos, layout = 'masonry' }: AlbumC
   usePhotoRealtime({
     albumId: album.id,
     albumSlug: album.slug,
+    albumPassword,
     enabled: true,
     onInsert: useCallback((photo: Photo) => {
       // 检查是否是新照片（避免重复计数）
@@ -157,7 +168,7 @@ export function AlbumClient({ album, initialPhotos, layout = 'masonry' }: AlbumC
       
       // 从 React Query 缓存中移除已删除的照片
       queryClient.setQueryData<{ pages: PhotosResponse[]; pageParams: number[] }>(
-        ['album-photos', album.slug, sort, groupId],
+        ['album-photos', album.slug, sort, groupId, searchMode, albumPassword ?? ''],
         (oldData) => {
           if (!oldData) return oldData
           
@@ -175,7 +186,7 @@ export function AlbumClient({ album, initialPhotos, layout = 'masonry' }: AlbumC
           }
         }
       )
-    }, [queryClient, album.slug, sort, groupId]),
+    }, [queryClient, album.slug, sort, groupId, searchMode, albumPassword]),
   })
 
   // 刷新照片列表

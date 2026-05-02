@@ -550,11 +550,14 @@ export const templateIdSchema = z.object({
 // ============================================
 
 export const verifyPasswordSchema = z.object({
-  password: z.string({ required_error: "密码不能为空" }).min(1, "密码不能为空"),
+  /** 无密码相册可为空；有密码相册在路由内单独校验必填 */
+  password: z.string().optional().default(""),
 });
 
 export const selectPhotoSchema = z.object({
   isSelected: z.boolean(),
+  /** 无 Cookie 时可选传相册密码，与验密接口一致（明文） */
+  albumPassword: z.string().optional(),
 });
 
 export const downloadSelectedSchema = z.object({

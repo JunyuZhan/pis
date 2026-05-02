@@ -96,6 +96,7 @@ try {
 }
 
 import http from 'http';
+import { timingSafeEqual } from 'node:crypto';
 import { Worker, Job, Queue } from 'bullmq';
 import { connection, QUEUE_NAME, photoQueue } from './lib/redis.js';
 import {
@@ -293,6 +294,23 @@ if (!WORKER_API_KEY) {
 // CORS 配置
 const CORS_ORIGINS = (process.env.CORS_ORIGINS || '').split(',').filter(Boolean);
 
+/** 预签名 GET 默认 300s，上限 24h（可通过环境变量下调，不可超过 7 天） */
+const MAX_PRESIGN_GET_EXPIRY_SEC = Math.min(
+  Math.max(60, parseInt(process.env.WORKER_MAX_PRESIGN_GET_EXPIRY_SEC || '86400', 10) || 86400),
+  604800,
+);
+const MAX_PRESIGN_PART_EXPIRY_SEC = Math.min(
+  Math.max(60, parseInt(process.env.WORKER_MAX_PRESIGN_PART_EXPIRY_SEC || '86400', 10) || 86400),
+  604800,
+);
+
+function parseExpirySeconds(raw: unknown, fallback: number, max: number): number {
+  if (raw === undefined || raw === null) return Math.min(fallback, max);
+  const n = typeof raw === 'number' ? raw : Number.parseInt(String(raw), 10);
+  if (!Number.isFinite(n) || n <= 0) return Math.min(fallback, max);
+  return Math.min(Math.floor(n), max);
+}
+
 /**
  * 验证 API Key
  *
@@ -317,13 +335,20 @@ function authenticateRequest(req: http.IncomingMessage): boolean {
   }
 
   const apiKeyHeader = req.headers['x-api-key'] || req.headers['authorization'];
-  const apiKey = Array.isArray(apiKeyHeader)
+  const apiKeyRaw = Array.isArray(apiKeyHeader)
     ? apiKeyHeader[0]?.replace(/^Bearer\s+/i, '') || apiKeyHeader[0]
     : apiKeyHeader?.replace(/^Bearer\s+/i, '') || apiKeyHeader;
 
-  const isValid = apiKey === WORKER_API_KEY;
-
-  return isValid;
+  const apiKey = apiKeyRaw ?? '';
+  const expected = WORKER_API_KEY;
+  if (apiKey.length !== expected.length) {
+    return false;
+  }
+  try {
+    return timingSafeEqual(Buffer.from(apiKey, 'utf8'), Buffer.from(expected, 'utf8'));
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -1265,16 +1290,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // SSE 实时推送端点（不需要认证）
-  const sseMatch = url.pathname.match(/^\/api\/sse\/photos\/([^/]+)$/);
-  if (sseMatch && req.method === 'GET') {
-    const albumId = sseMatch[1];
-    const sseHandler = createSSEHandler(albumId);
-    sseHandler(req, res);
-    return;
-  }
-
-  // API 认证检查（除了 health 和 SSE 端点）
+  // API 认证检查（除 /health；SSE 在认证后处理，由 Next 代理附加 X-API-Key）
   if (!authenticateRequest(req)) {
     res.writeHead(401, { 'Content-Type': 'application/json' });
     res.end(
@@ -1283,6 +1299,15 @@ const server = http.createServer(async (req, res) => {
         message: 'Invalid or missing API key',
       })
     );
+    return;
+  }
+
+  // SSE 实时推送（需有效 API Key；浏览器经 Next `/api/realtime/photos/...` 代理）
+  const sseMatch = url.pathname.match(/^\/api\/sse\/photos\/([^/]+)$/);
+  if (sseMatch && req.method === 'GET') {
+    const albumId = sseMatch[1];
+    const sseHandler = createSSEHandler(albumId);
+    sseHandler(req, res);
     return;
   }
 
@@ -1326,7 +1351,8 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/presign/get' && req.method === 'POST') {
     try {
       const body = await parseJsonBody(req, CONFIG.MAX_BODY_SIZE);
-      const { key, expirySeconds = 300, responseContentDisposition } = body;
+      const { key, expirySeconds: rawExpiry, responseContentDisposition } = body;
+      const expirySeconds = parseExpirySeconds(rawExpiry, 300, MAX_PRESIGN_GET_EXPIRY_SEC);
 
       if (!key) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -1655,7 +1681,8 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/multipart/presign-part' && req.method === 'POST') {
     try {
       const body = await parseJsonBody(req, CONFIG.MAX_BODY_SIZE);
-      const { key, uploadId, partNumber, expirySeconds = 3600 } = body;
+      const { key, uploadId, partNumber, expirySeconds: rawPartExpiry } = body;
+      const expirySeconds = parseExpirySeconds(rawPartExpiry, 3600, MAX_PRESIGN_PART_EXPIRY_SEC);
 
       if (!key || !uploadId || !partNumber) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -2906,6 +2933,11 @@ process.on('unhandledRejection', (reason, promise) => {
 // 配置服务器 keep-alive
 server.keepAliveTimeout = 65000; // 65秒（略大于 Cloudflare 的 60 秒）
 server.headersTimeout = 66000; // 66秒（略大于 keepAliveTimeout）
+
+if (CONFIG.NODE_ENV === 'production' && !WORKER_API_KEY) {
+  logger.fatal('WORKER_API_KEY is required in production. Refusing to start HTTP server.');
+  process.exit(1);
+}
 
 server.listen(HTTP_PORT, async () => {
   // 初始化 SSE Redis 客户端

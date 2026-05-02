@@ -6,6 +6,7 @@ import {
 import { hashPassword } from '@/lib/auth/password'
 import { initAuthDatabase } from '@/lib/auth/database'
 import { safeValidate, handleError, createSuccessResponse } from '@/lib/validation/error-handler'
+import { getTrustedClientIp } from '@/lib/request-client-ip'
 import { z } from 'zod'
 
 // 初始化认证数据库（如果尚未初始化）
@@ -56,19 +57,7 @@ const setupPasswordSchema = z.object({
  */
 export async function POST(request: NextRequest) {
   try {
-    // 获取客户端 IP 地址
-    const forwardedFor = request.headers.get('x-forwarded-for')
-    const realIp = request.headers.get('x-real-ip')
-    const cfConnectingIp = request.headers.get('cf-connecting-ip')
-    
-    let ip = 'unknown'
-    if (cfConnectingIp) {
-      ip = cfConnectingIp
-    } else if (forwardedFor) {
-      ip = forwardedFor.split(',')[0].trim()
-    } else if (realIp) {
-      ip = realIp
-    }
+    const ip = getTrustedClientIp(request)
 
     // 解析和验证请求体
     let body: unknown

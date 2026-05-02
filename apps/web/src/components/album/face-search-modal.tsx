@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Upload, Loader2, Camera } from 'lucide-react'
 import { showSuccess, showError } from '@/lib/toast'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -14,6 +15,7 @@ interface FaceSearchModalProps {
 }
 
 export function FaceSearchModal({ albumSlug, isOpen, onClose, onSearch }: FaceSearchModalProps) {
+  const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -25,11 +27,18 @@ export function FaceSearchModal({ albumSlug, isOpen, onClose, onSearch }: FaceSe
       setLoading(true)
       const formData = new FormData()
       formData.append('file', file)
+      const albumPassword = searchParams.get('albumPassword')
+      if (albumPassword) {
+        formData.append('albumPassword', albumPassword)
+      }
 
-      const res = await fetch(`/api/public/albums/${albumSlug}/search-face`, {
-        method: 'POST',
-        body: formData,
-      })
+      const res = await fetch(
+        `/api/public/albums/${encodeURIComponent(albumSlug)}/search-face`,
+        {
+          method: 'POST',
+          body: formData,
+        },
+      )
 
       if (!res.ok) {
         throw new Error('搜索失败')

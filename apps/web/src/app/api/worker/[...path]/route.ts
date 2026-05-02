@@ -34,7 +34,8 @@ export const maxDuration = 300
 // 支持多个变量名，确保兼容性
 // 使用函数在运行时获取，而不是模块加载时，以便测试可以修改环境变量
 function getWorkerUrl(): string {
-  return process.env.WORKER_URL || process.env.WORKER_API_URL || process.env.NEXT_PUBLIC_WORKER_URL || 'http://localhost:3001'
+  // 服务端仅使用非 NEXT_PUBLIC 变量，避免与浏览器可见配置混淆（OPS-001）
+  return process.env.WORKER_URL || process.env.WORKER_API_URL || 'http://localhost:3001'
 }
 
 export async function GET(

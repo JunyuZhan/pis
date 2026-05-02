@@ -3,6 +3,11 @@ import { createClient } from '@/lib/database'
 import { checkRateLimit } from '@/middleware-rate-limit'
 import { verifyPasswordSchema, albumSlugSchema } from '@/lib/validation/schemas'
 import { safeValidate, handleError, createSuccessResponse, ApiError } from '@/lib/validation/error-handler'
+import { getTrustedClientIp } from '@/lib/request-client-ip'
+import {
+  ALBUM_ACCESS_COOKIE_NAME,
+  createAlbumAccessJwt,
+} from '@/lib/auth/album-access-jwt'
 
 interface RouteParams {
   params: Promise<{ slug: string }>
@@ -59,20 +64,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     
     const { slug } = slugValidation.data
     
-    // 获取客户端 IP 地址（与登录API使用相同的IP提取逻辑）
-    const forwardedFor = request.headers.get('x-forwarded-for')
-    const realIp = request.headers.get('x-real-ip')
-    const cfConnectingIp = request.headers.get('cf-connecting-ip') // Cloudflare
-    
-    let ip = 'unknown'
-    if (cfConnectingIp) {
-      ip = cfConnectingIp
-    } else if (forwardedFor) {
-      // x-forwarded-for 可能包含多个 IP，取第一个（客户端真实 IP）
-      ip = forwardedFor.split(',')[0].trim()
-    } else if (realIp) {
-      ip = realIp
-    }
+    const ip = getTrustedClientIp(request)
     
     // 检测是否是内网 IP（内网部署时，所有请求可能来自同一个 IP）
     const isPrivateIP = (ipAddr: string): boolean => {
@@ -167,8 +159,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // 获取相册信息（包含密码）
     const albumResult = await db
-      .from<{ id: string; password: string | null; expires_at: string | null; deleted_at: string | null }>('albums')
-      .select('id, password, expires_at, deleted_at')
+      .from<{
+        id: string
+        slug: string
+        is_public: boolean
+        password: string | null
+        expires_at: string | null
+        deleted_at: string | null
+      }>('albums')
+      .select('id, slug, is_public, password, expires_at, deleted_at')
       .eq('slug', slug)
       .single()
 
@@ -183,9 +182,26 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return ApiError.forbidden('相册已过期')
     }
 
-    // 如果没有设置密码，直接通过
+    const attachAlbumAccessCookie = async () => {
+      const token = await createAlbumAccessJwt(album.id, album.slug)
+      const res = createSuccessResponse({ verified: true })
+      res.cookies.set(ALBUM_ACCESS_COOKIE_NAME, token, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7,
+      })
+      return res
+    }
+
+    // 如果没有设置密码，直接通过（仍签发访客 JWT，供非公开无密相册的选片等 API）
     if (!album.password) {
-      return createSuccessResponse({ verified: true })
+      return attachAlbumAccessCookie()
+    }
+
+    if (!password) {
+      return ApiError.validation('密码不能为空')
     }
 
     // 验证密码（明文比较）
@@ -193,10 +209,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const passwordVerified = album.password === password
 
     if (passwordVerified) {
-      return createSuccessResponse({ verified: true })
-    } else {
-      return ApiError.validation('密码错误')
+      return attachAlbumAccessCookie()
     }
+    return ApiError.validation('密码错误')
   } catch (error) {
     return handleError(error, '密码验证失败')
   }

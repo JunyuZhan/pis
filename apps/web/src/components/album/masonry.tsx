@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect, memo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import { Heart, Download, Share2, Expand, Loader2, ImageIcon } from 'lucide-react'
 import type { Photo, Album } from '@/types/database'
 import type { AlbumTemplateStyle } from '@/lib/album-templates'
 import { cn, getSafeMediaUrl } from '@/lib/utils'
+import { appendAlbumPasswordIfPresent } from '@/lib/album-guest-url'
 import { getBlurDataURL } from '@/lib/blurhash'
 import { handleApiError } from '@/lib/toast'
 import { OptimizedImage } from '@/components/ui/optimized-image'
@@ -43,6 +45,8 @@ export function MasonryGrid({
   onSelectChange,
   template,
 }: MasonryGridProps) {
+  const searchParams = useSearchParams()
+  const albumPassword = searchParams.get('albumPassword')
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [selectedMap, setSelectedMap] = useState<Record<string, boolean>>(() => {
     const map: Record<string, boolean> = {}
@@ -206,11 +210,18 @@ export function MasonryGrid({
       onSelectChange?.(photoId, newSelected)
 
       try {
-        const res = await fetch(`/api/public/photos/${photoId}/select`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ isSelected: newSelected }),
-        })
+        const res = await fetch(
+          `/api/public/photos/${encodeURIComponent(photoId)}/select`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(
+              albumPassword
+                ? { isSelected: newSelected, albumPassword }
+                : { isSelected: newSelected },
+            ),
+          },
+        )
 
         if (!res.ok) {
           // 回滚
@@ -228,7 +239,7 @@ export function MasonryGrid({
         handleApiError(error, '选片失败')
       }
     },
-    [onSelectChange]
+    [onSelectChange, albumPassword]
   )
 
   // Lightbox 内选片变化时同步到本地状态
@@ -291,6 +302,7 @@ export function MasonryGrid({
             showSelect={true}
             isSelected={selectedMap[photo.id] || false}
             onToggleSelect={handleCardSelect}
+            albumPassword={albumPassword}
             allowDownload={album.allow_download}
             layout={layout}
             template={template}
@@ -334,6 +346,8 @@ interface PhotoCardProps {
   showSelect?: boolean
   isSelected?: boolean
   onToggleSelect?: (photoId: string, currentSelected: boolean) => void
+  /** 来自 URL `?albumPassword=`，用于单张下载 API */
+  albumPassword?: string | null
   allowDownload?: boolean
   layout?: LayoutMode
   template?: AlbumTemplateStyle | null
@@ -423,6 +437,7 @@ const PhotoCard = memo(function PhotoCard({
   showSelect,
   isSelected,
   onToggleSelect,
+  albumPassword,
   allowDownload = false,
   layout = 'masonry',
   template,
@@ -521,14 +536,22 @@ const PhotoCard = memo(function PhotoCard({
     if (!allowDownload) return
     
     try {
-      const response = await fetch(`/api/public/download/${photo.id}`)
+      const downloadReq = new URL(
+        `/api/public/download/${encodeURIComponent(photo.id)}`,
+        window.location.origin,
+      )
+      appendAlbumPasswordIfPresent(downloadReq, albumPassword)
+      const response = await fetch(downloadReq.toString())
       if (!response.ok) {
         const error = await response.json()
         handleApiError(new Error(error.error?.message || '下载失败'))
         return
       }
 
-      const { downloadUrl, filename } = await response.json()
+      const json = await response.json()
+      const payload = json?.data ?? json
+      const downloadUrl = payload.downloadUrl as string
+      const filename = payload.filename as string
 
       // 触发下载
       const a = document.createElement('a')

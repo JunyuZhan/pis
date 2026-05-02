@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/db/postgresql-client'
-import { headers } from 'next/headers'
+import { checkRateLimit } from '@/middleware-rate-limit'
+import { getTrustedClientIp } from '@/lib/request-client-ip'
 
 /**
  * 解析 User-Agent 获取设备信息
@@ -70,12 +71,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const headersList = await headers()
-    const ip = headersList.get('x-forwarded-for')?.split(',')[0] || 
-               headersList.get('x-real-ip') || 
-               'unknown'
-    const ua = headersList.get('user-agent') || ''
-    const referer = headersList.get('referer') || ''
+    const ip = getTrustedClientIp(request)
+    const rl = await checkRateLimit(`analytics:track:${ip}`, 120, 60_000)
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: '请求过于频繁，请稍后再试' },
+        { status: 429, headers: { 'Retry-After': '60' } },
+      )
+    }
+
+    const ua = request.headers.get('user-agent') || ''
+    const referer = request.headers.get('referer') || ''
     
     const { deviceType, browser, os } = parseUserAgent(ua)
     const sessionId = clientSessionId || generateSessionId(ip)

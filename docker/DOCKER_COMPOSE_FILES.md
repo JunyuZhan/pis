@@ -4,10 +4,14 @@
 
 | 文件 | 用途 | 说明 |
 |------|------|------|
-| `docker-compose.yml` | 生产环境配置（默认） | 包含所有基础服务，AI 服务已禁用 |
-| `docker-compose.ai.yml` | AI 服务覆盖配置 | 用于启用 AI 服务，需与 `docker-compose.yml` 一起使用 |
+| `docker-compose.yml` | 默认完整栈 | 基础服务；AI 为可选 **`--profile ai`**（见 `start-with-ai.sh`） |
 | `docker-compose.dev.yml` | 开发环境配置 | 只包含基础服务（PostgreSQL、MinIO、Redis） |
+| `docker-compose.registry.yml` | 私有镜像覆盖 | 为 `web` / `worker` 指定仓库镜像，与主 compose 叠加；需配合 `--no-build` 或 `start-from-registry.sh` |
+| `docker-compose.customer.yml` | 单文件合并入口 | `include` 合并 `docker-compose.yml` + `docker-compose.registry.yml`；一条 `-f` 即可（Compose v2.20+） |
+| `docker-compose.customer-secrets.yml` | 单文件合并入口（Secrets） | `include` 合并 `docker-compose.secrets.yml` + `docker-compose.registry.yml` |
 | `start-with-ai.sh` | AI 服务启动脚本 | 一键启动包含 AI 服务的完整环境 |
+| `start-from-registry.sh` | 私有镜像启动 | `pull` web/worker 后以 `--no-build` 启动，避免走本地 `build` |
+| `push-images-to-registries.sh` | 多 Registry 构建推送 | 在**仓库根目录**一次构建、`docker push` 到私有与 Docker Hub 等（见下文「多 Registry 推送」） |
 
 ## 使用方法
 
@@ -31,11 +35,11 @@ cd docker
 bash start-with-ai.sh
 ```
 
-或手动使用 Docker Compose：
+或手动使用 Docker Compose（需 Compose v2）：
 
 ```bash
 cd docker
-docker compose -f docker-compose.yml -f docker-compose.ai.yml up -d
+docker compose --profile ai -f docker-compose.yml up -d
 ```
 
 ### 开发环境启动
@@ -45,15 +49,209 @@ cd docker
 docker compose -f docker-compose.dev.yml up -d
 ```
 
+### 使用 Registry 中的预构建镜像（运行环境 pull、不本地 build）
+
+1. 在 CI 或构建机构建并推送镜像（示例标签请按版本修改；**构建上下文为仓库根目录**，与 Dockerfile 中 `COPY` 路径一致）：
+
+   ```bash
+   cd /path/to/pis   # 仓库根目录
+   docker build -f docker/web.Dockerfile -t hub.albertzhan.top/pis/web:1.1.0 .
+   docker build -f docker/worker.Dockerfile -t hub.albertzhan.top/pis/worker:1.1.0 .
+   docker push hub.albertzhan.top/pis/web:1.1.0
+   docker push hub.albertzhan.top/pis/worker:1.1.0
+   ```
+
+#### 多 Registry 推送（私有仓库 + Docker Hub）
+
+同一镜像可打多个全名标签后分别 `push`（digest 一致）。运行环境 `.env` 里 **`PIS_WEB_IMAGE` / `PIS_WORKER_IMAGE` 仍只写一套**（按实际 Registry 选择）。
+
+**推荐：使用脚本（在仓库根目录执行）**
+
+推送前在构建机对**每个**要推送的 Registry 执行 `docker login`（私有域与 Docker Hub 分开登录）。
+
+```bash
+cd /path/to/pis
+export PIS_IMAGE_TAG=1.1.0
+# 可选：覆盖默认私有仓库路径（不含 tag）
+# export PIS_PRIVATE_WEB_IMAGE=registry.example.com/pis/web
+# export PIS_PRIVATE_WORKER_IMAGE=registry.example.com/pis/worker
+# 若需同时推 Docker Hub，设置 Hub 上仓库全名（不含 tag；Docker Hub 常用两仓库 pis-web / pis-worker）
+export PIS_DOCKERHUB_WEB_IMAGE=docker.io/<你的DockerHub用户名>/pis-web
+export PIS_DOCKERHUB_WORKER_IMAGE=docker.io/<你的DockerHub用户名>/pis-worker
+
+bash docker/push-images-to-registries.sh
+```
+
+不设 `PIS_DOCKERHUB_*` 时，脚本行为与仅推私有仓库一致。
+
+#### GitHub Actions：推送 `v*` 标签后自动推 Docker Hub
+
+可用「GitHub 账号」在 **hub.docker.com** 登录，但 **CI 不能使用 GitHub 密码** 推镜像。请在 Docker Hub 的 **Personal access tokens** 处创建令牌，再按下面步骤在 GitHub 配置。
+
+**1. 在 Docker Hub 创建 Personal access token**
+
+页面上若显示 **「Personal access tokens」**（说明可用令牌代替密码做 Docker CLI 认证），即此处创建。步骤：
+
+1. 打开 [https://hub.docker.com](https://hub.docker.com) 并登录。  
+2. 右上角头像 → **Account settings**（或 **My Account**）→ **Security** → **New access token**（或 **Generate new token**，界面文案可能略有差异）。  
+3. 填写描述（如 `pis-github-actions`），权限选 **Read, Write, Delete**（或至少包含能 **push** 镜像的写权限），生成后**立刻复制**保存（只显示一次）。该字符串即 GitHub Secret **`DOCKERHUB_TOKEN`** 的值。
+
+**2. 在 GitHub 仓库里添加 Secrets（本仓库 → Actions 用）**
+
+1. 打开 GitHub 上的**目标仓库**（例如 `JunyuZhan/pis`）。  
+2. 顶部 **Settings**（需对该仓库有 **Admin** 或具备「管理 Actions secrets」的权限）。  
+3. 左侧 **Secrets and variables** → **Actions**。  
+4. 打开 **Secrets** 标签页 → **New repository secret**。  
+5. 依次新建两条（名称须与 workflow 中一致，区分大小写）：
+
+| Secret | 说明 |
+|--------|------|
+| `DOCKERHUB_USERNAME` | Docker Hub 用户名（或组织下有权推送的机器人账号用户名） |
+| `DOCKERHUB_TOKEN` | 粘贴上一步在 Hub 生成的 **Personal access token**（不要填 GitHub 密码，也不要填 Hub 登录密码） |
+
+6. 保存后列表中应出现 `DOCKERHUB_USERNAME`、`DOCKERHUB_TOKEN`；**Secret 的值创建后不可再查看**，只能 **Update** 或删除后重建。
+
+**组织（Organization）仓库**：若仓库属于 Org，Secrets 可能在 **Organization → Settings → Secrets and variables → Actions** 中配置（需 Org 管理员），或在仓库 Settings 里为该仓库单独配置，视你们 Org 策略而定。
+
+**3.（可选）添加 Variables**
+
+仍在 **Settings → Secrets and variables → Actions**，切到 **Variables** 标签页 → **New repository variable**：
+
+| Variable | 说明 |
+|----------|------|
+| `DOCKERHUB_IMAGE_NAMESPACE` | 镜像命名空间；不填时默认与 `DOCKERHUB_USERNAME` 相同。若镜像推送到 **Docker Hub Organization**，填该组织名。 |
+
+**4. 验证**
+
+推送测试标签（例如 `v0.0.0-test`，用完可删 tag）或在 **Actions** 页找到 **Publish Docker images (Docker Hub)** 工作流查看运行结果；失败时展开 **Login to Docker Hub** 步骤核对用户名与 Token。
+
+---
+
+工作流文件：仓库根目录 **`.github/workflows/docker-publish.yml`**。当你推送 **`v*`** 形式的 git 标签（例如 `v1.2.0`）时，会构建 `docker/web.Dockerfile` 与 `docker/worker.Dockerfile`，并推送到：
+
+- `docker.io/<命名空间>/pis-web:<无v版本>` 与 `...:v1.2.0`（与标签一致）
+- `docker.io/<命名空间>/pis-worker:<无v版本>` 与 `...:v1.2.0`
+
+Hub 上需存在（或首次推送创建）仓库 **`pis-web`**、**`pis-worker`**；若你使用其它仓库名，请自行修改该 workflow 中的镜像名。
+
+与现有 **`release.yml`**（同标签触发创建 GitHub Release）可并行执行，互不依赖。
+
+**手动等价（二次 `docker tag` + `docker push`）**
+
+```bash
+cd /path/to/pis
+TAG=1.1.0
+docker build -f docker/web.Dockerfile -t hub.albertzhan.top/pis/web:${TAG} .
+docker tag hub.albertzhan.top/pis/web:${TAG} docker.io/<你的DockerHub用户名>/pis-web:${TAG}
+docker push hub.albertzhan.top/pis/web:${TAG}
+docker push docker.io/<你的DockerHub用户名>/pis-web:${TAG}
+
+docker build -f docker/worker.Dockerfile -t hub.albertzhan.top/pis/worker:${TAG} .
+docker tag hub.albertzhan.top/pis/worker:${TAG} docker.io/<你的DockerHub用户名>/pis-worker:${TAG}
+docker push hub.albertzhan.top/pis/worker:${TAG}
+docker push docker.io/<你的DockerHub用户名>/pis-worker:${TAG}
+```
+
+2. 在运行环境登录**实际拉取镜像**的 Registry，例如：`docker login hub.albertzhan.top`；若 `.env` 指向 Docker Hub：`docker login`（或 `docker login docker.io`）
+
+3. 在项目根目录 `.env` 中设置镜像全名（含标签），**只填实际拉取来源**（私有或 Docker Hub 二选一），例如：
+
+   ```bash
+   # 私有仓库示例
+   PIS_WEB_IMAGE=hub.albertzhan.top/pis/web:1.1.0
+   PIS_WORKER_IMAGE=hub.albertzhan.top/pis/worker:1.1.0
+   # Docker Hub 示例（仓库名按你在 Hub 上创建的为准）
+   # PIS_WEB_IMAGE=docker.io/<你的DockerHub用户名>/pis-web:1.1.0
+   # PIS_WORKER_IMAGE=docker.io/<你的DockerHub用户名>/pis-worker:1.1.0
+   ```
+
+4. 启动（推荐脚本，已包含 `pull` 与 `--no-build`）：
+
+   ```bash
+   cd docker
+   bash start-from-registry.sh
+   ```
+
+   使用 Docker Secrets 编排时：
+
+   ```bash
+   cd docker
+   bash start-from-registry.sh --secrets
+   ```
+
+   若希望**只指定一个 Compose 文件**（类似单文件 `version` + `services` 的用法），可直接使用合并入口（需 Docker Compose **v2.20+**，且支持 `include` 的 `path` 列表）：
+
+   ```bash
+   cd docker
+   docker compose -f docker-compose.customer.yml pull web worker
+   docker compose -f docker-compose.customer.yml up -d --no-build
+   ```
+
+   Secrets 版：
+
+   ```bash
+   cd docker
+   docker compose -f docker-compose.customer-secrets.yml pull web worker
+   docker compose -f docker-compose.customer-secrets.yml up -d --no-build
+   ```
+
+   手动等价命令（**必须**带 `--no-build**，否则 compose 仍可能执行本地 `build`）：
+
+   ```bash
+   cd docker
+   docker compose -f docker-compose.yml -f docker-compose.registry.yml pull web worker
+   docker compose -f docker-compose.yml -f docker-compose.registry.yml up -d --no-build
+   ```
+
+### 仅分发镜像与编排（目录中可无 `apps/`、`services/`）
+
+若**只使用已构建的 `web` / `worker` 镜像**（例如推送到私有仓库与/或 Docker Hub），部署目录里**不需要**包含 `apps/`、`services/` 等应用源码树；仍需要一份与**编排、数据库初始化、反向代理**相关的文件，以及填写好的环境变量（如根目录 `.env`）。
+
+**推荐宿主机目录布局**（与当前 compose 中 `env_file: ../.env`、`web` 挂载「`docker` 的上一级」为项目根的习惯一致）：
+
+```text
+/opt/pis/
+  .env                 # 密钥、域名等按说明填写
+  docker/              # 与仓库中 `docker/` 目录一致（见下）
+    docker-compose.yml
+    docker-compose.registry.yml
+    docker-compose.customer.yml           # 单文件合并入口（registry + 默认栈）
+    docker-compose.customer-secrets.yml # Secrets + registry 单文件入口
+    docker-compose.secrets.yml            # 若使用 Secrets 编排
+    start-from-registry.sh
+    nginx/
+    init-postgresql-db.sql
+    init-postgresql.sh
+    migrations/
+    run-migrations.sh
+    secrets/                        # Secrets 流程时配合 DEPLOY-SECURE.md
+    …                               # 以及 compose 里 bind mount 引用的其他路径
+```
+
+**目录中建议包含**（可打成压缩包随版本分发）：
+
+| 类别 | 说明 |
+|------|------|
+| Compose 与脚本 | `docker-compose.yml`、`docker-compose.registry.yml`；合并入口 `docker-compose.customer.yml` / `docker-compose.customer-secrets.yml`；按需 `docker-compose.secrets.yml`；`start-from-registry.sh`；以及 `DEPLOY-SECURE.md`、`deploy.sh` 等 |
+| 反向代理与 TLS | `nginx/` 下被挂载的配置与证书路径 |
+| 数据库 | `init-postgresql-db.sql`、`init-postgresql.sh`；升级用的 `migrations/`、`run-migrations.sh` |
+| 环境变量 | 根目录 `.env` 模板与填写说明（可不包含真实密钥） |
+
+**运行**：配置 `PIS_WEB_IMAGE` / `PIS_WORKER_IMAGE`（或使用 `docker-compose.registry.yml` 中的默认镜像名）后，在 `docker/` 目录执行 `bash start-from-registry.sh`（或 `--secrets`），见上文「使用 Registry 中的预构建镜像」。
+
+**版本升级（无应用源码树时）**：构建方发布新 tag 并 `push`；部署方在运行环境更新 `.env` 中的镜像 tag（或使用固定 `latest` 并由运维控制），执行 `docker compose ... pull web worker` 与 `... up -d --no-build`（或直接再跑 `start-from-registry.sh`）。
+
+**与「带源码部署」的差异**：管理后台中与**宿主机 Git / `scripts/deploy/quick-upgrade.sh`** 相关的「一键升级」能力，依赖挂载目录内存在对应脚本与仓库；**仅镜像且部署包不含这些脚本时，该路径不可用**，应以上述「拉取新镜像 + 重启」作为正式升级流程。
+
 ## 文件说明
 
 > PIS 项目包含多个 Docker Compose 配置文件，用于不同的部署场景
 
 ## 📋 文件列表
 
-### 1. `docker-compose.yml` ⭐ **生产环境推荐**
+### 1. `docker-compose.yml` ⭐ **默认完整栈**
 
-**用途**: 完全自托管部署（生产环境 - 多端口模式）
+**用途**: 自托管、多端口模式下的完整服务编排
 
 **包含服务**:
 - PostgreSQL - 数据库
@@ -63,11 +261,9 @@ docker compose -f docker-compose.dev.yml up -d
 - Web - Next.js 前端（集成代理功能）
 
 **特点**:
-- ✅ 多端口模式，所有服务端口直接暴露
+- ✅ 多端口模式，各服务端口按需暴露
 - ✅ 数据库自动初始化（首次启动时）
-- ✅ 包含所有必需的服务
-- ✅ 适合生产环境部署
-- ✅ 推荐用于生产部署
+- ✅ 包含常用运行所需的容器服务
 
 **使用方法**:
 ```bash
@@ -101,15 +297,14 @@ docker-compose -f docker-compose.dev.yml up -d
 
 ## 🎯 选择指南
 
-### 场景 1: 生产环境部署（推荐）
+### 场景 1: 默认完整栈（推荐）
 
 **使用**: `docker-compose.yml`
 
 **适用场景**:
-- 生产环境部署
-- 所有服务都在本地服务器
-- 需要完全控制所有组件
-- 内网部署或私有云部署
+- 所有服务在同一台或同一组主机上以容器运行
+- 需要完整控制数据库、对象存储与 Worker
+- 内网或自建环境
 
 **优点**:
 - 所有服务端口直接暴露，便于访问和管理
@@ -140,7 +335,7 @@ docker-compose -f docker-compose.dev.yml up -d
 ### 自动初始化（推荐）
 
 以下配置文件支持自动数据库初始化：
-- ✅ `docker-compose.yml` - 自动初始化（生产环境）
+- ✅ `docker-compose.yml` - 自动初始化（默认完整栈）
 - ✅ `docker-compose.dev.yml` - 自动初始化（开发环境）
 
 **说明**: PostgreSQL 容器会在首次启动时自动执行 `init-postgresql-db.sql`
@@ -161,21 +356,21 @@ docker exec -i pis-postgres psql -U pis -d pis < docker/init-postgresql-db.sql
 
 ## 📊 对比表
 
-| 特性 | docker-compose.yml (生产) | docker-compose.dev.yml (开发) |
+| 特性 | docker-compose.yml（默认完整栈） | docker-compose.dev.yml（开发） |
 |------|------------------------|---------------------------|
 | PostgreSQL | ✅ (自动初始化) | ✅ (自动初始化) |
 | MinIO | ✅ | ✅ |
 | Redis | ✅ | ✅ |
 | Worker | ✅ (端口 3001) | ❌ (本地运行) |
 | Web | ✅ (端口 8081) | ❌ (本地运行) |
-| 端口模式 | 多端口（所有服务暴露） | 多端口（基础服务） |
-| 推荐度 | ⭐⭐⭐⭐⭐ (生产) | ⭐⭐⭐⭐ (开发) |
+| 端口模式 | 多端口（各服务按需暴露） | 多端口（基础服务） |
+| 常用程度 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
 
 ---
 
 ## 🚀 快速开始
 
-### 生产环境部署（推荐）
+### 默认完整栈
 
 ```bash
 cd docker
@@ -196,9 +391,9 @@ docker-compose -f docker-compose.dev.yml up -d
 1. **数据库初始化**: `docker-compose.yml` 和 `docker-compose.dev.yml` 支持自动初始化
 2. **环境变量**: 所有配置文件都使用根目录的 `.env` 文件
 3. **数据卷**: 不同配置文件使用不同的数据卷名称
-4. **推荐配置**: 
-   - 生产环境：使用 `docker-compose.yml`（多端口模式，所有服务暴露）
-   - 开发环境：使用 `docker-compose.dev.yml`（基础服务，Web 和 Worker 本地运行）
+4. **常见用法**: 
+   - 完整容器栈：`docker-compose.yml`（多端口模式）
+   - 仅基础依赖、应用在宿主机跑：`docker-compose.dev.yml`
 
 ---
 

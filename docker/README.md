@@ -2,6 +2,10 @@
 
 > 📋 **Docker Compose 文件说明**: 请参考 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md) 了解不同配置文件的用途
 
+**只使用已发布的 `web` / `worker` 镜像、目录中不含应用源码时**：运行环境从 **Registry**（私有仓库或 Docker Hub 等）拉取镜像，并配合 **`docker/` 编排与初始化文件**（可不包含 `apps/`、`services/`）。目录约定与升级方式见 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md) 中的「仅分发镜像与编排」；启动使用 `bash start-from-registry.sh`（或 `--secrets`），或 `docker compose -f docker-compose.customer.yml` / `docker-compose.customer-secrets.yml`（详见该文档）。
+
+**构建端同时推私有 + Docker Hub**：在仓库根目录配置环境变量后执行 `bash docker/push-images-to-registries.sh`（详见 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md)「多 Registry 推送」）。运行环境 `.env` 中 `PIS_WEB_IMAGE` / `PIS_WORKER_IMAGE` 仍只指向**一处**拉取地址。
+
 ## 部署架构
 
 **完全自托管（推荐）**
@@ -22,6 +26,8 @@
 | **存储/Worker** | 自建服务器 | MinIO + Redis + Worker 服务 |
 
 ## 快速开始（一键部署）
+
+以下「克隆仓库」方式面向**仓库中含应用源码**的部署。若运行环境**只拉 Registry 镜像、不带源码树**，请跳过本节的 curl / `git clone`，改用 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md) 中的「仅分发镜像与编排」与「使用 Registry 中的预构建镜像」。
 
 ### 方法一：完全自动化部署（推荐）
 
@@ -60,7 +66,7 @@ bash start-with-ai.sh
 
 ```bash
 cd pis/docker
-docker compose -f docker-compose.yml -f docker-compose.ai.yml up -d
+docker compose --profile ai -f docker-compose.yml up -d
 ```
 
 **注意：**
@@ -76,6 +82,17 @@ docker compose -f docker-compose.yml -f docker-compose.ai.yml up -d
 - 初始化数据库和创建管理员账号
 
 ## 手动部署
+
+### 使用私有镜像仓库（不在服务器上构建 Web / Worker）
+
+若已将 `web`、`worker` 镜像推送到私有仓库、Docker Hub 或其它 Registry，在运行环境配置 `.env` 中的 `PIS_WEB_IMAGE`、`PIS_WORKER_IMAGE`（全名含标签，与推送目标一致）后执行：
+
+```bash
+cd docker
+bash start-from-registry.sh
+```
+
+使用 Secrets 版 compose 时：`bash start-from-registry.sh --secrets`。说明与命令细节见 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md) 中的「使用 Registry 中的预构建镜像」一节。
 
 ### 1. 配置数据库
 

@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/database'
 import { albumSlugSchema } from '@/lib/validation/schemas'
-import { safeValidate, handleError, ApiError } from '@/lib/validation/error-handler'
+import {
+  safeValidate,
+  handleError,
+  ApiError,
+  createErrorResponse,
+  ErrorCode,
+} from '@/lib/validation/error-handler'
+import { assertGuestAlbumAccess } from '@/lib/public-album-guest-access'
 
 interface RouteParams {
   params: Promise<{ slug: string }>
@@ -50,9 +57,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // 先获取相册 ID（检查密码和过期时间）
     const albumResult = await db
-      .from<{ id: string; sort_rule: string | null; password: string | null; expires_at: string | null; is_public: boolean; allow_share: boolean }>('albums')
-      .select('id, sort_rule, password, expires_at, is_public, allow_share')
+      .from<{
+        id: string
+        slug: string
+        sort_rule: string | null
+        password: string | null
+        expires_at: string | null
+        is_public: boolean
+        allow_share: boolean
+      }>('albums')
+      .select('id, slug, sort_rule, password, expires_at, is_public, allow_share')
       .eq('slug', slug)
+      .is('deleted_at', null)
       .single()
 
     if (albumResult.error || !albumResult.data) {
@@ -71,10 +87,29 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return ApiError.forbidden('相册已过期')
     }
 
-    // 检查是否需要密码（如果设置了密码且未验证，返回需要密码）
-    // 注意：这里不验证密码，密码验证应该在页面层或单独的 API 中处理
-    // 如果相册是私有的且设置了密码，需要先验证密码才能访问照片
-    
+    const albumPassword = searchParams.get('albumPassword') ?? undefined
+    const access = await assertGuestAlbumAccess(
+      request,
+      {
+        id: album.id,
+        slug: album.slug,
+        is_public: album.is_public,
+        password: album.password,
+      },
+      albumPassword ?? null,
+    )
+    if (!access.ok) {
+      if (access.reason === 'password_required') {
+        return createErrorResponse(
+          ErrorCode.ALBUM_PASSWORD_REQUIRED,
+          '需要相册密码或先通过密码验证',
+          undefined,
+          403,
+        )
+      }
+      return ApiError.forbidden('禁止访问此相册')
+    }
+
     // 确定排序规则：优先使用URL参数，否则使用相册的sort_rule，最后使用默认值
     const sort = searchParams.get('sort') || album.sort_rule || 'capture_desc'
 

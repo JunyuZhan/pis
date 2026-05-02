@@ -1,10 +1,12 @@
 /**
  * 原图下载 API 路由测试
- * 
+ *
  * 测试 GET 方法
- * 
+ *
  * 注意：当前实现直接返回公开访问路径（/media/{key}），
  * 不再使用 Worker API 生成签名 URL
+ *
+ * @vitest-environment node
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -113,8 +115,12 @@ describe('GET /api/public/download/[id]', () => {
       
       const mockAlbum = {
         id: validAlbumId,
+        slug: 'a-slug',
+        is_public: true,
+        password: null,
         allow_download: true,
         deleted_at: '2024-01-01T00:00:00Z',
+        expires_at: null,
       }
 
       // Mock first query (photos)
@@ -155,8 +161,12 @@ describe('GET /api/public/download/[id]', () => {
 
       const mockAlbum = {
         id: validAlbumId,
+        slug: 'a-slug',
+        is_public: true,
+        password: null,
         allow_download: false,
         deleted_at: null,
+        expires_at: null,
       }
 
       // Mock first query (photos)
@@ -200,8 +210,12 @@ describe('GET /api/public/download/[id]', () => {
 
       const mockAlbum = {
         id: validAlbumId,
+        slug: 'a-slug',
+        is_public: true,
+        password: null,
         allow_download: true,
         deleted_at: null,
+        expires_at: null,
       }
 
       // Mock first query (photos)
@@ -244,8 +258,12 @@ describe('GET /api/public/download/[id]', () => {
 
       const mockAlbum = {
         id: validAlbumId,
+        slug: 'a-slug',
+        is_public: true,
+        password: null,
         allow_download: true,
         deleted_at: null,
+        expires_at: null,
       }
 
       // Mock first query (photos)
@@ -297,8 +315,12 @@ describe('GET /api/public/download/[id]', () => {
 
       const mockAlbum = {
         id: validAlbumId,
+        slug: 'a-slug',
+        is_public: true,
+        password: null,
         allow_download: true,
         deleted_at: null,
+        expires_at: null,
       }
 
       // Mock first query (photos)

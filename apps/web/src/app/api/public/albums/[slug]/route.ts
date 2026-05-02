@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/database'
 import { albumSlugSchema } from '@/lib/validation/schemas'
-import { safeValidate, handleError, ApiError } from '@/lib/validation/error-handler'
+import {
+  safeValidate,
+  handleError,
+  ApiError,
+  createErrorResponse,
+  ErrorCode,
+} from '@/lib/validation/error-handler'
+import { assertGuestAlbumAccess } from '@/lib/public-album-guest-access'
 
 interface RouteParams {
   params: Promise<{ slug: string }>
@@ -23,7 +30,8 @@ interface RouteParams {
  * @auth 无需认证（公开接口）
  * 
  * @param {string} slug - 相册标识（URL友好格式）
- * 
+ *
+ * @query {string} [albumPassword] - 可选；与 **`pis-album-access` Cookie** 二选一，用于有密码或非完全公开相册的元数据拉取（与 **`/photos`** 等子路由一致）。
  * @query {string} [If-None-Match] - ETag 值（用于缓存验证）
  * 
  * @returns {Object} 200 - 成功返回相册信息
@@ -65,8 +73,23 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // 获取相册信息（包含密码字段，但不直接返回）
     const result = await db
-      .from<{ id: string; title: string | null; description: string | null; layout: string; allow_download: boolean; show_exif: boolean; photo_count: number; password: string | null; expires_at: string | null; is_public: boolean; allow_share: boolean }>('albums')
-      .select('id, title, description, layout, allow_download, show_exif, photo_count, password, expires_at, is_public, allow_share')
+      .from<{
+        id: string
+        slug: string
+        title: string | null
+        description: string | null
+        layout: string
+        allow_download: boolean
+        show_exif: boolean
+        photo_count: number
+        password: string | null
+        expires_at: string | null
+        is_public: boolean
+        allow_share: boolean
+      }>('albums')
+      .select(
+        'id, slug, title, description, layout, allow_download, show_exif, photo_count, password, expires_at, is_public, allow_share',
+      )
       .eq('slug', slug)
       .is('deleted_at', null)
       .single()
@@ -85,6 +108,30 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // 检查相册是否过期
     if (album.expires_at && new Date(album.expires_at) < new Date()) {
       return ApiError.forbidden('相册已过期')
+    }
+
+    const albumPassword =
+      request.nextUrl.searchParams.get('albumPassword') ?? undefined
+    const access = await assertGuestAlbumAccess(
+      request,
+      {
+        id: album.id,
+        slug: album.slug,
+        is_public: album.is_public,
+        password: album.password,
+      },
+      albumPassword ?? null,
+    )
+    if (!access.ok) {
+      if (access.reason === 'password_required') {
+        return createErrorResponse(
+          ErrorCode.ALBUM_PASSWORD_REQUIRED,
+          '需要相册密码或先通过密码验证',
+          undefined,
+          403,
+        )
+      }
+      return ApiError.forbidden('禁止访问此相册')
     }
 
     // 检查是否需要密码（不返回密码本身，只返回是否需要密码）

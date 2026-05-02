@@ -25,6 +25,7 @@ name: pis
 # - Web: Next.js 前端（端口 3000，仅内部）
 # - Worker: 图片处理服务（端口 3001，仅内部）
 # - Nginx: 反向代理（端口 8088，唯一对外端口）
+# - AI（可选）: 人脸识别；默认不启动，使用 docker compose --profile ai … 或 bash start-with-ai.sh
 #
 # 端口说明（单端口模式）：
 # - 8088: Nginx (唯一对外端口，所有 Web 访问通过此端口)
@@ -50,8 +51,8 @@ volumes:
     name: pis_worker_logs
   pis_web_logs:
     name: pis_web_logs
-  # pis_ai_models:  # AI 服务已禁用，volume 不再需要
-  #   name: pis_ai_models
+  pis_ai_models:
+    name: pis_ai_models
 
 services:
   # ==================== 数据库 ====================
@@ -312,21 +313,28 @@ services:
       retries: 3
       start_period: 60s
 
-  # ==================== AI 服务 ====================
-  # AI 服务已禁用（用于节省资源）
-  # 如需启用人脸搜索功能，请取消下面的注释
-  # ai:
-  #   build:
-  #     context: ../services/ai
-  #     dockerfile: Dockerfile
-  #   container_name: pis-ai
-  #   ports:
-  #     - "8000:8000"
-  #   volumes:
-  #     - pis_ai_models:/root/.insightface/models
-  #   networks:
-  #     - pis-network
-  #   restart: unless-stopped
+  # ==================== AI 服务（可选）====================
+  # 默认不启动；使用：docker compose --profile ai -f docker-compose.yml up -d
+  # 或 bash start-with-ai.sh
+  ai:
+    profiles: ["ai"]
+    build:
+      context: ../services/ai
+      dockerfile: Dockerfile
+    container_name: pis-ai
+    ports:
+      - "8000:8000"
+    volumes:
+      - pis_ai_models:/root/.insightface/models
+    networks:
+      - pis-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
 
   # ==================== Nginx ====================
   nginx:

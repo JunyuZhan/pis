@@ -1,7 +1,9 @@
 /**
  * 相册分组列表 API 路由测试
- * 
+ *
  * 测试 GET 方法
+ *
+ * @vitest-environment node
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -31,6 +33,26 @@ describe('GET /api/public/albums/[slug]/groups', () => {
   const validPhotoId2 = '550e8400-e29b-41d4-a716-446655440004'
   const validPhotoId3 = '550e8400-e29b-41d4-a716-446655440005'
 
+  /** 与 `GET` 中 `albums` 查询链一致：`.select().eq().is().single()` */
+  function createAlbumsQueryChain(singleResult: { data: unknown; error: unknown }) {
+    return {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue(singleResult),
+    }
+  }
+
+  const accessibleAlbum = {
+    id: validAlbumId,
+    slug: 'test-slug',
+    is_public: true,
+    password: null as string | null,
+    allow_share: true,
+    deleted_at: null,
+    expires_at: null as string | null,
+  }
+
   beforeEach(async () => {
     vi.clearAllMocks()
     
@@ -40,15 +62,10 @@ describe('GET /api/public/albums/[slug]/groups', () => {
 
   describe('album validation', () => {
     it('should return 404 if album does not exist', async () => {
-      // Mock album query
-      const mockChain = {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
-          data: null,
-          error: { message: 'Not found' },
-        }),
-      }
+      const mockChain = createAlbumsQueryChain({
+        data: null,
+        error: { message: 'Not found' },
+      })
       mockSupabaseClientRef.current.from.mockReturnValue(mockChain)
 
       const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug/groups')
@@ -61,20 +78,15 @@ describe('GET /api/public/albums/[slug]/groups', () => {
 
     it('should return 403 if album is not public', async () => {
       const mockAlbum = {
-        id: validAlbumId,
+        ...accessibleAlbum,
         is_public: false,
-        deleted_at: null,
-        expires_at: null,
+        password: null,
       }
 
-      const mockChain = {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
-          data: mockAlbum,
-          error: null,
-        }),
-      }
+      const mockChain = createAlbumsQueryChain({
+        data: mockAlbum,
+        error: null,
+      })
       mockSupabaseClientRef.current.from.mockReturnValue(mockChain)
 
       const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug/groups')
@@ -85,30 +97,19 @@ describe('GET /api/public/albums/[slug]/groups', () => {
       expect(data.error.code).toBe('FORBIDDEN')
     })
 
-    it('should return 403 if album is deleted', async () => {
-      const mockAlbum = {
-        id: validAlbumId,
-        is_public: true,
-        deleted_at: '2024-01-01T00:00:00Z',
-        expires_at: null,
-      }
-
-      const mockChain = {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
-          data: mockAlbum,
-          error: null,
-        }),
-      }
+    it('should return 404 if album is soft-deleted (excluded by query)', async () => {
+      const mockChain = createAlbumsQueryChain({
+        data: null,
+        error: { message: 'Not found' },
+      })
       mockSupabaseClientRef.current.from.mockReturnValue(mockChain)
 
       const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug/groups')
       const response = await GET(request, { params: Promise.resolve({ slug: 'test-slug' }) })
       const data = await response.json()
 
-      expect(response.status).toBe(403)
-      expect(data.error.code).toBe('FORBIDDEN')
+      expect(response.status).toBe(404)
+      expect(data.error.code).toBe('NOT_FOUND')
     })
 
     it('should return 403 if album is expired', async () => {
@@ -116,20 +117,14 @@ describe('GET /api/public/albums/[slug]/groups', () => {
       expiredDate.setDate(expiredDate.getDate() - 1)
 
       const mockAlbum = {
-        id: validAlbumId,
-        is_public: true,
-        deleted_at: null,
+        ...accessibleAlbum,
         expires_at: expiredDate.toISOString(),
       }
 
-      const mockChain = {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
-          data: mockAlbum,
-          error: null,
-        }),
-      }
+      const mockChain = createAlbumsQueryChain({
+        data: mockAlbum,
+        error: null,
+      })
       mockSupabaseClientRef.current.from.mockReturnValue(mockChain)
 
       const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug/groups')
@@ -143,13 +138,6 @@ describe('GET /api/public/albums/[slug]/groups', () => {
 
   describe('groups retrieval', () => {
     it('should return groups with photo counts successfully', async () => {
-      const mockAlbum = {
-        id: validAlbumId,
-        is_public: true,
-        deleted_at: null,
-        expires_at: null,
-      }
-
       const mockGroups = [
         {
           id: validGroupId1,
@@ -175,46 +163,6 @@ describe('GET /api/public/albums/[slug]/groups', () => {
         { group_id: validGroupId2, photo_id: validPhotoId3 },
       ]
 
-      // Setup mocks based on table name
-      mockSupabaseClientRef.current.from.mockImplementation((table: string) => {
-        if (table === 'albums') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockAlbum, error: null }),
-          }
-        }
-        if (table === 'photo_groups') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            order: vi.fn().mockReturnThis(), // First order
-            // We need to handle the second order call which returns the promise
-            then: (resolve: (value: unknown) => void) => resolve({ data: mockGroups, error: null }),
-          }
-        }
-        if (table === 'photos') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            is: vi.fn().mockResolvedValue({ data: mockPhotos, error: null }),
-          }
-        }
-        if (table === 'photo_group_assignments') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            in: vi.fn().mockReturnThis(), // First in
-            // The second in call (or the chain end) needs to resolve
-            then: (resolve: (value: unknown) => void) => resolve({ data: mockAssignments, error: null }),
-          }
-        }
-        return {}
-      })
-
-      // Fix for chained calls that might need more precise mocking
-      // Specifically handling the double order() and double in()
-      // A better approach is to return a chain object that handles repeated calls
-      
       const mockGroupsChain = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
@@ -241,11 +189,8 @@ describe('GET /api/public/albums/[slug]/groups', () => {
       mockAssignmentsChain.then = (resolve: (value: unknown) => void) => resolve({ data: mockAssignments, error: null })
 
       mockSupabaseClientRef.current.from.mockImplementation((table: string) => {
-        if (table === 'albums') return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockAlbum, error: null }),
-        }
+        if (table === 'albums')
+          return createAlbumsQueryChain({ data: accessibleAlbum, error: null })
         if (table === 'photo_groups') return mockGroupsChain
         if (table === 'photos') return mockPhotosChain
         if (table === 'photo_group_assignments') return mockAssignmentsChain
@@ -272,13 +217,6 @@ describe('GET /api/public/albums/[slug]/groups', () => {
     })
 
     it('should return only groups with photos', async () => {
-      const mockAlbum = {
-        id: validAlbumId,
-        is_public: true,
-        deleted_at: null,
-        expires_at: null,
-      }
-
       const mockGroups = [
         {
           id: validGroupId1,
@@ -324,11 +262,8 @@ describe('GET /api/public/albums/[slug]/groups', () => {
       mockAssignmentsChain.then = (resolve: (value: unknown) => void) => resolve({ data: mockAssignments, error: null })
 
       mockSupabaseClientRef.current.from.mockImplementation((table: string) => {
-        if (table === 'albums') return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockAlbum, error: null }),
-        }
+        if (table === 'albums')
+          return createAlbumsQueryChain({ data: accessibleAlbum, error: null })
         if (table === 'photo_groups') return mockGroupsChain
         if (table === 'photos') return mockPhotosChain
         if (table === 'photo_group_assignments') return mockAssignmentsChain
@@ -345,13 +280,6 @@ describe('GET /api/public/albums/[slug]/groups', () => {
     })
 
     it('should return empty array if no groups exist', async () => {
-      const mockAlbum = {
-        id: validAlbumId,
-        is_public: true,
-        deleted_at: null,
-        expires_at: null,
-      }
-
       const mockGroupsChain = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
@@ -362,11 +290,8 @@ describe('GET /api/public/albums/[slug]/groups', () => {
       mockGroupsChain.then = (resolve: (value: unknown) => void) => resolve({ data: [], error: null })
 
       mockSupabaseClientRef.current.from.mockImplementation((table: string) => {
-        if (table === 'albums') return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockAlbum, error: null }),
-        }
+        if (table === 'albums')
+          return createAlbumsQueryChain({ data: accessibleAlbum, error: null })
         if (table === 'photo_groups') return mockGroupsChain
         return {}
       })
@@ -391,13 +316,6 @@ describe('GET /api/public/albums/[slug]/groups', () => {
     })
 
     it('should return 500 on database error when querying groups', async () => {
-      const mockAlbum = {
-        id: validAlbumId,
-        is_public: true,
-        deleted_at: null,
-        expires_at: null,
-      }
-
       const mockGroupsChain = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
@@ -408,11 +326,8 @@ describe('GET /api/public/albums/[slug]/groups', () => {
       mockGroupsChain.then = (resolve: (value: unknown) => void) => resolve({ data: null, error: { message: 'Database error' } })
 
       mockSupabaseClientRef.current.from.mockImplementation((table: string) => {
-        if (table === 'albums') return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockAlbum, error: null }),
-        }
+        if (table === 'albums')
+          return createAlbumsQueryChain({ data: accessibleAlbum, error: null })
         if (table === 'photo_groups') return mockGroupsChain
         return {}
       })

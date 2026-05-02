@@ -6,6 +6,7 @@ import { checkRateLimit } from '@/middleware-rate-limit'
 import { uploadPhotoSchema, albumIdSchema } from '@/lib/validation/schemas'
 import { safeValidate, handleError, ApiError } from '@/lib/validation/error-handler'
 import { getInternalApiUrl } from '@/lib/utils'
+import { getTrustedClientIp } from '@/lib/request-client-ip'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // 速率限制：每个用户每分钟最多 300 次上传请求（支持批量并发上传）
     // 假设并发为 5，每秒处理 5 张，一分钟可处理 300 张
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    const ip = getTrustedClientIp(request)
     const identifier = `upload:${admin.id}:${ip}`
     const rateLimit = await checkRateLimit(identifier, 300, 60 * 1000) // 300 次/分钟
 

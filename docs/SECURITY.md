@@ -548,22 +548,9 @@ TURNSTILE_SECRET_KEY=your-secret-key
 - 环境变量配置文档（包含敏感信息）
 - `ENGINEER_REFERENCE.md` - 包含真实的配置信息
 
-### 📝 示例文档
+### 📝 仓库内文档与敏感信息
 
-这些文档的示例版本（`.example.md`）已提交到 Git，所有敏感信息已用占位符替换：
-
-- `ENVIRONMENT_VARIABLES.example.md`
-- `ARCHITECTURE.example.md`
-- `VERCEL_ENV_QUICK_REFERENCE.example.md`
-- `ENGINEER_REFERENCE.example.md`
-
-### 🔧 如何更新示例文档
-
-如果原始文档有更新，运行以下命令重新生成示例版本：
-
-```bash
-python3 scripts/create-example-docs.py
-```
+当前仓库中的 **[docs/ARCHITECTURE.md](./ARCHITECTURE.md)**、**[docs/ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md)** 等可能包含**占位或示例**配置；请勿将含**真实密钥、内网主机名、证书路径**的修改提交到公开分支。对外说明优先引用 **[docs/README.md](./README.md)** 索引中的正式部署与用户文档。
 
 这个脚本会：
 1. 读取原始文档

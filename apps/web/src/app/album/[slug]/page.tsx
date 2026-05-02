@@ -1,7 +1,12 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import { cookies } from 'next/headers'
 import { getLocale, getMessages } from 'next-intl/server'
 import { createClient } from '@/lib/database'
+import {
+  evaluateGuestAlbumAccess,
+} from '@/lib/public-album-guest-access'
+import { ALBUM_ACCESS_COOKIE_NAME } from '@/lib/auth/album-access-jwt'
 import { AlbumClient } from '@/components/album/album-client'
 import { AlbumHero } from '@/components/album/album-hero'
 import { AlbumInfoBar } from '@/components/album/album-info-bar'
@@ -22,14 +27,26 @@ type PhotoGroup = Database['public']['Tables']['photo_groups']['Row']
 
 interface AlbumPageProps {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ sort?: string; layout?: string; group?: string; from?: string; skip_splash?: string }>
+  searchParams: Promise<{
+    sort?: string
+    layout?: string
+    group?: string
+    from?: string
+    skip_splash?: string
+    /** 与公开 API 一致：一次性透传相册密码（慎用书签） */
+    albumPassword?: string
+  }>
 }
 
 /**
  * 生成动态 metadata（用于 Open Graph 和微信分享）
  */
-export async function generateMetadata({ params }: AlbumPageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: AlbumPageProps): Promise<Metadata> {
   const { slug } = await params
+  const sp = await searchParams
   const locale = await getLocale()
   const messages = await getMessages()
   const siteName = (messages as { home?: { title?: string } })?.home?.title || 
@@ -38,7 +55,9 @@ export async function generateMetadata({ params }: AlbumPageProps): Promise<Meta
 
   const albumResult = await db
     .from('albums')
-    .select('title, description, share_title, share_description, share_image_url, poster_image_url, cover_photo_id, slug')
+    .select(
+      'id, slug, is_public, password, allow_share, expires_at, title, description, share_title, share_description, share_image_url, poster_image_url, cover_photo_id',
+    )
     .eq('slug', slug)
     .is('deleted_at', null)
     .single()
@@ -49,11 +68,13 @@ export async function generateMetadata({ params }: AlbumPageProps): Promise<Meta
     }
   }
 
-  const appUrl = getAppBaseUrl()
-  // 使用安全的媒体 URL（自动修复 localhost HTTPS 问题）
-  const mediaUrl = getSafeMediaUrl()
-  
-  const album = albumResult.data as {
+  const row = albumResult.data as {
+    id: string
+    slug: string
+    is_public: boolean
+    password: string | null
+    allow_share: boolean
+    expires_at: string | null
     title: string
     description: string | null
     share_title: string | null
@@ -61,8 +82,37 @@ export async function generateMetadata({ params }: AlbumPageProps): Promise<Meta
     share_image_url: string | null
     poster_image_url: string | null
     cover_photo_id: string | null
-    slug: string
   }
+
+  if (row.allow_share === false) {
+    return { title: siteName }
+  }
+  if (row.expires_at && new Date(row.expires_at) < new Date()) {
+    return { title: siteName }
+  }
+
+  const cookieStore = await cookies()
+  const access = await evaluateGuestAlbumAccess(
+    {
+      id: row.id,
+      slug: row.slug,
+      is_public: row.is_public,
+      password: row.password,
+    },
+    {
+      rawAlbumAccessCookie: cookieStore.get(ALBUM_ACCESS_COOKIE_NAME)?.value,
+      albumPassword: sp.albumPassword ?? null,
+    },
+  )
+  if (!access.ok) {
+    return { title: siteName }
+  }
+
+  const album = row
+
+  const appUrl = getAppBaseUrl()
+  // 使用安全的媒体 URL（自动修复 localhost HTTPS 问题）
+  const mediaUrl = getSafeMediaUrl()
 
   // 使用自定义分享配置，如果没有则使用默认值
   const shareTitle = album.share_title || album.title
@@ -159,7 +209,8 @@ export async function generateMetadata({ params }: AlbumPageProps): Promise<Meta
  */
 export default async function AlbumPage({ params, searchParams }: AlbumPageProps) {
   const { slug } = await params
-  const { sort, layout, group, from, skip_splash } = await searchParams
+  const { sort, layout, group, from, skip_splash, albumPassword } =
+    await searchParams
   const db = await createClient()
 
   // 获取相册信息（包含密码和过期时间检查）
@@ -176,35 +227,53 @@ export default async function AlbumPage({ params, searchParams }: AlbumPageProps
 
   const albumData = albumResult.data as Album
 
-  // 获取实际照片数量（确保计数准确，排除已删除的照片）
-  const photoCountResult = await db
-    .from('photos')
-    .select('*')
-    .eq('album_id', albumData.id)
-    .eq('status', 'completed')
-    .is('deleted_at', null)
-    .execute()
-
-  const actualPhotoCount = photoCountResult.count || photoCountResult.data?.length || 0
-
-  const album = {
-    ...albumData,
-    photo_count: actualPhotoCount ?? albumData.photo_count,
-  } as Album
-
   // 检查相册是否过期
-  if (album.expires_at && new Date(album.expires_at) < new Date()) {
+  if (albumData.expires_at && new Date(albumData.expires_at) < new Date()) {
     notFound() // 过期相册返回 404，不暴露过期信息
   }
 
   // 检查相册是否允许分享
-  if (album.allow_share === false) {
+  if (albumData.allow_share === false) {
     notFound() // 不允许分享的相册返回 404，不暴露分享状态
   }
 
-  // 注意：密码验证应该在客户端组件中处理
-  // 如果相册设置了密码，需要在客户端验证后才能显示照片
-  
+  const cookieStore = await cookies()
+  const guestAccess = await evaluateGuestAlbumAccess(
+    {
+      id: albumData.id,
+      slug: albumData.slug,
+      is_public: albumData.is_public,
+      password: albumData.password,
+    },
+    {
+      rawAlbumAccessCookie: cookieStore.get(ALBUM_ACCESS_COOKIE_NAME)?.value,
+      albumPassword: albumPassword ?? null,
+    },
+  )
+  const canRevealGuest = guestAccess.ok
+
+  let actualPhotoCount = albumData.photo_count ?? 0
+  if (canRevealGuest) {
+    const photoCountResult = await db
+      .from('photos')
+      .select('*')
+      .eq('album_id', albumData.id)
+      .eq('status', 'completed')
+      .is('deleted_at', null)
+      .execute()
+
+    actualPhotoCount =
+      photoCountResult.count || photoCountResult.data?.length || 0
+  }
+
+  // 不向客户端传递相册访问密码（哈希/明文均不落 HTML）
+  const { password: _albumPasswordOmit, ...albumWithoutSecret } = albumData
+  const album = {
+    ...albumWithoutSecret,
+    password: null,
+    photo_count: actualPhotoCount,
+  } as Album
+
   // 获取相册的模板 ID 和模板配置
   const templateId = (album as { template_id?: string | null }).template_id || null
   const template = templateId ? ALBUM_TEMPLATES[templateId] : null
@@ -233,87 +302,64 @@ export default async function AlbumPage({ params, searchParams }: AlbumPageProps
     ascending = true
   } else if (currentSort === 'upload_desc') {
     orderBy = 'created_at'
-  } else if (currentSort === 'manual') {
+  } else   if (currentSort === 'manual') {
     orderBy = 'sort_order'
     ascending = true
   }
 
-  // 获取分组列表（如果相册有分组）
-  const groupsResult = await db
-    .from('photo_groups')
-    .select('*')
-    .eq('album_id', album.id)
-    .order('sort_order', { ascending: true })
-    .order('created_at', { ascending: true })
-    .execute()
-
-  const groups = (groupsResult.data || []) as PhotoGroup[]
-
-  // 获取照片列表（排除已删除的照片）
-  const photosResult = await db
-    .from('photos')
-    .select('*')
-    .eq('album_id', album.id)
-    .eq('status', 'completed')
-    .is('deleted_at', null)
-    .order(orderBy, { ascending })
-    .limit(20)
-    .execute()
-
-  const photos = (photosResult.data || []) as Photo[]
-
-  // 获取照片分组关联（如果相册有分组）
-  // 优化：批量查询所有分组的照片关联，避免 N+1 查询问题
-  const photoGroupMap: Map<string, string[]> = new Map()
-  if (groups.length > 0) {
-    const groupIds = groups.map((g) => g.id)
-    
-    // 批量查询所有分组的照片关联
-    const assignmentsResult = await db
-      .from('photo_group_assignments')
-      .select('group_id, photo_id')
-      .in('group_id', groupIds)
-      .execute()
-    
-    if (assignmentsResult.data) {
-      const assignments = assignmentsResult.data as unknown as { group_id: string; photo_id: string }[]
-      // 将查询结果按分组 ID 分组
-      assignments.forEach((assignment) => {
-        const groupId = assignment.group_id
-        if (!photoGroupMap.has(groupId)) {
-          photoGroupMap.set(groupId, [])
-        }
-        photoGroupMap.get(groupId)!.push(assignment.photo_id)
-      })
-    }
-  }
-
-  // 获取封面照片（优先使用设置的封面，否则用第一张）
-  // 注意：封面照片必须未删除
+  let groups: PhotoGroup[] = []
+  let photos: Photo[] = []
   let coverPhoto: Photo | null = null
-  if (album.cover_photo_id) {
-    const coverResult = await db
+
+  if (canRevealGuest) {
+    const groupsResult = await db
+      .from('photo_groups')
+      .select('*')
+      .eq('album_id', album.id)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+      .execute()
+
+    groups = (groupsResult.data || []) as PhotoGroup[]
+
+    const photosResult = await db
       .from('photos')
       .select('*')
-      .eq('id', album.cover_photo_id)
+      .eq('album_id', album.id)
+      .eq('status', 'completed')
       .is('deleted_at', null)
-      .single()
-    coverPhoto = coverResult.data as Photo | null
-  }
-  if (!coverPhoto && photos.length > 0) {
-    coverPhoto = photos[0]
+      .order(orderBy, { ascending })
+      .limit(20)
+      .execute()
+
+    photos = (photosResult.data || []) as Photo[]
+
+    if (album.cover_photo_id) {
+      const coverResult = await db
+        .from('photos')
+        .select('*')
+        .eq('id', album.cover_photo_id)
+        .is('deleted_at', null)
+        .single()
+      coverPhoto = coverResult.data as Photo | null
+    }
+    if (!coverPhoto && photos.length > 0) {
+      coverPhoto = photos[0]
+    }
   }
 
   // 获取背景图片URL（优先使用海报图片，否则使用封面照片）
   // 使用安全的媒体 URL（自动修复 localhost HTTPS 问题）
   const mediaUrl = getSafeMediaUrl()
   let backgroundImageUrl: string | null = null
-  if (album.poster_image_url && album.poster_image_url.trim()) {
-    backgroundImageUrl = album.poster_image_url.trim()
-  } else if (coverPhoto?.preview_key) {
-    backgroundImageUrl = `${mediaUrl}/${coverPhoto.preview_key}`
-  } else if (coverPhoto?.thumb_key) {
-    backgroundImageUrl = `${mediaUrl}/${coverPhoto.thumb_key}`
+  if (canRevealGuest) {
+    if (album.poster_image_url && album.poster_image_url.trim()) {
+      backgroundImageUrl = album.poster_image_url.trim()
+    } else if (coverPhoto?.preview_key) {
+      backgroundImageUrl = `${mediaUrl}/${coverPhoto.preview_key}`
+    } else if (coverPhoto?.thumb_key) {
+      backgroundImageUrl = `${mediaUrl}/${coverPhoto.thumb_key}`
+    }
   }
 
   // 判断是否显示启动页
@@ -329,7 +375,13 @@ export default async function AlbumPage({ params, searchParams }: AlbumPageProps
       {showSplash && (
         <AlbumSplashScreen
           album={album}
-          posterImageUrl={album.poster_image_url && album.poster_image_url.trim() ? album.poster_image_url.trim() : null}
+          posterImageUrl={
+            canRevealGuest &&
+            album.poster_image_url &&
+            album.poster_image_url.trim()
+              ? album.poster_image_url.trim()
+              : null
+          }
         />
       )}
 

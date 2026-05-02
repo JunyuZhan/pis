@@ -1,10 +1,13 @@
 /**
  * 相册密码验证 API 路由测试
- * 
+ *
  * 测试密码验证逻辑和速率限制
+ *
+ * @vitest-environment node
+ * （jose 签名依赖 Node 的 TextEncoder 行为；jsdom 下 encode 结果可能非 Uint8Array）
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { POST } from './route'
 import { createMockRequest } from '@/test/test-utils'
 import { checkRateLimit } from '@/middleware-rate-limit'
@@ -30,7 +33,8 @@ describe('POST /api/public/albums/[slug]/verify-password', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks()
-    
+    vi.stubEnv('PIS_TRUST_PROXY_HEADERS', 'true')
+
     const { createClient } = await import('@/lib/database')
     
     // 默认允许速率限制
@@ -39,6 +43,10 @@ describe('POST /api/public/albums/[slug]/verify-password', () => {
       remaining: 4,
       resetAt: Date.now() + 60000,
     })
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
   })
 
   describe('rate limiting', () => {
@@ -146,7 +154,27 @@ describe('POST /api/public/albums/[slug]/verify-password', () => {
       expect(data.error.code).toBe('VALIDATION_ERROR')
     })
 
-    it('should return 400 for missing password', async () => {
+    it('should return 400 when album has password but body omits password', async () => {
+      const mockSelect = vi.fn().mockReturnThis()
+      const mockEq = vi.fn().mockReturnThis()
+      const mockSingle = vi.fn().mockResolvedValue({
+        data: {
+          id: 'album-123',
+          slug: 'test-slug',
+          is_public: true,
+          password: 'required-secret',
+          expires_at: null,
+          deleted_at: null,
+        },
+        error: null,
+      })
+
+      mockSupabaseClient.from.mockReturnValue({
+        select: mockSelect,
+        eq: mockEq,
+        single: mockSingle,
+      })
+
       const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug/verify-password', {
         method: 'POST',
         body: {},
@@ -157,9 +185,7 @@ describe('POST /api/public/albums/[slug]/verify-password', () => {
 
       expect(response.status).toBe(400)
       expect(data.error.code).toBe('VALIDATION_ERROR')
-      // Zod validation details contains the message
-      const details = data.error.details as Array<{ message: string }>
-      expect(details[0].message).toContain('密码不能为空')
+      expect(data.error.message).toContain('密码不能为空')
     })
 
     it('should return 400 for non-string password', async () => {
