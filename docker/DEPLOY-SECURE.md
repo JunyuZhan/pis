@@ -1,6 +1,9 @@
 # PIS 安全部署指南（Docker Secrets）
 
-本指南介绍如何使用 Docker Secrets 安全部署 PIS 生产环境。
+> **默认部署方式已变更**：当前仓库以 **单个 `docker/docker-compose.yml` + `.env`（或 NAS 向导式环境变量）** 为唯一编排，**仅拉取预构建镜像**，与群晖等「填变量 → 启动」一致。  
+> 历史上随仓库提供的 **`docker-compose.secrets.yml` 第二份编排已移除**。若你希望 `docker inspect` 仍不可见密钥，请自行采用 **Docker Swarm secrets**、**Kubernetes Secret**、或宿主机只读挂载注入等方案，下文中的「Secrets 文件 + 专用 compose」流程仅作**概念与操作习惯**参考，不再与仓库内 compose 一一对应。
+
+本指南介绍如何通过 **密钥文件目录** 与更安全的运行时习惯加固 PIS（概念上接近 Docker Secrets）。
 
 ## 为什么使用 Docker Secrets？
 
@@ -9,20 +12,18 @@
 | **Docker Secrets** | ✅ 不可见 | ✅ 不可见 | ⭐⭐⭐⭐⭐ 高 | **生产环境** |
 | 环境变量 | ❌ 可见 | ❌ 可见 | ⭐⭐ 较低 | 开发/测试环境 |
 
-## 快速部署
+## 快速部署（与当前仓库一致）
 
 ```bash
-# 1. 进入项目目录
-cd /opt/pis
+cd /opt/pis/docker
+cp env.deploy.example .env
+# 编辑 .env：数据库密码、JWT、MinIO、域名等
 
-# 2. 初始化密钥（首次部署）
-cd docker/secrets
-./init-secrets.sh
-cd ../..
-
-# 3. 启动服务
-docker compose -f docker/docker-compose.secrets.yml up -d
+docker compose pull
+docker compose up -d
 ```
+
+若仍希望使用 `docker/secrets/` 下的文件生成随机密钥，可执行 `./init-secrets.sh` 生成文件后，**手动**将内容同步到 `.env`（标准 compose 从 `.env` 读入环境变量）。
 
 ## 密钥文件说明
 
@@ -94,7 +95,7 @@ FTP_PASV_URL=你的服务器公网IP  # 被动模式公网地址
 echo -n "new-password" > docker/secrets/db_password
 
 # 2. 重启相关服务
-docker compose -f docker/docker-compose.secrets.yml restart web worker postgres
+docker compose restart web worker postgres
 ```
 
 ### 备份密钥
@@ -117,26 +118,20 @@ gpg -d ../secrets-backup.tar.gz.gpg | tar -xzf -
 
 ## 与传统方式对比
 
-### Docker Secrets 方式（推荐）
+### Docker Secrets 方式（概念上推荐，需自行接 Swarm/K8s）
+
+在独立编排或编排平台中使用 Secrets；本仓库默认 **不再** 附带第二份 compose。
+
+- ✅ `docker inspect` 可设计为不可见密钥
+- ✅ 密钥不出现在进程列表（取决于注入方式）
+
+### 环境变量方式（当前仓库默认）
 
 ```bash
-docker compose -f docker/docker-compose.secrets.yml up -d
-```
-
-- ✅ `docker inspect` 无法查看密钥
-- ✅ 密钥不出现在进程列表
-- ✅ 支持细粒度权限控制
-- ✅ FTP 端口保留供相机上传
-
-### 环境变量方式（传统，仅开发使用）
-
-```bash
-# 复制并编辑 .env
-cp .env.example .env
+cd docker
+cp env.deploy.example .env
 vim .env
-
-# 启动
-docker compose -f docker/docker-compose.yml up -d
+docker compose pull && docker compose up -d
 ```
 
 - ❌ `docker inspect` 可查看所有密钥

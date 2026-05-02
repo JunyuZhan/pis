@@ -8,6 +8,9 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
 # 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -279,7 +282,7 @@ test_check "Web 应用构建输出存在" "test -d /Users/apple/Documents/Projec
 test_check "环境变量文件存在" "test -f /Users/apple/Documents/Project/PIS/pis/.env.example"
 
 # 检查 Docker Compose 配置
-test_check "Docker Compose 配置存在" "test -f /Users/apple/Documents/Project/PIS/pis/docker/docker-compose.dev.yml"
+test_check "Docker Compose 配置存在" "test -f \"$ROOT_DIR/docker/docker-compose.yml\""
 
 # ============================================
 # 10. 日志和错误处理测试

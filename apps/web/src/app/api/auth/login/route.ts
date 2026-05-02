@@ -15,6 +15,7 @@ import { loginSchema } from '@/lib/validation/schemas';
 import { safeValidate } from '@/lib/validation/error-handler';
 import { createAdminClient } from '@/lib/database';
 import { logLogin } from '@/lib/audit-log';
+import { PIS_DEFAULT_ADMIN_EMAIL } from '@/lib/pis-zero-config';
 
 // 初始化认证数据库（如果尚未初始化）
 try {
@@ -139,29 +140,28 @@ export async function POST(request: NextRequest) {
 
             if (adminResult.error) {
               console.error('[Login] Error querying admin user:', adminResult.error);
-              email = 'admin@pis.com';
+              email = PIS_DEFAULT_ADMIN_EMAIL;
             } else if (adminResult.data) {
               const adminData = adminResult.data as { email?: string };
               if (adminData.email) {
                 email = adminData.email;
               } else {
                 // 回退到默认邮箱
-                email = 'admin@pis.com';
+                email = PIS_DEFAULT_ADMIN_EMAIL;
               }
             } else {
               // 回退到默认邮箱
-              email = 'admin@pis.com';
+              email = PIS_DEFAULT_ADMIN_EMAIL;
             }
           } catch (error) {
             console.error('[Login] Error creating admin client or querying admin user:', error);
-            email = 'admin@pis.com';
+            email = PIS_DEFAULT_ADMIN_EMAIL;
           }
         } else {
-          email = 'admin@pis.com';
+          email = PIS_DEFAULT_ADMIN_EMAIL;
         }
       } else {
-        // 回退到默认邮箱
-        email = 'admin@pis.com';
+        email = PIS_DEFAULT_ADMIN_EMAIL;
       }
     }
 

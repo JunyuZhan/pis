@@ -19,6 +19,13 @@ EXCEPTION
         RAISE NOTICE 'vector 扩展不可用，跳过创建（不影响其他功能）';
 END $$;
 
+-- 运行时配置（JWT 密钥等，由 Web 进程写入；非数据库超级用户凭据）
+CREATE TABLE IF NOT EXISTS pis_app_config (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ============================================
 -- 用户表（自定义认证模式使用）
 -- ============================================
@@ -344,62 +351,7 @@ CREATE TRIGGER update_package_downloads_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- ============================================
--- 创建默认用户账户（各角色）
--- ============================================
--- 用户账户在初始化时创建，但 password_hash 为 NULL
--- 部署完成后，首次登录时会提示设置密码
--- 这是安全的最佳实践：避免在初始化时设置默认密码
--- 
--- 注意：如需自定义邮箱或批量创建，请使用 pnpm init-users 脚本
-
--- 管理员账户
-INSERT INTO users (email, password_hash, role, is_active, created_at, updated_at)
-VALUES (
-    'admin@pis.com',
-    NULL,  -- 密码未设置，首次登录时需要设置
-    'admin',
-    true,
-    NOW(),
-    NOW()
-)
-ON CONFLICT (email) DO NOTHING;
-
--- 摄影师账户
-INSERT INTO users (email, password_hash, role, is_active, created_at, updated_at)
-VALUES (
-    'photographer@pis.com',
-    NULL,  -- 密码未设置，首次登录时需要设置
-    'photographer',
-    true,
-    NOW(),
-    NOW()
-)
-ON CONFLICT (email) DO NOTHING;
-
--- 修图师账户
-INSERT INTO users (email, password_hash, role, is_active, created_at, updated_at)
-VALUES (
-    'retoucher@pis.com',
-    NULL,  -- 密码未设置，首次登录时需要设置
-    'retoucher',
-    true,
-    NOW(),
-    NOW()
-)
-ON CONFLICT (email) DO NOTHING;
-
--- 访客账户
-INSERT INTO users (email, password_hash, role, is_active, created_at, updated_at)
-VALUES (
-    'guest@pis.com',
-    NULL,  -- 密码未设置，首次登录时需要设置
-    'guest',
-    true,
-    NOW(),
-    NOW()
-)
-ON CONFLICT (email) DO NOTHING;
+-- 默认管理员由 Worker 进程启动时空库自动创建（见 services/worker bootstrap），不在此插入演示账号。
 
 -- ============================================
 -- 系统设置表（用于后台可视化配置）
@@ -957,13 +909,8 @@ BEGIN
     RAISE NOTICE '   - album_collaborators 表: 相册协作者';
     RAISE NOTICE '   - collaboration_invites 表: 协作邀请';
     RAISE NOTICE '';
-    RAISE NOTICE '👤 默认用户账户:';
-    RAISE NOTICE '   - 管理员: admin@pis.com';
-    RAISE NOTICE '   - 摄影师: photographer@pis.com';
-    RAISE NOTICE '   - 修图师: retoucher@pis.com';
-    RAISE NOTICE '   - 访客: guest@pis.com';
-    RAISE NOTICE '   - 密码: 未设置（首次登录时需要设置）';
-    RAISE NOTICE '   - 活跃管理员数量: %', admin_count;
+    RAISE NOTICE '👤 用户账户: 空库时由 Web 进程首次启动创建默认管理员（见部署说明）';
+    RAISE NOTICE '   - 当前活跃管理员数量: %', admin_count;
     RAISE NOTICE '';
-    RAISE NOTICE '💡 提示: 可以使用 pnpm init-users 脚本批量创建或自定义用户账户';
+    RAISE NOTICE '💡 提示: 可使用 pnpm init-users 脚本批量创建或自定义用户账户';
 END $$;

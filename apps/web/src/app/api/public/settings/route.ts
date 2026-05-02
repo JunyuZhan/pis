@@ -97,12 +97,13 @@ export async function GET() {
       .maybeSingle()
 
     if (!allowHomeResult.error && allowHomeResult.data) {
-      let v: unknown = allowHomeResult.data.value
+      const row = allowHomeResult.data as { value?: unknown }
+      let v: unknown = row.value
       if (typeof v === 'string') {
         try {
           v = JSON.parse(v)
         } catch {
-          const s = v.trim()
+          const s = String(v).trim()
           if (s === 'true') v = true
           else if (s === 'false') v = false
         }

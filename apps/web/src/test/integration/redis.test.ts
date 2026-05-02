@@ -53,7 +53,7 @@ describe('Redis Integration Tests', () => {
       
       try {
         const output = execSync(
-          `docker exec pis-redis-dev redis-cli PING`,
+          `docker exec pis-redis redis-cli PING`,
           { encoding: 'utf-8' }
         ).trim()
         
@@ -89,13 +89,13 @@ describe('Redis Integration Tests', () => {
       try {
         // 写入
         execSync(
-          `docker exec pis-redis-dev redis-cli SET ${testKey} ${testValue}`,
+          `docker exec pis-redis redis-cli SET ${testKey} ${testValue}`,
           { encoding: 'utf-8' }
         )
         
         // 读取
         const result = execSync(
-          `docker exec pis-redis-dev redis-cli GET ${testKey}`,
+          `docker exec pis-redis redis-cli GET ${testKey}`,
           { encoding: 'utf-8' }
         ).trim()
         
@@ -103,7 +103,7 @@ describe('Redis Integration Tests', () => {
         
         // 清理
         execSync(
-          `docker exec pis-redis-dev redis-cli DEL ${testKey}`,
+          `docker exec pis-redis redis-cli DEL ${testKey}`,
           { encoding: 'utf-8' }
         )
       } catch {
@@ -143,13 +143,13 @@ describe('Redis Integration Tests', () => {
       try {
         // 设置带 TTL 的键
         execSync(
-          `docker exec pis-redis-dev redis-cli SETEX ${testKey} 10 ${testValue}`,
+          `docker exec pis-redis redis-cli SETEX ${testKey} 10 ${testValue}`,
           { encoding: 'utf-8' }
         )
         
         // 获取 TTL
         const ttl = execSync(
-          `docker exec pis-redis-dev redis-cli TTL ${testKey}`,
+          `docker exec pis-redis redis-cli TTL ${testKey}`,
           { encoding: 'utf-8' }
         ).trim()
         
@@ -158,7 +158,7 @@ describe('Redis Integration Tests', () => {
         
         // 清理
         execSync(
-          `docker exec pis-redis-dev redis-cli DEL ${testKey}`,
+          `docker exec pis-redis redis-cli DEL ${testKey}`,
           { encoding: 'utf-8' }
         )
       } catch {
@@ -195,14 +195,14 @@ describe('Redis Integration Tests', () => {
       
       try {
         const output = execSync(
-          'docker inspect --format="{{.State.Health.Status}}" pis-redis-dev',
+          'docker inspect --format="{{.State.Health.Status}}" pis-redis',
           { encoding: 'utf-8' }
         ).trim()
         
         expect(output).toBe('healthy')
       } catch {
         // 如果容器不存在，跳过此测试
-        console.warn('⚠️ Docker container pis-redis-dev not found, skipping health check')
+        console.warn('⚠️ Docker container pis-redis not found, skipping health check')
       }
     })
   })

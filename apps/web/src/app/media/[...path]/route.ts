@@ -23,13 +23,13 @@ export const maxDuration = 300 // 5分钟
  * 创建 MinIO 客户端实例
  */
 function createMinioClient(): Minio.Client {
-  const host = process.env.MINIO_ENDPOINT_HOST || 'localhost'
-  const port = process.env.MINIO_ENDPOINT_PORT 
-    ? parseInt(process.env.MINIO_ENDPOINT_PORT) 
+  const host = process.env.MINIO_ENDPOINT_HOST || 'minio'
+  const port = process.env.MINIO_ENDPOINT_PORT
+    ? parseInt(process.env.MINIO_ENDPOINT_PORT)
     : 9000
   const useSSL = process.env.MINIO_USE_SSL === 'true'
-  const accessKey = process.env.MINIO_ACCESS_KEY || ''
-  const secretKey = process.env.MINIO_SECRET_KEY || ''
+  const accessKey = process.env.MINIO_ACCESS_KEY || 'minioadmin'
+  const secretKey = process.env.MINIO_SECRET_KEY || 'minioadmin'
   const region = process.env.MINIO_REGION || 'us-east-1'
 
   return new Minio.Client({

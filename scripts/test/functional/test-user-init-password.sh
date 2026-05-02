@@ -86,14 +86,7 @@ echo -e "${CYAN}2️⃣  检查数据库中的用户${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-# 自动检测 PostgreSQL 容器名称
-if docker ps --format "{{.Names}}" | grep -q "^pis-postgres-dev$"; then
-    POSTGRES_CONTAINER="pis-postgres-dev"
-elif docker ps --format "{{.Names}}" | grep -q "^pis-postgres$"; then
-    POSTGRES_CONTAINER="pis-postgres"
-else
-    POSTGRES_CONTAINER="pis-postgres-dev"
-fi
+POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-pis-postgres}"
 
 test_step "数据库连接" "docker exec $POSTGRES_CONTAINER psql -U pis -d pis -c 'SELECT 1;' | grep -q '1'"
 

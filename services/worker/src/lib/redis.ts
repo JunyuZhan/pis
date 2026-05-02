@@ -31,10 +31,22 @@ import { Queue, Worker, QueueEvents, type ConnectionOptions } from 'bullmq'
  *
  * 包含指数退避重试策略和连接超时设置。
  */
+function defaultRedisHost(): string {
+  if (process.env.REDIS_HOST?.trim()) return process.env.REDIS_HOST.trim()
+  // Docker Compose 默认服务名；本地开发请在 .env.local 中设置 REDIS_HOST=localhost
+  return 'redis'
+}
+
 const connection: ConnectionOptions = {
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-  password: process.env.REDIS_PASSWORD || undefined,
+  get host() {
+    return defaultRedisHost()
+  },
+  get port() {
+    return parseInt(process.env.REDIS_PORT || '6379', 10)
+  },
+  get password() {
+    return process.env.REDIS_PASSWORD || undefined
+  },
   // BullMQ 要求 maxRetriesPerRequest 必须是 null
   maxRetriesPerRequest: null,
   retryStrategy: (times: number) => {

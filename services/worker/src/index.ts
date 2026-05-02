@@ -136,18 +136,6 @@ let supabase: any;
 let ftpServerService: any;
 try {
   // 验证环境变量已加载
-  if (!process.env.DATABASE_PASSWORD && process.env.DATABASE_TYPE !== 'supabase') {
-    logger.error(
-      {
-        DATABASE_PASSWORD: process.env.DATABASE_PASSWORD ? 'SET' : 'NOT SET',
-        DATABASE_HOST: process.env.DATABASE_HOST,
-        DATABASE_USER: process.env.DATABASE_USER,
-        DATABASE_NAME: process.env.DATABASE_NAME,
-      },
-      '⚠️  DATABASE_PASSWORD not loaded before database client import'
-    );
-  }
-
   const dbModule = await import('./lib/database/client.js');
   supabase = dbModule.db;
   logger.info('✅ Database client imported successfully');
@@ -283,12 +271,15 @@ function toRelativePresignedUrl(url: string): string {
 // ============================================
 // API 认证配置
 // ============================================
-const WORKER_API_KEY = process.env.WORKER_API_KEY;
+const ZERO_CFG_WORKER_KEY = 'pis-docker-default-worker-api-key';
+const WORKER_API_KEY =
+  process.env.WORKER_API_KEY?.trim() || ZERO_CFG_WORKER_KEY;
 // 人脸识别功能开关（默认禁用，设置为 'true' 启用）
 const ENABLE_FACE_RECOGNITION = process.env.ENABLE_FACE_RECOGNITION === 'true';
-if (!WORKER_API_KEY) {
-  console.warn('⚠️  WORKER_API_KEY not set, API endpoints are unprotected!');
-  console.warn('   Please set WORKER_API_KEY in .env for production use');
+if (!process.env.WORKER_API_KEY?.trim()) {
+  console.warn(
+    '[PIS/worker] WORKER_API_KEY unset; using zero-config default (set WORKER_API_KEY for production)',
+  );
 }
 
 // CORS 配置
@@ -2934,12 +2925,16 @@ process.on('unhandledRejection', (reason, promise) => {
 server.keepAliveTimeout = 65000; // 65秒（略大于 Cloudflare 的 60 秒）
 server.headersTimeout = 66000; // 66秒（略大于 keepAliveTimeout）
 
-if (CONFIG.NODE_ENV === 'production' && !WORKER_API_KEY) {
-  logger.fatal('WORKER_API_KEY is required in production. Refusing to start HTTP server.');
-  process.exit(1);
-}
-
 server.listen(HTTP_PORT, async () => {
+  try {
+    const { ensureDefaultAdminUser } = await import(
+      './lib/bootstrap-default-admin.js'
+    );
+    await ensureDefaultAdminUser();
+  } catch (err: any) {
+    console.warn('[PIS Worker] ensureDefaultAdminUser:', err?.message || err);
+  }
+
   // 初始化 SSE Redis 客户端
   try {
     const { getRedisClient } = await import('./lib/sse.js');

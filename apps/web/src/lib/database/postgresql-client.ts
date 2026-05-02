@@ -34,6 +34,7 @@
  * ```
  */
 import { Pool } from "pg";
+import { PIS_DEFAULT_DATABASE_URL } from "@/lib/pis-zero-config";
 import type {
   DatabaseFilters,
   DatabaseValue,
@@ -153,6 +154,19 @@ function shouldEnableSsl(connectionString?: string): boolean {
  */
 function getPool(): Pool {
   if (!pool) {
+    if (
+      !process.env.DATABASE_URL?.trim() &&
+      !process.env.DATABASE_PASSWORD?.trim() &&
+      !process.env.POSTGRES_PASSWORD?.trim()
+    ) {
+      process.env.DATABASE_URL = PIS_DEFAULT_DATABASE_URL;
+      if (process.env.NODE_ENV === "development") {
+        console.warn(
+          "[PostgreSQL] DATABASE_URL / DATABASE_PASSWORD unset; using Docker zero-config DATABASE_URL",
+        );
+      }
+    }
+
     const connectionString = process.env.DATABASE_URL;
     const enableSsl = shouldEnableSsl(connectionString);
 
@@ -165,9 +179,9 @@ function getPool(): Pool {
         10,
       );
       const database =
-        process.env.DATABASE_NAME || process.env.POSTGRES_DB || "pis";
+        process.env.DATABASE_NAME || process.env.POSTGRES_DB || "postgres";
       const user =
-        process.env.DATABASE_USER || process.env.POSTGRES_USER || "pis";
+        process.env.DATABASE_USER || process.env.POSTGRES_USER || "postgres";
       // 优先使用 DATABASE_PASSWORD，如果未设置则使用 POSTGRES_PASSWORD
       // 确保密码始终是字符串类型（不能是 undefined 或 null）
       const passwordRaw =
@@ -182,28 +196,10 @@ function getPool(): Pool {
         );
       }
 
-      // 验证密码是否设置（PostgreSQL SCRAM 认证需要密码）
       if (!password || password.length === 0) {
-        const errorMsg =
-          "DATABASE_PASSWORD or POSTGRES_PASSWORD environment variable is required but not set. " +
-          "Please check your .env.local file or environment configuration. " +
-          "Make sure to restart the Next.js dev server after updating .env.local.";
-        console.error("[PostgreSQL]", errorMsg);
-        console.error("[PostgreSQL] Available env vars:", {
-          DATABASE_PASSWORD: process.env.DATABASE_PASSWORD
-            ? `SET (length: ${process.env.DATABASE_PASSWORD.length})`
-            : "NOT SET",
-          POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD
-            ? `SET (length: ${process.env.POSTGRES_PASSWORD.length})`
-            : "NOT SET",
-          DATABASE_URL: process.env.DATABASE_URL ? "SET" : "NOT SET",
-          NODE_ENV: process.env.NODE_ENV,
-          // 列出所有 DATABASE_ 相关的环境变量（不显示值）
-          allDatabaseEnvVars: Object.keys(process.env).filter(
-            (key) => key.startsWith("DATABASE_") || key.startsWith("POSTGRES_"),
-          ),
-        });
-        throw new Error(errorMsg);
+        console.warn(
+          "[PostgreSQL] DATABASE_PASSWORD / POSTGRES_PASSWORD 未设置，将使用空密码连接（适用于 Docker trust 等场景）。",
+        );
       }
 
       // 调试日志（仅在开发环境）

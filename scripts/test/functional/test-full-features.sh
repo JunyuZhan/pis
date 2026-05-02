@@ -27,37 +27,9 @@ if [ -z "$BASE_URL" ]; then
     fi
 fi
 
-# 自动检测容器名称
-if [ -z "$POSTGRES_CONTAINER" ]; then
-    if docker ps --format "{{.Names}}" | grep -q "^pis-postgres-dev$"; then
-        POSTGRES_CONTAINER="pis-postgres-dev"
-    elif docker ps --format "{{.Names}}" | grep -q "^pis-postgres$"; then
-        POSTGRES_CONTAINER="pis-postgres"
-    else
-        POSTGRES_CONTAINER="pis-postgres-dev"
-        echo -e "${YELLOW}⚠️  未找到 PostgreSQL 容器，使用默认名称${NC}"
-    fi
-fi
-
-if [ -z "$REDIS_CONTAINER" ]; then
-    if docker ps --format "{{.Names}}" | grep -q "^pis-redis-dev$"; then
-        REDIS_CONTAINER="pis-redis-dev"
-    elif docker ps --format "{{.Names}}" | grep -q "^pis-redis$"; then
-        REDIS_CONTAINER="pis-redis"
-    else
-        REDIS_CONTAINER="pis-redis-dev"
-    fi
-fi
-
-if [ -z "$MINIO_CONTAINER" ]; then
-    if docker ps --format "{{.Names}}" | grep -q "^pis-minio-dev$"; then
-        MINIO_CONTAINER="pis-minio-dev"
-    elif docker ps --format "{{.Names}}" | grep -q "^pis-minio$"; then
-        MINIO_CONTAINER="pis-minio"
-    else
-        MINIO_CONTAINER="pis-minio-dev"
-    fi
-fi
+POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-pis-postgres}"
+REDIS_CONTAINER="${REDIS_CONTAINER:-pis-redis}"
+MINIO_CONTAINER="${MINIO_CONTAINER:-pis-minio}"
 
 TIMEOUT=30
 REPORT_FILE="/tmp/pis-full-features-test-$(date +%Y%m%d-%H%M%S).txt"

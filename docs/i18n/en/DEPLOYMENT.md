@@ -156,7 +156,7 @@ cd /opt/pis/docker && docker-compose -f docker-compose.yml logs -f
 cd /opt/pis/docker && docker-compose -f docker-compose.yml restart
 
 # Update code
-cd /opt/pis && git pull && cd docker && docker-compose -f docker-compose.yml up -d --build
+cd /opt/pis && git pull && cd docker && docker-compose -f docker-compose.yml pull && docker-compose -f docker-compose.yml up -d
 ```
 
 ### Quick Troubleshooting

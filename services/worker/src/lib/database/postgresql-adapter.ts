@@ -9,16 +9,21 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
   private pool: Pool;
 
   constructor(config: DatabaseConfig) {
-    if (!config.host || !config.database || !config.user || !config.password) {
-      throw new Error('PostgreSQL adapter requires host, database, user, and password');
+    if (!config.host || !config.database || !config.user) {
+      throw new Error('PostgreSQL adapter requires host, database, and user');
     }
+
+    const password =
+      config.password === undefined || config.password === null
+        ? ''
+        : String(config.password);
 
     this.pool = new Pool({
       host: config.host,
       port: config.port || 5432,
       database: config.database,
       user: config.user,
-      password: config.password,
+      password,
       ssl: config.ssl ? { rejectUnauthorized: false } : false,
       max: 20, // 连接池最大连接数
       idleTimeoutMillis: 30000,

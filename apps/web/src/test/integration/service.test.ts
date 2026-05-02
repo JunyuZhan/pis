@@ -304,7 +304,7 @@ describe('Service Integration Tests', () => {
     it('all required containers should be running', async () => {
       const { execSync } = await import('child_process')
       
-      const containers = ['pis-postgres-dev', 'pis-redis-dev']
+      const containers = ['pis-postgres', 'pis-redis']
       
       for (const container of containers) {
         try {

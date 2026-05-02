@@ -559,6 +559,7 @@ describe('Worker API Proxy', () => {
     it('should not use NEXT_PUBLIC_WORKER_URL for server proxy (OPS-001)', async () => {
       delete process.env.WORKER_URL
       delete process.env.WORKER_API_URL
+      delete process.env.DATABASE_URL
       process.env.NEXT_PUBLIC_WORKER_URL = 'http://public-worker:3001'
 
       global.fetch = vi.fn().mockResolvedValue({
@@ -584,6 +585,7 @@ describe('Worker API Proxy', () => {
       delete process.env.WORKER_URL
       delete process.env.WORKER_API_URL
       delete process.env.NEXT_PUBLIC_WORKER_URL
+      delete process.env.DATABASE_URL
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -600,6 +602,31 @@ describe('Worker API Proxy', () => {
 
       expect(global.fetch).toHaveBeenCalledWith(
         'http://localhost:3001/health',
+        expect.any(Object)
+      )
+    })
+
+    it('should fallback to worker when DATABASE_URL targets docker postgres', async () => {
+      delete process.env.WORKER_URL
+      delete process.env.WORKER_API_URL
+      delete process.env.NEXT_PUBLIC_WORKER_URL
+      process.env.DATABASE_URL = 'postgresql://postgres@postgres:5432/postgres'
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        json: async () => ({ success: true }),
+      })
+
+      const request = createMockRequest('http://localhost:3000/api/worker/health', {
+        method: 'GET',
+      })
+
+      await GET(request, { params: Promise.resolve({ path: ['health'] }) })
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://worker:3001/health',
         expect.any(Object)
       )
     })

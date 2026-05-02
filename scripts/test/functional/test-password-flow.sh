@@ -60,14 +60,7 @@ echo ""
 echo -e "基础 URL: ${CYAN}$BASE_URL${NC}"
 echo ""
 
-# 自动检测 PostgreSQL 容器名称
-if docker ps --format "{{.Names}}" | grep -q "^pis-postgres-dev$"; then
-    POSTGRES_CONTAINER="pis-postgres-dev"
-elif docker ps --format "{{.Names}}" | grep -q "^pis-postgres$"; then
-    POSTGRES_CONTAINER="pis-postgres"
-else
-    POSTGRES_CONTAINER="pis-postgres-dev"
-fi
+POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-pis-postgres}"
 
 # ============================================
 # 1. 检查管理员状态

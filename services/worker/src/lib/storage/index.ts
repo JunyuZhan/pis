@@ -57,27 +57,35 @@ let storageAdapter: StorageAdapter | null = null
  */
 function getStorageConfigFromEnv(): StorageConfig {
   const type = (process.env.STORAGE_TYPE || 'minio') as StorageConfig['type']
+  const origin = (
+    process.env.PIS_PUBLIC_ORIGIN ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    'http://localhost:8088'
+  ).replace(/\/$/, '')
+  const defaultPublicMedia = `${origin}/media`
 
   return {
     type,
     endpoint:
-      process.env.STORAGE_ENDPOINT || process.env.MINIO_ENDPOINT_HOST,
+      process.env.STORAGE_ENDPOINT ||
+      process.env.MINIO_ENDPOINT_HOST ||
+      'minio',
     port: process.env.STORAGE_PORT
       ? parseInt(process.env.STORAGE_PORT)
       : process.env.MINIO_ENDPOINT_PORT
         ? parseInt(process.env.MINIO_ENDPOINT_PORT)
-        : undefined,
+        : 9000,
     useSSL:
       process.env.STORAGE_USE_SSL === 'true' ||
       process.env.MINIO_USE_SSL === 'true',
     accessKey:
       process.env.STORAGE_ACCESS_KEY ||
       process.env.MINIO_ACCESS_KEY ||
-      '',
+      'minioadmin',
     secretKey:
       process.env.STORAGE_SECRET_KEY ||
       process.env.MINIO_SECRET_KEY ||
-      '',
+      'minioadmin',
     bucket:
       process.env.STORAGE_BUCKET || process.env.MINIO_BUCKET || 'pis-photos',
     region: process.env.STORAGE_REGION,
@@ -85,7 +93,10 @@ function getStorageConfigFromEnv(): StorageConfig {
       // 优先使用 MINIO_PUBLIC_URL（用于 presigned URL，客户端直接上传）
       // 如果没有配置，才使用 STORAGE_PUBLIC_URL（用于读取文件，通过代理）
       publicUrl:
-        process.env.MINIO_PUBLIC_URL || process.env.STORAGE_PUBLIC_URL,
+        process.env.MINIO_PUBLIC_URL ||
+        process.env.STORAGE_PUBLIC_URL ||
+        defaultPublicMedia ||
+        undefined,
     },
   }
 }

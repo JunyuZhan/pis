@@ -5,27 +5,34 @@
  * 提供 JWT 相关的工具函数，不依赖 Node.js crypto 模块，可在 Edge Runtime 中使用。
  * 这些函数只使用 jose 库，完全兼容 Edge Runtime。
  *
+ * JWT 密钥：AUTH_JWT_SECRET / ALBUM_SESSION_SECRET；由 instrumentation 从 DB（pis_app_config）自愈生成，失败时回退 pis-zero-config。
+ *
  * @module lib/auth/jwt
  */
 import { SignJWT, jwtVerify } from "jose";
+import { PIS_BUILTIN_ZERO_JWT_SECRET } from "@/lib/pis-zero-config";
 
-// ==================== Configuration ====================
+let cachedJwtSecret: Uint8Array | null = null;
 
-/** JWT 密钥（从环境变量读取） */
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.AUTH_JWT_SECRET ||
-    process.env.ALBUM_SESSION_SECRET ||
-    "fallback-secret-please-change",
-);
+function resolveJwtSecretRaw(): string {
+  return (
+    process.env.AUTH_JWT_SECRET?.trim() ||
+    process.env.ALBUM_SESSION_SECRET?.trim() ||
+    PIS_BUILTIN_ZERO_JWT_SECRET
+  );
+}
 
-// 开发环境：输出 JWT 密钥配置信息（用于调试）
-if (process.env.NODE_ENV === "development") {
-  console.log("[JWT Config]", {
-    envVarExists: !!process.env.AUTH_JWT_SECRET,
-    secretLength: JWT_SECRET.length,
-    hasFallback:
-      !process.env.AUTH_JWT_SECRET && !process.env.ALBUM_SESSION_SECRET,
-  });
+function getJwtSecret(): Uint8Array {
+  if (!cachedJwtSecret) {
+    const raw = resolveJwtSecretRaw();
+    cachedJwtSecret = new TextEncoder().encode(raw);
+  }
+  return cachedJwtSecret;
+}
+
+/** 测试用：重置缓存的密钥字节 */
+export function __resetJwtSecretCacheForTests(): void {
+  cachedJwtSecret = null;
 }
 
 /** JWT 签发者标识 */
@@ -94,7 +101,7 @@ export async function createAccessToken(user: AuthUser): Promise<string> {
     .setAudience(JWT_AUDIENCE)
     .setIssuedAt()
     .setExpirationTime(ACCESS_TOKEN_EXPIRY)
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 /**
@@ -111,7 +118,7 @@ export async function createRefreshToken(user: AuthUser): Promise<string> {
     .setAudience(JWT_AUDIENCE)
     .setIssuedAt()
     .setExpirationTime(REFRESH_TOKEN_EXPIRY)
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 /**
@@ -122,19 +129,18 @@ export async function createRefreshToken(user: AuthUser): Promise<string> {
  */
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET, {
+    const { payload } = await jwtVerify(token, getJwtSecret(), {
       issuer: JWT_ISSUER,
       audience: JWT_AUDIENCE,
     });
     return payload as unknown as JWTPayload;
   } catch (error) {
-    // 开发环境输出详细错误信息
     if (process.env.NODE_ENV === "development") {
       console.error("[JWT verifyToken] Verification failed:", {
         error: error instanceof Error ? error.message : String(error),
         tokenLength: token.length,
         tokenPreview: token.substring(0, 30) + "...",
-        secretLength: JWT_SECRET.length,
+        secretLength: getJwtSecret().length,
       });
     }
     return null;

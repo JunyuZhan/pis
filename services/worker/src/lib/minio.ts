@@ -42,11 +42,11 @@ import * as Minio from 'minio'
  * - MINIO_SECRET_KEY: 密钥
  */
 const minioClient = new Minio.Client({
-  endPoint: process.env.MINIO_ENDPOINT_HOST || 'localhost',
+  endPoint: process.env.MINIO_ENDPOINT_HOST || 'minio',
   port: parseInt(process.env.MINIO_ENDPOINT_PORT || '9000'),
   useSSL: process.env.MINIO_USE_SSL === 'true',
-  accessKey: process.env.MINIO_ACCESS_KEY || 'admin',
-  secretKey: process.env.MINIO_SECRET_KEY || 'password123',
+  accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+  secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
 })
 
 /**
@@ -70,8 +70,8 @@ function createPublicMinioClient(): Minio.Client | null {
         ? parseInt(url.port)
         : (url.protocol === 'https:' ? 443 : 80),
       useSSL: url.protocol === 'https:',
-      accessKey: process.env.MINIO_ACCESS_KEY || 'admin',
-      secretKey: process.env.MINIO_SECRET_KEY || 'password123',
+      accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+      secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
     })
   } catch (e) {
     console.warn('Failed to create public MinIO client:', e)

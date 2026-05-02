@@ -115,10 +115,10 @@ start_internal_services() {
     # 检查是否使用完全自托管模式（检查是否有 docker-compose.yml）
     if [ -f "$DOCKER_DIR/docker-compose.yml" ]; then
         info "检测到完全自托管模式，启动所有服务..."
-        $COMPOSE_CMD -f "$DOCKER_DIR/docker-compose.yml" up -d postgres minio redis minio-init
+        $COMPOSE_CMD -f "$DOCKER_DIR/docker-compose.yml" up -d postgres minio redis
     else
         info "检测到混合部署模式，启动 MinIO 和 Redis..."
-        $COMPOSE_CMD -f "$COMPOSE_FILE" up -d minio redis minio-init
+        $COMPOSE_CMD -f "$COMPOSE_FILE" up -d minio redis
     fi
     
     success "内网服务已启动"

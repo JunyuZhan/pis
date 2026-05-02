@@ -100,11 +100,11 @@ echo -e "${CYAN}3️⃣  数据库功能测试${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-test_step "数据库连接" "docker exec pis-postgres-dev psql -U pis -d pis -c 'SELECT 1;' | grep -q '1'"
+test_step "数据库连接" "docker exec pis-postgres psql -U pis -d pis -c 'SELECT 1;' | grep -q '1'"
 
-test_step "用户表查询" "docker exec pis-postgres-dev psql -U pis -d pis -c 'SELECT COUNT(*) FROM users WHERE deleted_at IS NULL;' | grep -qE '[0-9]+'"
+test_step "用户表查询" "docker exec pis-postgres psql -U pis -d pis -c 'SELECT COUNT(*) FROM users WHERE deleted_at IS NULL;' | grep -qE '[0-9]+'"
 
-user_count=$(docker exec pis-postgres-dev psql -U pis -d pis -t -c "SELECT COUNT(*) FROM users WHERE deleted_at IS NULL;" | tr -d ' ')
+user_count=$(docker exec pis-postgres psql -U pis -d pis -t -c "SELECT COUNT(*) FROM users WHERE deleted_at IS NULL;" | tr -d ' ')
 echo "  用户账户数量: $user_count"
 
 # ============================================
@@ -129,9 +129,9 @@ echo -e "${CYAN}5️⃣  存储功能测试${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-test_step "Redis 连接" "docker exec pis-redis-dev redis-cli PING | grep -q 'PONG'"
+test_step "Redis 连接" "docker exec pis-redis redis-cli PING | grep -q 'PONG'"
 
-test_step "MinIO 连接" "docker exec pis-minio-dev mc --version > /dev/null 2>&1"
+test_step "MinIO 连接" "docker exec pis-minio curl -sf http://localhost:9000/minio/health/live > /dev/null"
 
 # ============================================
 # 6. 用户初始化功能测试（新功能）
@@ -143,10 +143,10 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # 检查各角色用户是否存在
-admin_count=$(docker exec pis-postgres-dev psql -U pis -d pis -t -c "SELECT COUNT(*) FROM users WHERE role='admin' AND deleted_at IS NULL;" | tr -d ' ')
-photographer_count=$(docker exec pis-postgres-dev psql -U pis -d pis -t -c "SELECT COUNT(*) FROM users WHERE role='photographer' AND deleted_at IS NULL;" | tr -d ' ')
-retoucher_count=$(docker exec pis-postgres-dev psql -U pis -d pis -t -c "SELECT COUNT(*) FROM users WHERE role='retoucher' AND deleted_at IS NULL;" | tr -d ' ')
-guest_count=$(docker exec pis-postgres-dev psql -U pis -d pis -t -c "SELECT COUNT(*) FROM users WHERE role='guest' AND deleted_at IS NULL;" | tr -d ' ')
+admin_count=$(docker exec pis-postgres psql -U pis -d pis -t -c "SELECT COUNT(*) FROM users WHERE role='admin' AND deleted_at IS NULL;" | tr -d ' ')
+photographer_count=$(docker exec pis-postgres psql -U pis -d pis -t -c "SELECT COUNT(*) FROM users WHERE role='photographer' AND deleted_at IS NULL;" | tr -d ' ')
+retoucher_count=$(docker exec pis-postgres psql -U pis -d pis -t -c "SELECT COUNT(*) FROM users WHERE role='retoucher' AND deleted_at IS NULL;" | tr -d ' ')
+guest_count=$(docker exec pis-postgres psql -U pis -d pis -t -c "SELECT COUNT(*) FROM users WHERE role='guest' AND deleted_at IS NULL;" | tr -d ' ')
 
 test_step "管理员账户存在" "[ $admin_count -gt 0 ]"
 
@@ -172,13 +172,13 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # 检查是否有用户设置了密码
-users_with_password=$(docker exec pis-postgres-dev psql -U pis -d pis -t -c "SELECT COUNT(*) FROM users WHERE password_hash IS NOT NULL AND deleted_at IS NULL;" | tr -d ' ')
+users_with_password=$(docker exec pis-postgres psql -U pis -d pis -t -c "SELECT COUNT(*) FROM users WHERE password_hash IS NOT NULL AND deleted_at IS NULL;" | tr -d ' ')
 
 if [ "$users_with_password" -gt 0 ]; then
     test_step "密码设置功能" "echo '密码已设置的用户: $users_with_password'"
     
     # 测试登录（使用第一个有密码的管理员）
-    admin_with_password=$(docker exec pis-postgres-dev psql -U pis -d pis -t -c "SELECT email FROM users WHERE role='admin' AND password_hash IS NOT NULL AND deleted_at IS NULL LIMIT 1;" | tr -d ' ')
+    admin_with_password=$(docker exec pis-postgres psql -U pis -d pis -t -c "SELECT email FROM users WHERE role='admin' AND password_hash IS NOT NULL AND deleted_at IS NULL LIMIT 1;" | tr -d ' ')
     
     if [ -n "$admin_with_password" ]; then
         echo "  测试登录功能（需要密码）..."
