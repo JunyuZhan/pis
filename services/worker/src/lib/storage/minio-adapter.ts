@@ -27,8 +27,8 @@ export class MinIOAdapter implements StorageAdapter {
     this.endpoint = config.endpoint || 'localhost';
     this.port = config.port || 9000;
     this.useSSL = config.useSSL ?? false;
-    this.accessKey = config.accessKey;
-    this.secretKey = config.secretKey;
+    this.accessKey = config.accessKey?.trim() || 'minioadmin';
+    this.secretKey = config.secretKey?.trim() || 'minioadmin';
     this.region = config.region;
 
     // MinIO 客户端用于常规操作（使用内网地址以提高性能）
@@ -67,7 +67,7 @@ export class MinIOAdapter implements StorageAdapter {
   }
 
   /**
-   * 确保 bucket 存在，如果不存在则创建
+   * 确保 bucket 存在，如果不存在则创建；并设置匿名可读（GetObject），替代 mc anonymous / minio-init。
    */
   async ensureBucket(): Promise<void> {
     try {
@@ -75,6 +75,21 @@ export class MinIOAdapter implements StorageAdapter {
       if (!exists) {
         await this.client.makeBucket(this.bucket, this.region || 'us-east-1');
       }
+      const policy = {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Principal: { AWS: ['*'] },
+            Action: ['s3:GetObject'],
+            Resource: [`arn:aws:s3:::${this.bucket}/*`],
+          },
+        ],
+      };
+      await this.client.setBucketPolicy(
+        this.bucket,
+        JSON.stringify(policy),
+      );
     } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       console.error(`[MinIO] Error ensuring bucket ${this.bucket}:`, errorMessage);

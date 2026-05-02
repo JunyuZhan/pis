@@ -9,7 +9,7 @@
  *   tsx scripts/utils/init-users.ts
  * 
  * 环境变量配置（可选，用于自定义邮箱域名）:
- *   INIT_ADMIN_EMAIL - 管理员邮箱（默认: admin@pis.com）
+ *   INIT_ADMIN_EMAIL - 管理员邮箱（默认: admin@localhost）
  *   INIT_PHOTOGRAPHER_EMAIL - 摄影师邮箱（默认: photographer@pis.com）
  *   INIT_RETOUCHER_EMAIL - 修图师邮箱（默认: retoucher@pis.com）
  *   INIT_GUEST_EMAIL - 访客邮箱（默认: guest@pis.com）
@@ -136,7 +136,7 @@ async function initUsers() {
   const users: UserConfig[] = [
     {
       role: 'admin',
-      email: process.env.INIT_ADMIN_EMAIL || 'admin@pis.com',
+      email: process.env.INIT_ADMIN_EMAIL || 'admin@localhost',
       label: roleLabels.admin,
     },
     {

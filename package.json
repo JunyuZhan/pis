@@ -14,7 +14,7 @@
     "dev:web": "cd apps/web && pnpm dev",
     "dev:worker": "cd services/worker && pnpm dev",
     "dev:services": "bash scripts/dev/start-dev.sh",
-    "dev:stop": "cd docker && docker-compose -f docker-compose.dev.yml down",
+    "dev:stop": "cd docker && docker compose -f docker-compose.yml stop postgres redis minio minio-init",
     "dev:check-env": "bash scripts/dev/check-env.sh",
     "dev:clean": "bash scripts/dev/clean-cache.sh",
     "build": "turbo build",

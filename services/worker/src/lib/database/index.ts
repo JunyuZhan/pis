@@ -57,12 +57,63 @@ let databaseAdapter: DatabaseAdapter | null = null
  *
  * @returns {DatabaseConfig} 数据库配置对象
  */
+function applyZeroConfigPostgresUrl(): void {
+  if ((process.env.DATABASE_TYPE || 'postgresql').toLowerCase() === 'supabase') {
+    return
+  }
+  if (
+    !process.env.DATABASE_URL?.trim() &&
+    !process.env.DATABASE_PASSWORD?.trim() &&
+    !process.env.POSTGRES_PASSWORD?.trim()
+  ) {
+    process.env.DATABASE_URL =
+      'postgresql://postgres@postgres:5432/postgres'
+  }
+}
+
+function tryPostgresConfigFromDatabaseUrl(): DatabaseConfig | null {
+  const raw = process.env.DATABASE_URL?.trim()
+  if (!raw || (!raw.startsWith('postgres://') && !raw.startsWith('postgresql://'))) {
+    return null
+  }
+  try {
+    const u = new URL(raw)
+    const database =
+      (u.pathname || '/postgres').replace(/^\//, '').split('/')[0] || 'postgres'
+    const password = decodeURIComponent(u.password || '')
+    const user = decodeURIComponent(u.username || 'postgres')
+    const host = u.hostname || 'localhost'
+    const port = u.port ? parseInt(u.port, 10) : 5432
+    const ssl =
+      process.env.DATABASE_SSL === 'true' ||
+      /[?&]sslmode=require\b/i.test(raw) ||
+      /[?&]ssl=true\b/i.test(raw)
+    return {
+      type: 'postgresql',
+      host,
+      port,
+      database,
+      user,
+      password,
+      ssl,
+    }
+  } catch {
+    return null
+  }
+}
+
 function getDatabaseConfigFromEnv(): DatabaseConfig {
+  applyZeroConfigPostgresUrl()
   const dbType = (
     process.env.DATABASE_TYPE || 'postgresql'
   ).toLowerCase()
 
   if (dbType === 'postgresql') {
+    const fromUrl = tryPostgresConfigFromDatabaseUrl()
+    if (fromUrl) {
+      return fromUrl
+    }
+
     const config = {
       type: 'postgresql' as const,
       host:
@@ -78,11 +129,11 @@ function getDatabaseConfigFromEnv(): DatabaseConfig {
       database:
         process.env.DATABASE_NAME ||
         process.env.POSTGRES_DB ||
-        'pis',
+        'postgres',
       user:
         process.env.DATABASE_USER ||
         process.env.POSTGRES_USER ||
-        'pis',
+        'postgres',
       password:
         process.env.DATABASE_PASSWORD ||
         process.env.POSTGRES_PASSWORD ||
@@ -90,17 +141,12 @@ function getDatabaseConfigFromEnv(): DatabaseConfig {
       ssl: process.env.DATABASE_SSL === 'true',
     }
     
-    // 调试日志：检查配置是否完整
     if (!config.password) {
-      console.error('[Database Config] ⚠️  DATABASE_PASSWORD is empty or not set!')
-      console.error('[Database Config] Available env vars:', {
-        DATABASE_PASSWORD: process.env.DATABASE_PASSWORD ? 'SET' : 'NOT SET',
-        DATABASE_HOST: config.host,
-        DATABASE_USER: config.user,
-        DATABASE_NAME: config.database,
-      })
+      console.warn(
+        '[Database Config] DATABASE_PASSWORD 未设置，将使用空密码（适用于 trust / 内网场景）',
+      )
     }
-    
+
     return config
   }
 

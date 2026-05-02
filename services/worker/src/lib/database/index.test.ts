@@ -97,6 +97,27 @@ describe('Database Adapter Factory', () => {
       process.env = originalEnv;
     });
 
+    it('应支持 DATABASE_URL 解析 PostgreSQL 配置', () => {
+      const originalEnv = process.env;
+      process.env = {
+        ...originalEnv,
+        DATABASE_TYPE: 'postgresql',
+        DATABASE_URL: 'postgresql://appuser:p%40ss%3Aword@dbhost:5433/mydb',
+      };
+
+      const adapter = createDatabaseAdapter();
+
+      expect(PostgreSQLAdapter).toHaveBeenCalled();
+      const call = (PostgreSQLAdapter as any).mock.calls[0][0];
+      expect(call.host).toBe('dbhost');
+      expect(call.port).toBe(5433);
+      expect(call.database).toBe('mydb');
+      expect(call.user).toBe('appuser');
+      expect(call.password).toBe('p@ss:word');
+
+      process.env = originalEnv;
+    });
+
     it('应该创建 Supabase 适配器（向后兼容）', () => {
       const config: DatabaseConfig = {
         type: 'supabase',

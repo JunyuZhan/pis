@@ -7,11 +7,16 @@ import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
+const buildTimePublicOrigin = (
+  process.env.PIS_PUBLIC_ORIGIN ||
+  process.env.NEXT_PUBLIC_APP_URL ||
+  'http://localhost:8088'
+).replace(/\/$/, '');
+
 // 调试：检查环境变量是否正确加载
 console.log('[next.config.ts] Environment variables check:', {
   hasAuthJwtSecret: !!process.env.AUTH_JWT_SECRET,
   authJwtSecretLength: process.env.AUTH_JWT_SECRET?.length || 0,
-  // 🔒 安全修复: 移除了 JWT 密钥前缀日志，避免泄露敏感信息
 });
 
 const nextConfig: NextConfig = {
@@ -26,7 +31,20 @@ const nextConfig: NextConfig = {
   // 🔒 安全修复: 移除了数据库密码等敏感信息，避免泄露到客户端
   // 只保留真正需要暴露到前端的配置（NEXT_PUBLIC_* 前缀）
   env: {
-    AUTH_JWT_SECRET: process.env.AUTH_JWT_SECRET || 'fallback-secret-please-change',
+    NEXT_PUBLIC_APP_URL:
+      process.env.NEXT_PUBLIC_APP_URL || buildTimePublicOrigin,
+    NEXT_PUBLIC_MEDIA_URL:
+      process.env.NEXT_PUBLIC_MEDIA_URL || `${buildTimePublicOrigin}/media`,
+    NEXT_PUBLIC_WORKER_URL:
+      process.env.NEXT_PUBLIC_WORKER_URL || `${buildTimePublicOrigin}/worker-api`,
+    NEXT_PUBLIC_PHOTOGRAPHER_NAME:
+      process.env.NEXT_PUBLIC_PHOTOGRAPHER_NAME || 'PIS Photography',
+    NEXT_PUBLIC_PHOTOGRAPHER_TAGLINE:
+      process.env.NEXT_PUBLIC_PHOTOGRAPHER_TAGLINE || '专业活动摄影',
+    NEXT_PUBLIC_POLLING_INTERVAL:
+      process.env.NEXT_PUBLIC_POLLING_INTERVAL || '3000',
+    NEXT_PUBLIC_ADMIN_POLLING_INTERVAL:
+      process.env.NEXT_PUBLIC_ADMIN_POLLING_INTERVAL || '2000',
     // ❌ 移除 DATABASE_PASSWORD, DATABASE_USER, DATABASE_HOST 等敏感配置
     // 这些配置应该只在服务端使用，不应该暴露到浏览器
   },
@@ -39,6 +57,7 @@ const nextConfig: NextConfig = {
   compress: true,
   // 输出模式：standalone（Docker 部署必需，也兼容 Vercel）
   output: 'standalone',
+  serverExternalPackages: ['pg', 'pgpass'],
   // 优化生产构建
   productionBrowserSourceMaps: process.env.NODE_ENV === 'development', // 仅开发环境生成 source maps
   // 优化图片加载

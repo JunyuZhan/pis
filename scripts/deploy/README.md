@@ -261,12 +261,7 @@ bash scripts/deploy/verify-deployment.sh [SSH_HOST]
 
 ## 🔧 Docker Compose 配置文件
 
-项目提供了多个 docker-compose 配置文件：
-
-| 文件 | 说明 | 使用场景 |
-|------|------|---------|
-| `docker/docker-compose.yml` | 生产环境（推荐） | PostgreSQL + MinIO + Redis + Web + Worker（单端口模式） |
-| `docker/docker-compose.dev.yml` | 开发环境 | PostgreSQL + MinIO + Redis（Web 和 Worker 本地运行） |
+项目以 **`docker/docker-compose.yml`** 为**唯一**编排（仅拉取预构建镜像）。部署时复制 **`docker/env.deploy.example`** 为 **`docker/.env`** 并填写后，在 `docker/` 目录执行 `docker compose pull && docker compose up -d`；也可用 **`docker/start-from-registry.sh`**。
 
 ---
 

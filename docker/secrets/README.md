@@ -87,12 +87,7 @@ chmod 600 *
 
 ### FTP 服务基础配置
 
-以下配置在 `docker-compose.secrets.yml` 中设置：
-
-- `FTP_PORT=21` - FTP 命令端口
-- `FTP_PASV_START=30000` - 被动模式起始端口
-- `FTP_PASV_END=30009` - 被动模式结束端口
-- `FTP_PASV_URL` - 被动模式公网地址（需要在环境变量中配置）
+FTP 端口与被动模式范围在 **`docker/docker-compose.yml`** 的 `worker` 服务中配置；公网被动地址在 **`.env`** 中设置 `FTP_PASV_URL`。
 
 ## 权限要求
 
@@ -111,13 +106,13 @@ chmod 600 docker/secrets/*
 ## 安全部署
 
 ```bash
-# 1. 初始化密钥
+# 1. 初始化密钥文件（可选，用于生成随机串后手工填入 .env）
 cd docker/secrets
 ./init-secrets.sh
 
-# 2. 返回项目根目录
-cd ../..
-
-# 3. 使用安全配置启动
-docker compose -f docker/docker-compose.secrets.yml up -d
+# 2. 将密钥同步到 docker/.env 后启动（与标准部署一致）
+cd ..
+cp env.deploy.example .env   # 若尚无 .env
+# 编辑 .env，把 init-secrets 生成的值填到对应变量
+docker compose pull && docker compose up -d
 ```

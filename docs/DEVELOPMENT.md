@@ -39,9 +39,9 @@ pnpm install
 # 3. 启动基础服务（推荐：使用快捷脚本）
 pnpm dev:services
 
-# 或手动启动
+# 或手动启动（与线上一致的 compose）
 cd docker
-docker-compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.yml up -d postgres minio minio-init redis
 cd ..
 
 # 4. 配置环境变量（统一使用根目录配置）
@@ -74,7 +74,7 @@ pnpm dev:services
 
 ```bash
 cd docker
-docker-compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.yml up -d postgres minio minio-init redis
 ```
 
 **重要**: 开发环境必须使用 `localhost` 作为数据库主机名，而不是 `postgres`（`postgres` 是 Docker 容器内的主机名）。

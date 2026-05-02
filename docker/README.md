@@ -1,10 +1,23 @@
 # PIS Docker 部署指南
 
-> 📋 **Docker Compose 文件说明**: 请参考 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md) 了解不同配置文件的用途
+> 📋 **编排与目录**：见 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md)。
 
-**只使用已发布的 `web` / `worker` 镜像、目录中不含应用源码时**：运行环境从 **Registry**（私有仓库或 Docker Hub 等）拉取镜像，并配合 **`docker/` 编排与初始化文件**（可不包含 `apps/`、`services/`）。目录约定与升级方式见 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md) 中的「仅分发镜像与编排」；启动使用 `bash start-from-registry.sh`（或 `--secrets`），或 `docker compose -f docker-compose.customer.yml` / `docker-compose.customer-secrets.yml`（详见该文档）。
+### 向部署者提供什么
 
-**构建端同时推私有 + Docker Hub**：在仓库根目录配置环境变量后执行 `bash docker/push-images-to-registries.sh`（详见 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md)「多 Registry 推送」）。运行环境 `.env` 中 `PIS_WEB_IMAGE` / `PIS_WORKER_IMAGE` 仍只指向**一处**拉取地址。
+提供 **`docker/` 目录**（`docker-compose.yml`、`nginx/`、`init-postgresql-db.sql` 等）。**Compose 无 `build:`、无 `env_file:`**；Postgres 服务仅保留 **`environment.POSTGRES_HOST_AUTH_METHOD=trust` 一行**（Docker Library 在空数据卷上的 entrypoint 硬性要求；`postgres -c hostauth=trust` 不是有效 GUC，无法替代）。其余业务配置（JWT、MinIO、管理员等）均在 **Web/Worker 代码** 中自闭环。MinIO 使用官方镜像 + **`command: server /data --console-address :9001`**。
+
+在 **`docker/`** 目录部署执行：
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+**不需要**在服务器上 `docker build` 应用镜像；`web` / `worker` 的 `image:` 按需改成你们的 Registry 地址即可。
+
+**构建端推镜像**：在仓库根目录执行 `bash docker/push-images-to-registries.sh`（见 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md)）。也可在 `docker/` 下执行 `bash start-from-registry.sh`（等价于 pull + up）。
+
+**说明**：内网 DNS 为 compose **服务名**：`postgres`、`minio`、`redis`。进库示例：`cd docker && docker compose exec postgres psql -U postgres -d postgres`。本地 `pnpm dev` 仍可用仓库根目录 `.env` 覆盖连接串。
 
 ## 部署架构
 
@@ -27,7 +40,7 @@
 
 ## 快速开始（一键部署）
 
-以下「克隆仓库」方式面向**仓库中含应用源码**的部署。若运行环境**只拉 Registry 镜像、不带源码树**，请跳过本节的 curl / `git clone`，改用 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md) 中的「仅分发镜像与编排」与「使用 Registry 中的预构建镜像」。
+以下「克隆仓库」方式面向**仓库中含应用源码**的部署。若运行环境**只拉 Registry 镜像、不带完整源码树**，请跳过本节的 curl / `git clone`，按 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md) 准备 `docker-compose.yml` 与同目录下的 `nginx/`、初始化 SQL 脚本后执行 `docker compose up`。
 
 ### 方法一：完全自动化部署（推荐）
 
@@ -52,47 +65,24 @@ cd pis/docker
 bash deploy.sh
 ```
 
-### 方法三：启用 AI 服务启动
+`deploy.sh` 会引导你完成：配置数据库连接、域名与 SSL、存储与密钥、Worker、初始化数据库与管理员账号等。
 
-如果需要启用人脸识别功能，可以使用专门的启动脚本：
+### 方法三：人脸识别（AI）
 
-```bash
-# 使用启用 AI 服务的启动脚本
-cd pis/docker
-bash start-with-ai.sh
-```
-
-或者手动使用 Docker Compose：
-
-```bash
-cd pis/docker
-docker compose --profile ai -f docker-compose.yml up -d
-```
-
-**注意：**
-- AI 服务首次启动需要下载模型（约 500MB），可能需要几分钟
-- AI 服务会占用较多系统资源（CPU 和内存）
-- 默认配置中 AI 服务已禁用以节省资源
-
-脚本会引导你完成：
-- 配置 PostgreSQL 数据库连接
-- 配置域名和 SSL 证书
-- 配置存储（自动生成密钥）
-- 配置 Worker 服务
-- 初始化数据库和创建管理员账号
+标准 **`docker-compose.yml`** 为「仅预构建镜像」部署，**不包含 AI 容器**。运行 `bash start-with-ai.sh` 会提示说明；需要 AI 时请使用源码仓库在开发机构建或等待独立镜像方案。
 
 ## 手动部署
 
 ### 使用私有镜像仓库（不在服务器上构建 Web / Worker）
 
-若已将 `web`、`worker` 镜像推送到私有仓库、Docker Hub 或其它 Registry，在运行环境配置 `.env` 中的 `PIS_WEB_IMAGE`、`PIS_WORKER_IMAGE`（全名含标签，与推送目标一致）后执行：
+若已将 `web`、`worker` 镜像推送到私有仓库、Docker Hub 或其它 Registry，在运行环境登录对应 Registry 后执行（脚本内带默认镜像名，可按需在 shell 中 `export PIS_WEB_IMAGE=...` 覆盖）：
 
 ```bash
 cd docker
 bash start-from-registry.sh
 ```
 
-使用 Secrets 版 compose 时：`bash start-from-registry.sh --secrets`。说明与命令细节见 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md) 中的「使用 Registry 中的预构建镜像」一节。
+说明与命令细节见 [DOCKER_COMPOSE_FILES.md](./DOCKER_COMPOSE_FILES.md)。
 
 ### 1. 配置数据库
 
@@ -145,10 +135,10 @@ nano ../.env
 
 ```bash
 # 外部 PostgreSQL
-psql -h localhost -U pis -d pis -f docker/init-postgresql-db.sql
+psql -h localhost -U postgres -d postgres -f docker/init-postgresql-db.sql
 
-# 或使用 Docker 容器执行
-docker exec -i pis-postgres psql -U pis -d pis < docker/init-postgresql-db.sql
+# 或使用 Docker 容器执行（仓库根目录）
+docker compose -f docker/docker-compose.yml exec -T postgres psql -U postgres -d postgres < docker/init-postgresql-db.sql
 ```
 
 ### 4. 创建管理员账号
@@ -235,7 +225,7 @@ docker compose ps -a
 检查 PostgreSQL 配置：
 - 确认 `DATABASE_HOST`、`DATABASE_PORT`、`DATABASE_NAME`、`DATABASE_USER`、`DATABASE_PASSWORD` 正确
 - 检查 PostgreSQL 服务是否运行：`docker-compose ps postgres`
-- 检查数据库是否已初始化：`psql -h localhost -U pis -d pis -c "\dt"`
+- 检查数据库是否已初始化：`psql -h localhost -U postgres -d postgres -c "\dt"`
 
 ### MinIO 无法访问
 
@@ -254,7 +244,7 @@ docker run --rm -v pis_minio_data:/data -v $(pwd):/backup alpine tar czf /backup
 
 # 数据库备份（PostgreSQL）
 # 完全自托管模式：
-docker exec pis-postgres pg_dump -U pis -d pis > backup.sql
+docker compose -f docker/docker-compose.yml exec -T postgres pg_dump -U postgres -d postgres > backup.sql
 
 # 混合部署模式（Supabase）：在 Supabase Dashboard -> Database -> Backups 中操作
 ```
@@ -265,9 +255,9 @@ docker exec pis-postgres pg_dump -U pis -d pis > backup.sql
 # 恢复 MinIO 数据
 docker run --rm -v pis_minio_data:/data -v $(pwd):/backup alpine tar xzf /backup/minio-backup.tar.gz -C /
 
-# 恢复 PostgreSQL 数据
-docker exec -i pis-postgres pg_restore -U pis -d pis < backup.sql
+# 恢复 PostgreSQL 数据（plain SQL 备份）
+docker compose -f docker/docker-compose.yml exec -T postgres psql -U postgres -d postgres < backup.sql
 
-# 或使用 psql
-psql -h localhost -U pis -d pis < backup.sql
+# 或宿主机直连
+psql -h localhost -U postgres -d postgres < backup.sql
 ```

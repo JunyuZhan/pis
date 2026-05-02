@@ -2,12 +2,13 @@ import type { NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth/api-helpers";
 import { createClient } from "@/lib/database";
 import { assertGuestAlbumAccess } from "@/lib/public-album-guest-access";
+import { resolveDefaultWorkerInternalUrl } from "@/lib/pis-zero-config";
 
 function getWorkerBaseUrl(): string {
   return (
     process.env.WORKER_URL ||
     process.env.WORKER_API_URL ||
-    "http://localhost:3001"
+    resolveDefaultWorkerInternalUrl()
   );
 }
 

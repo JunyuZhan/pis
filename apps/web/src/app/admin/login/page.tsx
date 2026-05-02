@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Camera, Loader2, Eye, EyeOff, Lock } from "lucide-react";
 import { Turnstile } from "@/components/auth/turnstile";
+import { PIS_DEFAULT_ADMIN_EMAIL } from "@/lib/pis-zero-config";
 
 /**
  * 管理员登录页
@@ -447,7 +448,7 @@ export default function LoginPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: adminEmail || "admin@pis.com", // 使用动态获取的管理员邮箱，或回退到默认值
+          email: adminEmail || PIS_DEFAULT_ADMIN_EMAIL,
           password: newPassword,
           confirmPassword,
         }),

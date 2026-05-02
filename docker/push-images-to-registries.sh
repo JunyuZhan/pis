@@ -11,7 +11,7 @@
 #   # 或仅传版本号:
 #   bash docker/push-images-to-registries.sh 1.2.0
 #
-# 环境变量（均可选，缺省与 docker-compose.registry.yml 一致）:
+# 环境变量（均可选，缺省与 docker/start-from-registry.sh 内默认私有仓库路径一致）:
 #   PIS_IMAGE_TAG                 镜像标签（必填：环境变量或第一个参数）
 #   PIS_PRIVATE_WEB_IMAGE         默认 hub.albertzhan.top/pis/web（不含 tag）
 #   PIS_PRIVATE_WORKER_IMAGE      默认 hub.albertzhan.top/pis/worker（不含 tag）
@@ -72,4 +72,4 @@ if [[ -n "${HUB_WORKER}" ]]; then
   docker push "${HUB_WORKER}:${PIS_IMAGE_TAG}"
 fi
 
-echo "==> Done. 运行环境在 .env 中只配置一套 PIS_WEB_IMAGE / PIS_WORKER_IMAGE 指向实际拉取的 Registry。"
+echo "==> Done. 运行环境执行 docker/start-from-registry.sh（或手动 export 后 compose pull/up --no-build）；默认镜像名在脚本内，无需写入根目录 .env。"

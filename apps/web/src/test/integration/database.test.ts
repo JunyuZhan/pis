@@ -138,14 +138,14 @@ describe('Database Integration Tests', () => {
       
       try {
         const output = execSync(
-          'docker inspect --format="{{.State.Health.Status}}" pis-postgres-dev',
+          'docker inspect --format="{{.State.Health.Status}}" pis-postgres',
           { encoding: 'utf-8' }
         ).trim()
         
         expect(output).toBe('healthy')
       } catch {
         // 如果容器不存在，跳过此测试
-        console.warn('⚠️ Docker container pis-postgres-dev not found, skipping health check')
+        console.warn('⚠️ Docker container pis-postgres not found, skipping health check')
       }
     })
   })

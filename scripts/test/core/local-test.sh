@@ -51,27 +51,14 @@ if docker ps --filter "name=pis-postgres" --format "{{.Names}}" | grep -q "pis-p
 else
     echo "正在启动基础服务..."
     
-    # 使用开发环境配置启动基础服务
-    if [ -f "docker/docker-compose.dev.yml" ]; then
-        cd docker
-        if docker compose -f docker-compose.dev.yml up -d postgres redis minio; then
-            echo -e "${GREEN}✅ 基础服务启动成功${NC}"
-        else
-            echo -e "${RED}❌ 基础服务启动失败${NC}"
-            exit 1
-        fi
-        cd ..
+    cd docker
+    if docker compose -f docker-compose.yml up -d postgres minio redis; then
+        echo -e "${GREEN}✅ 基础服务启动成功${NC}"
     else
-        # 如果没有 dev 配置，只启动基础服务容器
-        cd docker
-        if docker compose up -d postgres redis minio; then
-            echo -e "${GREEN}✅ 基础服务启动成功${NC}"
-        else
-            echo -e "${RED}❌ 基础服务启动失败${NC}"
-            exit 1
-        fi
-        cd ..
+        echo -e "${RED}❌ 基础服务启动失败${NC}"
+        exit 1
     fi
+    cd ..
     
     # 等待服务就绪
     echo "等待服务就绪..."

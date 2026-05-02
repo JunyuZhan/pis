@@ -237,7 +237,7 @@ cd /opt/pis/docker && docker-compose -f docker-compose.yml logs -f
 cd /opt/pis/docker && docker-compose -f docker-compose.yml restart
 
 # 更新代码
-cd /opt/pis && git pull && cd docker && docker-compose -f docker-compose.yml up -d --build
+cd /opt/pis && git pull && cd docker && docker-compose -f docker-compose.yml pull && docker-compose -f docker-compose.yml up -d
 
 # 执行数据库迁移（系统更新后）
 cd /opt/pis/docker && bash run-migrations.sh

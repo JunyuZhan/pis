@@ -50,7 +50,7 @@ echo -e "${CYAN}[2/8] 容器状态检查...${NC}"
 {
     echo "2. 容器状态"
     echo "---"
-    docker compose -f docker/docker-compose.dev.yml ps | tee -a "$REPORT_FILE"
+    docker compose -f docker/docker-compose.yml ps | tee -a "$REPORT_FILE"
     echo ""
 } >> "$REPORT_FILE"
 echo -e "${GREEN}✅ 完成${NC}"

@@ -25,6 +25,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth/api-helpers'
+import { resolveDefaultWorkerInternalUrl } from '@/lib/pis-zero-config'
 
 // 配置路由超时时间（Vercel 默认 10 秒，分片上传需要更长时间）
 // 分片上传可能需要 5 分钟，设置为 300 秒
@@ -35,7 +36,11 @@ export const maxDuration = 300
 // 使用函数在运行时获取，而不是模块加载时，以便测试可以修改环境变量
 function getWorkerUrl(): string {
   // 服务端仅使用非 NEXT_PUBLIC 变量，避免与浏览器可见配置混淆（OPS-001）
-  return process.env.WORKER_URL || process.env.WORKER_API_URL || 'http://localhost:3001'
+  return (
+    process.env.WORKER_URL ||
+    process.env.WORKER_API_URL ||
+    resolveDefaultWorkerInternalUrl()
+  )
 }
 
 export async function GET(
