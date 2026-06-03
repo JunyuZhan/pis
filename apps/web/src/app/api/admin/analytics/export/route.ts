@@ -11,6 +11,14 @@ interface ExportRow {
   downloads: number
 }
 
+function safeCsvCell(value: string | number): string {
+  const str = String(value)
+  if (/^[=+\-@]/.test(str)) {
+    return `'${str}`
+  }
+  return str
+}
+
 /**
  * GET /api/admin/analytics/export
  * 导出统计数据
@@ -267,10 +275,10 @@ export async function GET(request: NextRequest) {
       csvLines.push(`## 设备类型`)
       csvLines.push(`设备类型,访问次数`)
       for (const row of devices) {
-        const deviceName = row.device_type === 'desktop' ? '电脑' : 
-                          row.device_type === 'mobile' ? '手机' : 
+        const deviceName = row.device_type === 'desktop' ? '电脑' :
+                          row.device_type === 'mobile' ? '手机' :
                           row.device_type === 'tablet' ? '平板' : row.device_type || '未知'
-        csvLines.push(`${deviceName},${row.count}`)
+        csvLines.push(`${safeCsvCell(deviceName)},${row.count}`)
       }
       csvLines.push(``)
     }
@@ -281,7 +289,7 @@ export async function GET(request: NextRequest) {
       csvLines.push(`## 浏览器分布`)
       csvLines.push(`浏览器,访问次数`)
       for (const row of browsers) {
-        csvLines.push(`${row.browser || '未知'},${row.count}`)
+        csvLines.push(`${safeCsvCell(row.browser || '未知')},${row.count}`)
       }
       csvLines.push(``)
     }
@@ -292,7 +300,7 @@ export async function GET(request: NextRequest) {
       csvLines.push(`## 相册排行`)
       csvLines.push(`相册名称,访问量,独立访客`)
       for (const row of albums) {
-        csvLines.push(`"${row.title}",${row.views},${row.visitors}`)
+        csvLines.push(`"${safeCsvCell(row.title)}",${row.views},${row.visitors}`)
       }
     }
 

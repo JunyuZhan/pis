@@ -102,28 +102,8 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
     // 使用同步版本避免 Next.js 15 worker thread 问题
     const derivedKey = crypto.pbkdf2Sync(password, salt, iterCount, keylen, digest)
     const derivedHash = derivedKey.toString('hex')
-    const isValid = derivedHash === storedHash
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[VerifyPassword] Verification result:', {
-        isValid,
-        saltLength: salt.length,
-        saltPreview: salt.substring(0, 16) + '...',
-        iterations: iterCount,
-        storedHashLength: storedHash.length,
-        storedHashPreview: storedHash.substring(0, 16) + '...',
-        derivedHashLength: derivedHash.length,
-        derivedHashPreview: derivedHash.substring(0, 16) + '...',
-        hashMatch: derivedHash === storedHash,
-        // 如果哈希不匹配，显示更多信息用于调试
-        ...(!isValid && {
-          storedHashStart: storedHash.substring(0, 32),
-          derivedHashStart: derivedHash.substring(0, 32),
-        }),
-      })
-    }
-    
-    return isValid
+
+    return derivedHash === storedHash
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
       console.error('[VerifyPassword] Verification error:', error)

@@ -6,6 +6,7 @@ import type { AlbumInsert, Json } from '@/types/database'
 import { createAlbumSchema } from '@/lib/validation/schemas'
 import { safeValidate, handleError, createSuccessResponse, ApiError } from '@/lib/validation/error-handler'
 import { logCreate } from '@/lib/audit-log'
+import { hashAlbumPassword } from '@/lib/album-password'
 
 /**
  * 相册管理 API
@@ -274,7 +275,7 @@ export async function POST(request: NextRequest) {
       location: location?.trim() || null,
       poster_image_url: poster_image_url || null,
       is_public: finalIsPublic,
-      password: password?.trim() || null,
+      password: password?.trim() ? hashAlbumPassword(password.trim()) : null,
       upload_token: finalUploadToken, // 自动生成或使用提供的令牌
       expires_at: finalExpiresAt,
       layout: layout || 'masonry',

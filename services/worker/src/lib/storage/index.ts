@@ -81,11 +81,11 @@ function getStorageConfigFromEnv(): StorageConfig {
     accessKey:
       process.env.STORAGE_ACCESS_KEY ||
       process.env.MINIO_ACCESS_KEY ||
-      'minioadmin',
+      (process.env.NODE_ENV === 'production' ? '' : 'minioadmin'),
     secretKey:
       process.env.STORAGE_SECRET_KEY ||
       process.env.MINIO_SECRET_KEY ||
-      'minioadmin',
+      (process.env.NODE_ENV === 'production' ? '' : 'minioadmin'),
     bucket:
       process.env.STORAGE_BUCKET || process.env.MINIO_BUCKET || 'pis-photos',
     region: process.env.STORAGE_REGION,

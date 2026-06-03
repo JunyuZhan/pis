@@ -139,8 +139,6 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
       console.error("[JWT verifyToken] Verification failed:", {
         error: error instanceof Error ? error.message : String(error),
         tokenLength: token.length,
-        tokenPreview: token.substring(0, 30) + "...",
-        secretLength: getJwtSecret().length,
       });
     }
     return null;

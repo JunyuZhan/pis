@@ -271,16 +271,42 @@ function toRelativePresignedUrl(url: string): string {
 // ============================================
 // API 认证配置
 // ============================================
-const ZERO_CFG_WORKER_KEY = 'pis-docker-default-worker-api-key';
-const WORKER_API_KEY =
-  process.env.WORKER_API_KEY?.trim() || ZERO_CFG_WORKER_KEY;
-// 人脸识别功能开关（默认禁用，设置为 'true' 启用）
-const ENABLE_FACE_RECOGNITION = process.env.ENABLE_FACE_RECOGNITION === 'true';
-if (!process.env.WORKER_API_KEY?.trim()) {
+
+function generateFallbackWorkerKey(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = new Uint8Array(32);
+  const crypto = globalThis.crypto || require('node:crypto');
+  if (crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+  } else if (crypto.randomBytes) {
+    const buf = crypto.randomBytes(32);
+    for (let i = 0; i < 32; i++) bytes[i] = buf[i];
+  }
+  let result = 'pis-tmp-';
+  for (let i = 0; i < 32; i++) {
+    result += chars[bytes[i] % chars.length];
+  }
+  return result;
+}
+
+const WORKER_API_KEY = process.env.WORKER_API_KEY?.trim();
+
+if (!WORKER_API_KEY) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error(
+      '[PIS/worker] FATAL: WORKER_API_KEY is required in production. Set WORKER_API_KEY env var.',
+    );
+    process.exit(1);
+  }
   console.warn(
-    '[PIS/worker] WORKER_API_KEY unset; using zero-config default (set WORKER_API_KEY for production)',
+    '[PIS/worker] WORKER_API_KEY unset; using zero-config default. Set WORKER_API_KEY for production.',
   );
 }
+
+const resolvedWorkerApiKey = WORKER_API_KEY || generateFallbackWorkerKey();
+
+// 人脸识别功能开关（默认禁用，设置为 'true' 启用）
+const ENABLE_FACE_RECOGNITION = process.env.ENABLE_FACE_RECOGNITION === 'true';
 
 // CORS 配置
 const CORS_ORIGINS = (process.env.CORS_ORIGINS || '').split(',').filter(Boolean);
@@ -314,7 +340,7 @@ function parseExpirySeconds(raw: unknown, fallback: number, max: number): number
  * @internal
  */
 function authenticateRequest(req: http.IncomingMessage): boolean {
-  if (!WORKER_API_KEY) {
+  if (!resolvedWorkerApiKey) {
     // 开发环境：允许访问但记录警告
     if (CONFIG.IS_DEVELOPMENT) {
       // 开发环境允许访问，但建议设置 API Key
@@ -331,7 +357,7 @@ function authenticateRequest(req: http.IncomingMessage): boolean {
     : apiKeyHeader?.replace(/^Bearer\s+/i, '') || apiKeyHeader;
 
   const apiKey = apiKeyRaw ?? '';
-  const expected = WORKER_API_KEY;
+  const expected = resolvedWorkerApiKey;
   if (apiKey.length !== expected.length) {
     return false;
   }
@@ -1354,8 +1380,14 @@ const server = http.createServer(async (req, res) => {
       // 生成 presigned URL
       let presignedUrl = await getPresignedGetUrl(key, expirySeconds);
 
-      // 如果指定了 Content-Disposition，添加到 URL 参数中
+      // 如果指定了 Content-Disposition，验证后添加到 URL 参数中
       if (responseContentDisposition) {
+        // 防止头注入：只允许安全字符
+        if (!/^[a-zA-Z0-9()<>@,;:\\/[\]?.={} \t\-_\".!#$%&'*+-]+$/.test(responseContentDisposition)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid responseContentDisposition' }));
+          return;
+        }
         const urlObj = new URL(presignedUrl);
         urlObj.searchParams.set('response-content-disposition', responseContentDisposition);
         presignedUrl = urlObj.toString();
@@ -1392,6 +1424,13 @@ const server = http.createServer(async (req, res) => {
     if (!key) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Missing key parameter' }));
+      return;
+    }
+
+    // 路径遍历保护
+    if (key.includes('..') || key.includes('~') || key.startsWith('/')) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid key' }));
       return;
     }
 

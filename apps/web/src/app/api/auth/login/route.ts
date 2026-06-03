@@ -324,23 +324,7 @@ export async function POST(request: NextRequest) {
       }
 
       // 验证密码
-      // 开发环境添加调试日志
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Login] Verifying password:', {
-          email: normalizedEmail,
-          passwordLength: password.length,
-          passwordHashExists: !!user.password_hash,
-        });
-      }
-
       const isValidPassword = await verifyPassword(password, user.password_hash);
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Login] Password verification result:', {
-          email: normalizedEmail,
-          isValid: isValidPassword,
-        });
-      }
 
       if (!isValidPassword) {
         // 密码错误，返回统一错误消息
@@ -396,18 +380,8 @@ export async function POST(request: NextRequest) {
         maxAge: 60 * 60 * 24 * 7, // 7 天
       });
 
-      // 调试日志（仅在开发环境）
       if (process.env.NODE_ENV === 'development') {
-        console.log('[Login] Cookies set via cookies().set():', {
-          accessTokenSet: !!accessToken,
-          refreshTokenSet: !!refreshToken,
-          accessTokenLength: accessToken.length,
-          refreshTokenLength: refreshToken.length,
-          secure: isHttps,
-          protocol,
-          sameSite: 'lax',
-          path: '/',
-        });
+        console.log('[Login] Cookies set for user:', normalizedEmail);
       }
 
       // 创建响应对象（cookie 已通过 cookies().set() 设置，会自动包含在响应中）

@@ -681,7 +681,7 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+              <div id="setup-password-error" role="alert" className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
                 {error}
               </div>
             )}
@@ -722,6 +722,7 @@ export default function LoginPage() {
                   placeholder="至少 8 个字符"
                   required
                   minLength={8}
+                  aria-describedby={error ? "setup-password-error" : undefined}
                 />
                 <button
                   type="button"
@@ -758,6 +759,7 @@ export default function LoginPage() {
                   placeholder="再次输入密码"
                   required
                   minLength={8}
+                  aria-describedby={error ? "setup-password-error" : undefined}
                 />
                 <button
                   type="button"
@@ -793,7 +795,7 @@ export default function LoginPage() {
           /* 登录表单 */
           <form onSubmit={handleLogin} className="card space-y-6 p-6 sm:p-8">
             {error && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+              <div id="login-error" role="alert" className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
                 {error}
               </div>
             )}
@@ -856,6 +858,7 @@ export default function LoginPage() {
                   className="input"
                   placeholder="admin"
                   required
+                  aria-describedby={error ? "login-error" : undefined}
                 />
                 <p className="text-xs text-text-muted mt-1">当前仅支持 admin</p>
               </div>
@@ -875,6 +878,7 @@ export default function LoginPage() {
                   className="input"
                   placeholder="your@email.com"
                   required
+                  aria-describedby={error ? "login-error" : undefined}
                 />
               </div>
             )}
@@ -895,6 +899,7 @@ export default function LoginPage() {
                   className="input pr-10"
                   placeholder="••••••••"
                   required
+                  aria-describedby={error ? "login-error" : undefined}
                 />
                 <button
                   type="button"

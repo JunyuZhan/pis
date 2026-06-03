@@ -3,6 +3,7 @@ import {
   ALBUM_ACCESS_COOKIE_NAME,
   verifyAlbumAccessJwt,
 } from "@/lib/auth/album-access-jwt";
+import { verifyAlbumPassword } from "@/lib/album-password";
 
 export type AlbumGateFields = {
   id: string;
@@ -33,7 +34,7 @@ export async function evaluateGuestAlbumAccess(
   if (
     albumPassword &&
     album.password &&
-    albumPassword === album.password
+    verifyAlbumPassword(albumPassword, album.password)
   ) {
     return { ok: true };
   }

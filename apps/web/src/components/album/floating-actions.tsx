@@ -150,7 +150,7 @@ export function FloatingActions({ album, currentSort, currentLayout }: FloatingA
                   'text-text-primary transition-all backdrop-blur-sm',
                   currentLayout === 'grid' && 'bg-accent/20 border-accent/30'
                 )}
-                title={currentLayout === 'masonry' ? '切换到网格布局' : '切换到瀑布流布局'}
+                aria-label={currentLayout === 'masonry' ? '切换到网格布局' : '切换到瀑布流布局'}
               >
                 {currentLayout === 'masonry' ? (
                   <Grid className="w-4 h-4" />
@@ -173,7 +173,7 @@ export function FloatingActions({ album, currentSort, currentLayout }: FloatingA
                     'bg-surface border border-border hover:bg-surface-elevated',
                     'text-text-primary transition-all backdrop-blur-sm'
                   )}
-                  title="找自己"
+                  aria-label="人脸搜索找自己"
                 >
                   <ScanFace className="w-4 h-4" />
                 </motion.button>
@@ -189,7 +189,7 @@ export function FloatingActions({ album, currentSort, currentLayout }: FloatingA
                   'bg-surface border border-border hover:bg-surface-elevated',
                   'text-text-primary transition-all backdrop-blur-sm'
                 )}
-                title={getSortLabel()}
+                aria-label={`排序方式: ${getSortLabel()}`}
               >
                 <ArrowUpDown className="w-4 h-4" />
               </motion.button>
@@ -234,7 +234,7 @@ export function FloatingActions({ album, currentSort, currentLayout }: FloatingA
                     'bg-surface border border-border hover:bg-surface-elevated',
                     'text-text-primary transition-all backdrop-blur-sm'
                   )}
-                  title="分享相册"
+                  aria-label="分享相册"
                 >
                   <Share2 className="w-4 h-4" />
                 </motion.button>

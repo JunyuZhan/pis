@@ -83,6 +83,14 @@ RUN apk add --no-cache curl
 # 清理构建依赖（减少镜像大小）
 RUN apk del .build-deps || true
 
+# 创建非 root 用户（安全加固）
+RUN addgroup -g 1001 -S worker && \
+    adduser -S worker -u 1001 -G worker && \
+    chown -R worker:worker /app
+
+# 切换到非 root 用户
+USER worker
+
 # 健康检查（检查 Worker HTTP API 是否正常）
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:3001/health || exit 1

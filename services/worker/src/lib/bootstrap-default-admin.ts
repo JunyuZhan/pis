@@ -5,8 +5,17 @@ import { pbkdf2Sync, randomBytes } from 'node:crypto';
 import pg from 'pg';
 
 const DEFAULT_ADMIN_EMAIL = 'admin@localhost';
-const DEFAULT_ADMIN_PASSWORD = '123456';
 const ZERO_DATABASE_URL = 'postgresql://postgres@postgres:5432/postgres';
+
+function generateAdminPassword(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
+  const bytes = randomBytes(16);
+  let result = '';
+  for (let i = 0; i < 16; i++) {
+    result += chars[bytes[i] % chars.length];
+  }
+  return result;
+}
 
 const MAX_ATTEMPTS = 8;
 const RETRY_MS = 1500;
@@ -68,7 +77,8 @@ export async function ensureDefaultAdminUser(): Promise<void> {
         return;
       }
 
-      const passwordHash = hashPasswordSync(DEFAULT_ADMIN_PASSWORD);
+      const adminPassword = generateAdminPassword();
+      const passwordHash = hashPasswordSync(adminPassword);
       await pool.query(
         `INSERT INTO users (email, password_hash, role, is_active, created_at, updated_at)
          VALUES ($1, $2, 'admin', true, NOW(), NOW())`,
@@ -76,7 +86,13 @@ export async function ensureDefaultAdminUser(): Promise<void> {
       );
 
       console.warn(
-        `[PIS Worker] 空库已创建默认管理员：${DEFAULT_ADMIN_EMAIL} / ${DEFAULT_ADMIN_PASSWORD}。请在 Web 后台立即修改密码。`,
+        `[PIS Worker] Created default admin: ${DEFAULT_ADMIN_EMAIL}`,
+      );
+      console.warn(
+        `[PIS Worker] Generated admin password: ${adminPassword}`,
+      );
+      console.warn(
+        `[PIS Worker] Log in and change this password immediately. Set PIS_ADMIN_PASSWORD env var for production.`,
       );
       return;
     } catch (e: unknown) {

@@ -3,12 +3,18 @@
  * 与登录 JWT 共用 AUTH_JWT_SECRET，受众隔离为 pis-album-access。
  */
 import { SignJWT, jwtVerify } from "jose";
+import { PIS_BUILTIN_ZERO_JWT_SECRET } from "@/lib/pis-zero-config";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.AUTH_JWT_SECRET ||
+function getAlbumAccessSecret(): Uint8Array {
+  const raw = (
+    process.env.AUTH_JWT_SECRET ||
     process.env.ALBUM_SESSION_SECRET ||
-    "fallback-secret-please-change",
-);
+    PIS_BUILTIN_ZERO_JWT_SECRET
+  ).trim();
+  return new TextEncoder().encode(raw);
+}
+
+const JWT_SECRET = getAlbumAccessSecret();
 
 const JWT_ISSUER = "pis-auth";
 const ALBUM_ACCESS_AUDIENCE = "pis-album-access";

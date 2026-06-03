@@ -20,6 +20,13 @@ interface AuditLog {
   ip_address: string | null
 }
 
+function safeCsvCell(value: string): string {
+  if (/^[=+\-@]/.test(value)) {
+    return `'${value}`
+  }
+  return value
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { user } = await requireAuth(request)
@@ -82,15 +89,15 @@ export async function GET(request: NextRequest) {
       
       const rows = logs.map(log => [
         new Date(log.created_at).toLocaleString('zh-CN'),
-        log.user_email || '',
-        log.user_role || '',
-        log.action,
-        log.resource_type,
-        log.resource_id || '',
-        log.resource_name || '',
-        log.description || '',
-        log.status,
-        log.ip_address || '',
+        safeCsvCell(log.user_email || ''),
+        safeCsvCell(log.user_role || ''),
+        safeCsvCell(log.action),
+        safeCsvCell(log.resource_type),
+        safeCsvCell(log.resource_id || ''),
+        safeCsvCell(log.resource_name || ''),
+        safeCsvCell(log.description || ''),
+        safeCsvCell(log.status),
+        safeCsvCell(log.ip_address || ''),
       ])
 
       const csv = [

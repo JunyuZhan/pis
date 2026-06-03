@@ -41,12 +41,27 @@ import * as Minio from 'minio'
  * - MINIO_ACCESS_KEY: 访问密钥
  * - MINIO_SECRET_KEY: 密钥
  */
+const accessKey = process.env.MINIO_ACCESS_KEY;
+const secretKey = process.env.MINIO_SECRET_KEY;
+
+if (!accessKey || !secretKey) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error(
+      '[MinIO] MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be set in production.',
+    );
+  } else {
+    console.warn(
+      '[MinIO] MINIO_ACCESS_KEY / MINIO_SECRET_KEY not set; using zero-config defaults.',
+    );
+  }
+}
+
 const minioClient = new Minio.Client({
   endPoint: process.env.MINIO_ENDPOINT_HOST || 'minio',
   port: parseInt(process.env.MINIO_ENDPOINT_PORT || '9000'),
   useSSL: process.env.MINIO_USE_SSL === 'true',
-  accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-  secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
+  accessKey: accessKey || 'minioadmin',
+  secretKey: secretKey || 'minioadmin',
 })
 
 /**

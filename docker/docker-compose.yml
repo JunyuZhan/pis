@@ -4,7 +4,7 @@ services:
     image: pgvector/pgvector:pg16
     restart: always
     environment:
-      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
       - ./init-postgresql-db.sql:/docker-entrypoint-initdb.d/01-init-postgresql-db.sql:ro

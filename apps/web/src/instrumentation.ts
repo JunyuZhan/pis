@@ -5,16 +5,13 @@
 import {
   PIS_BUILTIN_ZERO_JWT_SECRET,
   PIS_DEFAULT_DATABASE_URL,
-  PIS_DEFAULT_WORKER_API_KEY,
+  getDefaultWorkerApiKey,
   PIS_DEFAULT_WORKER_INTERNAL_URL,
 } from "@/lib/pis-zero-config";
 
 export async function register(): Promise<void> {
   if (!process.env.WORKER_API_KEY?.trim()) {
-    process.env.WORKER_API_KEY = PIS_DEFAULT_WORKER_API_KEY;
-    console.warn(
-      "[PIS] WORKER_API_KEY unset; using zero-config default (set for production)",
-    );
+    process.env.WORKER_API_KEY = getDefaultWorkerApiKey();
   }
 
   if (!process.env.WORKER_URL?.trim() && !process.env.WORKER_API_URL?.trim()) {

@@ -54,7 +54,6 @@ export async function getUserFromRequest(request: NextRequest): Promise<AuthUser
         // 添加更详细的错误信息用于调试
         console.log('[Auth getUserFromRequest] Access token invalid or expired', {
           tokenLength: token.length,
-          tokenPreview: token.substring(0, 20) + '...',
           payloadExists: !!payload,
           payloadType: payload?.type || 'null',
         })
@@ -122,11 +121,14 @@ export async function updateSessionMiddleware(request: NextRequest): Promise<{ r
     if (refreshPayload && refreshPayload.type === 'refresh') {
       const user: AuthUser = { id: refreshPayload.sub, email: refreshPayload.email }
       const newAccessToken = await createAccessToken(user)
-      const isProduction = process.env.NODE_ENV === 'production'
+
+      // Determine if the connection is HTTPS (check forwarded proto for proxy deployments)
+      const proto = request.headers.get('x-forwarded-proto') || (request.url.startsWith('https://') ? 'https' : 'http');
+      const isHttps = proto === 'https';
 
       response.cookies.set(COOKIE_NAME, newAccessToken, {
         httpOnly: true,
-        secure: isProduction,
+        secure: isHttps,
         sameSite: 'lax',
         path: '/',
         maxAge: 60 * 60, // 1 小时

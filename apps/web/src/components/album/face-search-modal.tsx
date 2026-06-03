@@ -85,6 +85,7 @@ export function FaceSearchModal({ albumSlug, isOpen, onClose, onSearch }: FaceSe
             className="hidden"
             ref={fileInputRef}
             onChange={handleFileChange}
+            aria-label="上传自拍照片用于人脸搜索"
           />
           
           <button

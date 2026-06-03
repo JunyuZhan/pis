@@ -6,6 +6,7 @@ import type { AlbumUpdate, Json } from '@/types/database'
 import { updateAlbumSchema, albumIdSchema } from '@/lib/validation/schemas'
 import { safeValidate, handleError, createSuccessResponse, ApiError } from '@/lib/validation/error-handler'
 import { logUpdate, logDelete } from '@/lib/audit-log'
+import { hashAlbumPassword } from '@/lib/album-password'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -205,8 +206,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       updateData.color_grading = validatedData.color_grading as Json | null
     }
     if (validatedData.password !== undefined) {
-      // 密码字段：空字符串转换为 null
-      updateData.password = validatedData.password || null
+      // 密码字段：空字符串转换为 null，非空时哈希后存储
+      updateData.password = validatedData.password?.trim()
+        ? hashAlbumPassword(validatedData.password.trim())
+        : null
     }
     if (validatedData.upload_token !== undefined) {
       // upload_token 字段：

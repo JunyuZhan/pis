@@ -8,6 +8,7 @@ import {
   ALBUM_ACCESS_COOKIE_NAME,
   createAlbumAccessJwt,
 } from '@/lib/auth/album-access-jwt'
+import { verifyAlbumPassword } from '@/lib/album-password'
 
 interface RouteParams {
   params: Promise<{ slug: string }>
@@ -204,9 +205,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return ApiError.validation('密码不能为空')
     }
 
-    // 验证密码（明文比较）
-    // 注意：相册密码是简单的访问控制，不需要复杂的哈希加密
-    const passwordVerified = album.password === password
+    // 验证密码（使用哈希比较，支持明文遗留密码的迁移）
+    const passwordVerified = verifyAlbumPassword(password, album.password)
 
     if (passwordVerified) {
       return attachAlbumAccessCookie()

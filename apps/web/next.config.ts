@@ -312,10 +312,10 @@ const nextConfig: NextConfig = {
             key: 'Referrer-Policy',
             value: 'strict-origin-when-cross-origin',
           },
-          // {
-          //   key: 'Strict-Transport-Security',
-          //   value: shouldEnableHsts ? 'max-age=31536000; includeSubDomains; preload' : '',
-          // },
+          {
+            key: 'Strict-Transport-Security',
+            value: shouldEnableHsts ? 'max-age=31536000; includeSubDomains; preload' : '',
+          },
         ].filter((header) => header.value !== ''), // 过滤空值
       },
       {
@@ -342,10 +342,10 @@ const nextConfig: NextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=(), payment=()',
           },
-          // {
-          //   key: 'Strict-Transport-Security',
-          //   value: shouldEnableHsts ? 'max-age=31536000; includeSubDomains; preload' : '',
-          // },
+          {
+            key: 'Strict-Transport-Security',
+            value: shouldEnableHsts ? 'max-age=31536000; includeSubDomains; preload' : '',
+          },
           {
             key: 'Content-Security-Policy',
             // 注意：presigned URL 需要直接访问 MinIO，但 MinIO API 端口在 standalone 模式下不暴露

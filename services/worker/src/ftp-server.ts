@@ -139,10 +139,21 @@ class PISFileSystem extends FileSystem {
     };
 
     // Get absolute path - 直接使用 root + fileName 构建路径
-    const cleanFileName = fileName.startsWith("/")
+    // 安全检查：拒绝包含路径遍历的文件名
+    const rawFileName = fileName.startsWith("/")
       ? fileName.slice(1)
       : fileName;
+    if (rawFileName.includes("..") || rawFileName.includes("~")) {
+      logger.error({ fileName }, "Blocked path traversal attempt in FTP upload");
+      throw new Error("Invalid file name: path traversal not allowed");
+    }
+    const cleanFileName = rawFileName.replace(/[^a-zA-Z0-9._\-/]/g, "_");
     const fsPath = join(this.root, cleanFileName);
+    // 防护：确保最终路径在 root 目录内
+    if (!fsPath.startsWith(this.root)) {
+      logger.error({ fileName, fsPath, root: this.root }, "Blocked path traversal: path escapes root");
+      throw new Error("Invalid file path");
+    }
 
     const cleanupFile = async (reason: string) => {
       try {
