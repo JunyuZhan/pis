@@ -20,7 +20,7 @@
 
 import { FtpSrv, FileSystem } from "ftp-srv";
 import { networkInterfaces } from "os";
-import { join, parse } from "path";
+import { join, parse, relative, isAbsolute } from "path";
 import { createReadStream, promises as fs } from "fs";
 import { uploadBuffer } from "./lib/storage/index.js";
 import { photoQueue } from "./lib/redis.js";
@@ -147,10 +147,12 @@ class PISFileSystem extends FileSystem {
       logger.error({ fileName }, "Blocked path traversal attempt in FTP upload");
       throw new Error("Invalid file name: path traversal not allowed");
     }
-    const cleanFileName = rawFileName.replace(/[^a-zA-Z0-9._\-/]/g, "_");
+    // 仅移除控制字符，保留中文等多字节文件名（避免把文件名改写为下划线）
+    const cleanFileName = rawFileName.replace(/[\x00-\x1f\x7f]/g, "");
     const fsPath = join(this.root, cleanFileName);
     // 防护：确保最终路径在 root 目录内
-    if (!fsPath.startsWith(this.root)) {
+    const relPath = relative(this.root, fsPath);
+    if (relPath.startsWith("..") || isAbsolute(relPath)) {
       logger.error({ fileName, fsPath, root: this.root }, "Blocked path traversal: path escapes root");
       throw new Error("Invalid file path");
     }

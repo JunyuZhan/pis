@@ -24,7 +24,16 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       database: config.database,
       user: config.user,
       password,
-      ssl: config.ssl ? { rejectUnauthorized: false } : false,
+      ssl: config.ssl
+        ? {
+            // 生产环境默认验证证书；开发环境允许自签名证书。
+            // 使用自签名证书的存量生产部署可设置 PG_SSL_REJECT_UNAUTHORIZED=false 关闭校验。
+            rejectUnauthorized:
+              process.env.PG_SSL_REJECT_UNAUTHORIZED === 'false'
+                ? false
+                : process.env.NODE_ENV === 'production',
+          }
+        : false,
       max: 20, // 连接池最大连接数
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,

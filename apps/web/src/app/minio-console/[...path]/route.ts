@@ -8,6 +8,9 @@
  * 
  * 注意：
  * - MinIO Console 需要 WebSocket 支持，Next.js API Routes 不完全支持 WebSocket
+ * - 标准部署（docker-compose + nginx）中 nginx 将 /minio-console/ 直接代理到
+ *   MinIO Console（:9001），不会经过本路由；Console 自身由 MinIO 登录凭据保护。
+ *   如需「仅管理员可访问 Console」，应在 nginx 层用 auth_request 统一鉴权。
  * - 建议：MinIO Console 仅用于管理，可以通过直接暴露端口访问（仅本地）
  * - 或者：使用主机 Nginx 代理 MinIO Console
  */

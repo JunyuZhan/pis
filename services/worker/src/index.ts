@@ -96,7 +96,7 @@ try {
 }
 
 import http from 'http';
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, randomBytes as nodeRandomBytes } from 'node:crypto';
 import { Worker, Job, Queue } from 'bullmq';
 import { connection, QUEUE_NAME, photoQueue } from './lib/redis.js';
 import {
@@ -275,11 +275,10 @@ function toRelativePresignedUrl(url: string): string {
 function generateFallbackWorkerKey(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   const bytes = new Uint8Array(32);
-  const crypto = globalThis.crypto || require('node:crypto');
-  if (crypto.getRandomValues) {
-    crypto.getRandomValues(bytes);
-  } else if (crypto.randomBytes) {
-    const buf = crypto.randomBytes(32);
+  if (globalThis.crypto?.getRandomValues) {
+    globalThis.crypto.getRandomValues(bytes);
+  } else {
+    const buf = nodeRandomBytes(32);
     for (let i = 0; i < 32; i++) bytes[i] = buf[i];
   }
   let result = 'pis-tmp-';

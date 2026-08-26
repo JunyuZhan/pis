@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { requireAdmin } from '@/lib/auth-utils'
-import { handleApiError } from '@/lib/api-error'
+import { handleApiError, ApiError } from '@/lib/api-error'
 
 interface StyleTemplateData {
   id: string
@@ -28,7 +28,10 @@ interface StyleTemplateData {
  */
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin(request)
+    const admin = await requireAdmin(request)
+    if (!admin) {
+      throw new ApiError('需要管理员权限', 403, 'FORBIDDEN')
+    }
     const db = createServerSupabaseClient()
 
     const { searchParams } = new URL(request.url)

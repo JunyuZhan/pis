@@ -362,6 +362,9 @@ export function CreateAlbumDialog({ open, onOpenChange }: CreateAlbumDialogProps
                   </div>
                   <button
                     type="button"
+                    role="switch"
+                    aria-checked={isPublic}
+                    aria-label="公开相册"
                     onClick={() => setIsPublic(!isPublic)}
                     className={cn(
                       'relative rounded-full transition-colors shrink-0 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center',
@@ -410,6 +413,9 @@ export function CreateAlbumDialog({ open, onOpenChange }: CreateAlbumDialogProps
                   </div>
                   <button
                     type="button"
+                    role="switch"
+                    aria-checked={watermarkEnabled}
+                    aria-label="启用水印"
                     onClick={() => setWatermarkEnabled(!watermarkEnabled)}
                     className={cn(
                       'relative rounded-full transition-colors shrink-0 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center',

@@ -296,17 +296,10 @@ export function PhotoLightbox({
         e.stopPropagation();
       }
 
-      console.log("[Download] ===== Download button clicked =====");
-      console.log("[Download] Event:", e);
-      console.log("[Download] Current photo ID:", currentPhotoId);
-
       if (!currentPhotoId) {
-        console.warn("[Download] No current photo ID");
         handleApiError(new Error("未选择照片"), "下载失败");
         return;
       }
-
-      console.log("[Download] Starting download for photo:", currentPhotoId);
 
       try {
         const downloadUrlObj = new URL(
@@ -315,18 +308,11 @@ export function PhotoLightbox({
         );
         appendAlbumPasswordIfPresent(downloadUrlObj, albumPassword);
         const downloadApiUrl = downloadUrlObj.toString();
-        console.log("[Download] Fetching download URL from:", downloadApiUrl);
 
         const res = await fetch(downloadApiUrl);
-        console.log(
-          "[Download] API response status:",
-          res.status,
-          res.statusText,
-        );
 
         if (!res.ok) {
           const error = await res.json();
-          console.error("[Download] API error:", error);
           handleApiError(
             new Error(error.error?.message || "下载失败"),
             "下载失败",
@@ -335,23 +321,15 @@ export function PhotoLightbox({
         }
 
         const data = await res.json();
-        console.log("[Download] API response data:", data);
 
         // API 返回格式: { data: { downloadUrl, filename } }
         const downloadUrl = data.data?.downloadUrl || data.downloadUrl;
         const filename = data.data?.filename || data.filename;
 
-        console.log("[Download] Extracted downloadUrl:", downloadUrl);
-        console.log("[Download] Extracted filename:", filename);
-
         // 验证 downloadUrl 是否存在
         if (!downloadUrl || typeof downloadUrl !== "string") {
-          console.error("[Download] Invalid downloadUrl:", downloadUrl);
           throw new Error("下载链接无效");
         }
-
-        console.log("[Download] Original downloadUrl:", downloadUrl);
-        console.log("[Download] safeMediaUrl:", safeMediaUrl);
 
         // 如果 downloadUrl 是相对路径，转换为完整 URL
         let fullDownloadUrl = downloadUrl;
@@ -372,30 +350,17 @@ export function PhotoLightbox({
           }
         }
 
-        console.log("[Download] Full download URL:", fullDownloadUrl);
-        console.log("[Download] Filename:", filename);
-
         // 使用 fetch 获取文件数据，然后用 Blob 创建下载
         // 这样可以确保强制下载而不是预览
-        console.log("[Download] Fetching file from:", fullDownloadUrl);
         const fileRes = await fetch(fullDownloadUrl);
-        console.log(
-          "[Download] File response status:",
-          fileRes.status,
-          fileRes.statusText,
-        );
 
         if (!fileRes.ok) {
-          const errorText = await fileRes.text();
-          console.error("[Download] File fetch error:", errorText);
           throw new Error(
             `文件下载失败: ${fileRes.status} ${fileRes.statusText}`,
           );
         }
 
         const blob = await fileRes.blob();
-        console.log("[Download] Blob size:", blob.size, "bytes");
-        console.log("[Download] Blob type:", blob.type);
 
         const blobUrl = URL.createObjectURL(blob);
 
@@ -403,14 +368,11 @@ export function PhotoLightbox({
         a.href = blobUrl;
         a.download = filename || "download";
         document.body.appendChild(a);
-        console.log("[Download] Triggering download...");
         a.click();
         document.body.removeChild(a);
 
         // 释放 Blob URL
         URL.revokeObjectURL(blobUrl);
-
-        console.log("[Download] Download completed successfully");
 
         // 追踪下载事件
         const currentPhoto = photos[currentIndex];
@@ -422,7 +384,6 @@ export function PhotoLightbox({
           totalSize: blob.size,
         });
       } catch (error) {
-        console.error("[Download] Error occurred:", error);
         handleApiError(error, "下载失败，请重试");
       }
     },

@@ -21,10 +21,14 @@ services:
     image: hub.albertzhan.top/pis/worker:latest
     restart: always
     depends_on: [postgres, minio, redis]
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
   web:
     image: hub.albertzhan.top/pis/web:latest
     restart: always
     depends_on: [postgres, worker]
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes: [./logs/web:/app/logs]
   nginx:
     image: nginx:alpine

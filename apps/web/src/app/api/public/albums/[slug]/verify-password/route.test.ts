@@ -11,6 +11,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { POST } from './route'
 import { createMockRequest } from '@/test/test-utils'
 import { checkRateLimit } from '@/middleware-rate-limit'
+import { hashAlbumPassword } from '@/lib/album-password'
 
 // Mock dependencies - 在顶层定义以便测试中访问
 const { mockSupabaseClient } = vi.hoisted(() => {
@@ -364,7 +365,7 @@ describe('POST /api/public/albums/[slug]/verify-password', () => {
       const mockSingle = vi.fn().mockResolvedValue({
         data: {
           id: 'album-123',
-          password: 'correct-password',
+          password: hashAlbumPassword('correct-password'),
           deleted_at: null,
         },
         error: null,
@@ -388,13 +389,53 @@ describe('POST /api/public/albums/[slug]/verify-password', () => {
       expect(data.data.verified).toBe(true)
     })
 
+    it('should verify legacy plaintext password and migrate it to a hash', async () => {
+      const mockSelect = vi.fn().mockReturnThis()
+      const mockEq = vi.fn().mockReturnThis()
+      const mockSingle = vi.fn().mockResolvedValue({
+        data: {
+          id: 'album-123',
+          password: 'legacy-plaintext-password',
+          deleted_at: null,
+        },
+        error: null,
+      })
+      const mockUpdateEq = vi.fn().mockResolvedValue({
+        data: null,
+        error: null,
+      })
+      const mockUpdate = vi.fn().mockReturnValue({ eq: mockUpdateEq })
+
+      mockSupabaseClient.from.mockReturnValue({
+        select: mockSelect,
+        eq: mockEq,
+        single: mockSingle,
+        update: mockUpdate,
+      })
+
+      const request = createMockRequest('http://localhost:3000/api/public/albums/test-slug/verify-password', {
+        method: 'POST',
+        body: { password: 'legacy-plaintext-password' },
+      })
+
+      const response = await POST(request, { params: Promise.resolve({ slug: 'test-slug' }) })
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.data.verified).toBe(true)
+      expect(mockUpdate).toHaveBeenCalledWith({
+        password: expect.stringMatching(/^sha256:[a-f0-9]{32}:[a-f0-9]{64}$/),
+      })
+      expect(mockUpdateEq).toHaveBeenCalledWith('id', 'album-123')
+    })
+
     it('should return 401 for incorrect password', async () => {
       const mockSelect = vi.fn().mockReturnThis()
       const mockEq = vi.fn().mockReturnThis()
       const mockSingle = vi.fn().mockResolvedValue({
         data: {
           id: 'album-123',
-          password: 'correct-password',
+          password: hashAlbumPassword('correct-password'),
           deleted_at: null,
         },
         error: null,

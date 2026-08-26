@@ -146,6 +146,7 @@ export function SidebarContent({ user }: { user: AuthUser }) {
             onClick={handleLogout}
             className="p-2 text-text-muted hover:text-text-primary transition-colors"
             title={t('sidebar.logout')}
+            aria-label={t('sidebar.logout')}
           >
             <LogOut className="w-4 h-4" />
           </button>

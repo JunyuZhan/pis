@@ -57,6 +57,18 @@ let storageAdapter: StorageAdapter | null = null
  */
 function getStorageConfigFromEnv(): StorageConfig {
   const type = (process.env.STORAGE_TYPE || 'minio') as StorageConfig['type']
+  // 生产环境缺少存储凭据时立即失败，避免运行期出现模糊的认证错误
+  if (
+    process.env.NODE_ENV === 'production' &&
+    (!process.env.STORAGE_ACCESS_KEY?.trim() ||
+      !process.env.STORAGE_SECRET_KEY?.trim()) &&
+    (!process.env.MINIO_ACCESS_KEY?.trim() ||
+      !process.env.MINIO_SECRET_KEY?.trim())
+  ) {
+    throw new Error(
+      '[Storage] STORAGE_ACCESS_KEY/STORAGE_SECRET_KEY (或 MINIO_ACCESS_KEY/MINIO_SECRET_KEY) 必须在生产环境设置',
+    )
+  }
   const origin = (
     process.env.PIS_PUBLIC_ORIGIN ||
     process.env.NEXT_PUBLIC_APP_URL ||

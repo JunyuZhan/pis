@@ -11,7 +11,7 @@
 import { Component, ReactNode } from 'react'
 import { AlertCircle, RefreshCw } from 'lucide-react'
 
-const isDev = typeof window !== 'undefined' ? false : process.env.NODE_ENV === 'development'
+const isDev = process.env.NODE_ENV === 'development'
 
 interface Props {
   children: ReactNode

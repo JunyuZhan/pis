@@ -8,7 +8,10 @@ import {
   ALBUM_ACCESS_COOKIE_NAME,
   createAlbumAccessJwt,
 } from '@/lib/auth/album-access-jwt'
-import { verifyAlbumPassword } from '@/lib/album-password'
+import {
+  checkAlbumPassword,
+  hashAlbumPassword,
+} from '@/lib/album-password'
 
 interface RouteParams {
   params: Promise<{ slug: string }>
@@ -205,10 +208,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return ApiError.validation('密码不能为空')
     }
 
-    // 验证密码（使用哈希比较，支持明文遗留密码的迁移）
-    const passwordVerified = verifyAlbumPassword(password, album.password)
+    // 验证密码（哈希比较；明文遗留密码校验通过后自动迁移为哈希存储）
+    const passwordCheck = checkAlbumPassword(password, album.password)
 
-    if (passwordVerified) {
+    if (passwordCheck.verified) {
+      if (passwordCheck.needsRehash) {
+        try {
+          await db
+            .from('albums')
+            .update({ password: hashAlbumPassword(password) })
+            .eq('id', album.id)
+        } catch (e: unknown) {
+          console.error(
+            '[VerifyPassword] 明文密码迁移失败（不影响本次访问）:',
+            e instanceof Error ? e.message : String(e),
+          )
+        }
+      }
       return attachAlbumAccessCookie()
     }
     return ApiError.validation('密码错误')

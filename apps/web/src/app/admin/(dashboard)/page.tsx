@@ -1,5 +1,7 @@
 import { Suspense } from 'react'
-import { createClient } from '@/lib/database'
+import { createClient, createAdminClient } from '@/lib/database'
+import { getCurrentUser } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 import { AlbumList } from '@/components/admin/album-list'
 import { AlbumCardSkeleton } from '@/components/ui/skeleton'
 import type { Album, Photo } from '@/types/database'
@@ -10,11 +12,35 @@ export const dynamic = 'force-dynamic'
 
 /**
  * 相册列表页 (管理后台首页)
- * 
+ *
  * 注意：此页面只显示未删除的相册（deleted_at IS NULL）
  * 已删除的相册会移至回收站，不在此页面显示
  */
 export default async function AdminPage() {
+  // 服务端认证检查
+  const user = await getCurrentUser()
+  if (!user) {
+    redirect('/admin/login')
+  }
+
+  // 检查用户角色（admin/photographer/retoucher 可访问后台）
+  const adminDb = await createAdminClient()
+  const userResult = await adminDb
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .is('deleted_at', null)
+    .single()
+
+  if (userResult.error || !userResult.data) {
+    redirect('/admin/login')
+  }
+
+  const role = (userResult.data as { role: string }).role
+  if (role !== 'admin' && role !== 'photographer' && role !== 'retoucher') {
+    redirect('/admin/login')
+  }
+
   const db = await createClient()
 
   // 获取相册列表（只获取未删除的相册，已删除的相册在回收站）

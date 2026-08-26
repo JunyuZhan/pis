@@ -19,6 +19,14 @@ import * as Minio from 'minio'
 // 配置超时时间（大文件可能需要更长时间）
 export const maxDuration = 300 // 5分钟
 
+// 访问控制说明：
+// /media/* 采用「URL 即能力」模型——相册页与 API 在应用层做访问控制，
+// 媒体文件本身通过 Worker 签发的短期预签名 URL 或相册页授权后访问。
+// 标准部署（docker-compose + nginx）中 nginx 将 /media/ 直接代理到 MinIO，
+// 不会经过本路由；因此这里不做 cookie 鉴权，避免「nginx 绕过、直连误拦」
+// 的不一致行为。如需更强的媒体访问控制，应在 nginx 层用 auth_request
+// 统一鉴权，并为公开相册/OG 抓取器补齐 cookie 签发与放行逻辑。
+
 /**
  * 创建 MinIO 客户端实例
  */

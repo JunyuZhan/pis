@@ -26,6 +26,9 @@ jobs:
           set -euo pipefail
           ROOT_DIR="$(pwd)"
 
+          echo "==> Checking for unresolved Git conflict markers"
+          bash scripts/utils/check-conflict-markers.sh
+
           has_package_script() {
             python3 - "$1" "$2" <<'PY'
           import json, pathlib, sys
@@ -158,7 +161,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          REGISTRY_HOST="${REGISTRY_HOST:-192.168.50.5:5050}"
+          REGISTRY_HOST="${REGISTRY_HOST:?REGISTRY_HOST must be set for image push}"
           REGISTRY_NAMESPACE="${REGISTRY_NAMESPACE:-albert}"
           REPO_NAME="${GITHUB_REPOSITORY##*/}"
           TAG="${GITHUB_REF_NAME:-${GITHUB_REF##*/}}"

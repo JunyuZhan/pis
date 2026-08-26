@@ -46,7 +46,7 @@ const secretKey = process.env.MINIO_SECRET_KEY;
 
 if (!accessKey || !secretKey) {
   if (process.env.NODE_ENV === 'production') {
-    console.error(
+    throw new Error(
       '[MinIO] MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be set in production.',
     );
   } else {

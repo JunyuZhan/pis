@@ -86,7 +86,10 @@ interface StyleTemplateData {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    await requireAdmin(request)
+    const admin = await requireAdmin(request)
+    if (!admin) {
+      throw new ApiError('需要管理员权限', 403, 'FORBIDDEN')
+    }
     const { id } = await params
 
     // 先检查是否是内置模板
@@ -145,7 +148,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
-    await requireAdmin(request)
+    const admin = await requireAdmin(request)
+    if (!admin) {
+      throw new ApiError('需要管理员权限', 403, 'FORBIDDEN')
+    }
     const { id } = await params
     const db = createServerSupabaseClient()
 
@@ -215,7 +221,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    await requireAdmin(request)
+    const admin = await requireAdmin(request)
+    if (!admin) {
+      throw new ApiError('需要管理员权限', 403, 'FORBIDDEN')
+    }
     const { id } = await params
     const db = createServerSupabaseClient()
 

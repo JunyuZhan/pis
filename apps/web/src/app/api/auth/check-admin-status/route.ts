@@ -8,7 +8,6 @@
 
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/database'
-import { PIS_DEFAULT_ADMIN_EMAIL } from '@/lib/pis-zero-config'
 
 /**
  * 验证密码哈希格式是否有效
@@ -69,7 +68,6 @@ export async function GET() {
       // 如果没有管理员账户，返回需要设置密码
       return NextResponse.json({
         needsPasswordSetup: true,
-        email: PIS_DEFAULT_ADMIN_EMAIL,
       })
     }
     
@@ -83,14 +81,12 @@ export async function GET() {
     
     return NextResponse.json({
       needsPasswordSetup,
-      email: adminUser.email, // 返回实际的管理员邮箱
     })
   } catch (error) {
     // 出错时默认返回需要设置密码（更安全）
     console.error('Error checking admin status:', error)
     return NextResponse.json({
       needsPasswordSetup: true,
-      email: PIS_DEFAULT_ADMIN_EMAIL,
     })
   }
 }

@@ -28,7 +28,10 @@ const importDataSchema = z.record(
  */
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin(request)
+    const admin = await requireAdmin(request)
+    if (!admin) {
+      throw new ApiError('需要管理员权限', 403, 'FORBIDDEN')
+    }
     const db = createServerSupabaseClient()
 
     const body = await request.json()

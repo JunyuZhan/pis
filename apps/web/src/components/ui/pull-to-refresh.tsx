@@ -30,6 +30,17 @@ export function PullToRefresh({
   const startY = useRef<number>(0);
   const currentY = useRef<number>(0);
 
+  // 使用 ref 存储会变化的值，避免 useEffect 频繁重建事件监听器
+  const onRefreshRef = useRef(onRefresh);
+  const isPullingRef = useRef(isPulling);
+  const pullDistanceRef = useRef(pullDistance);
+  const thresholdRef = useRef(threshold);
+
+  useEffect(() => { onRefreshRef.current = onRefresh; }, [onRefresh]);
+  useEffect(() => { isPullingRef.current = isPulling; }, [isPulling]);
+  useEffect(() => { pullDistanceRef.current = pullDistance; }, [pullDistance]);
+  useEffect(() => { thresholdRef.current = threshold; }, [threshold]);
+
   useEffect(() => {
     if (disabled || isRefreshing) return;
 
@@ -38,7 +49,6 @@ export function PullToRefresh({
 
     // 获取滚动元素和滚动位置
     const getScrollInfo = () => {
-      // 如果容器可滚动（内容溢出），则使用容器，否则使用文档根元素
       const isContainerScrollable = container.scrollHeight > container.clientHeight;
       const scrollElement = isContainerScrollable ? container : document.documentElement;
       const scrollTop = isContainerScrollable ? container.scrollTop : window.scrollY;
@@ -47,7 +57,6 @@ export function PullToRefresh({
 
     const handleTouchStart = (e: TouchEvent) => {
       const { scrollTop } = getScrollInfo();
-      // 只有在完全滚动到顶部时（scrollTop <= 5）才允许下拉刷新
       if (scrollTop > 5) return;
 
       startY.current = e.touches[0].clientY;
@@ -55,37 +64,35 @@ export function PullToRefresh({
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (!isPulling) return;
+      if (!isPullingRef.current) return;
 
       currentY.current = e.touches[0].clientY;
       const distance = currentY.current - startY.current;
 
-      // 向上滚动（distance < 0）- 立即重置状态，允许正常滚动
       if (distance < 0) {
         setIsPulling(false);
         setPullDistance(0);
         return;
       }
 
-      // 向下拉且在顶部附近时，触发下拉刷新
       const { scrollTop } = getScrollInfo();
       if (distance > 0 && scrollTop <= 5) {
-        const dampedDistance = Math.min(distance * 0.5, threshold * 1.5);
+        const dampedDistance = Math.min(distance * 0.5, thresholdRef.current * 1.5);
         setPullDistance(dampedDistance);
         e.preventDefault();
       }
     };
 
     const handleTouchEnd = async () => {
-      if (!isPulling) return;
+      if (!isPullingRef.current) return;
 
       setIsPulling(false);
 
-      if (pullDistance >= threshold) {
+      if (pullDistanceRef.current >= thresholdRef.current) {
         setIsRefreshing(true);
         setPullDistance(0);
         try {
-          await onRefresh();
+          await onRefreshRef.current();
         } finally {
           setIsRefreshing(false);
         }
@@ -103,7 +110,7 @@ export function PullToRefresh({
       container.removeEventListener('touchmove', handleTouchMove);
       container.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [disabled, isRefreshing, isPulling, pullDistance, threshold, onRefresh]);
+  }, [disabled, isRefreshing]);
 
   const pullProgress = Math.min(pullDistance / threshold, 1);
   const showIndicator = pullDistance > 0 || isRefreshing;

@@ -4,7 +4,7 @@
 
 ### 向部署者提供什么
 
-提供 **`docker/` 目录**（`docker-compose.yml`、`nginx/`、`init-postgresql-db.sql` 等）。**Compose 无 `build:`、无 `env_file:`**；Postgres 服务仅保留 **`environment.POSTGRES_HOST_AUTH_METHOD=trust` 一行**（Docker Library 在空数据卷上的 entrypoint 硬性要求；`postgres -c hostauth=trust` 不是有效 GUC，无法替代）。其余业务配置（JWT、MinIO、管理员等）均在 **Web/Worker 代码** 中自闭环。MinIO 使用官方镜像 + **`command: server /data --console-address :9001`**。
+提供 **`docker/` 目录**（`docker-compose.yml`、`nginx/`、`init-postgresql-db.sql` 等）。**Compose 无 `build:`、无 `env_file:`**；Postgres 服务通过 **`POSTGRES_PASSWORD`**（默认 `postgres`）启用密码认证，Web/Worker 的零配置连接串读取同一变量，无需手动配置。如需自定义数据库密码：`POSTGRES_PASSWORD=your-strong-password docker compose up -d`（同时会传递给 Web/Worker）。其余业务配置（JWT、MinIO、管理员等）均在 **Web/Worker 代码** 中自闭环。MinIO 使用官方镜像 + **`command: server /data --console-address :9001`**。
 
 在 **`docker/`** 目录部署执行：
 

@@ -85,7 +85,10 @@ function parseKey(flatKey: string): { namespace: string; key: string } {
  */
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin(request)
+    const admin = await requireAdmin(request)
+    if (!admin) {
+      throw new ApiError('需要管理员权限', 403, 'FORBIDDEN')
+    }
     const db = createServerSupabaseClient()
 
     const { searchParams } = new URL(request.url)
@@ -214,7 +217,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin(request)
+    const admin = await requireAdmin(request)
+    if (!admin) {
+      throw new ApiError('需要管理员权限', 403, 'FORBIDDEN')
+    }
     const db = createServerSupabaseClient()
 
     const body = await request.json()
@@ -271,7 +277,10 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    await requireAdmin(request)
+    const admin = await requireAdmin(request)
+    if (!admin) {
+      throw new ApiError('需要管理员权限', 403, 'FORBIDDEN')
+    }
     const db = createServerSupabaseClient()
 
     const body = await request.json()

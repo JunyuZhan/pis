@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/database";
+import { createClient, createAdminClient } from "@/lib/database";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import {
@@ -36,6 +36,24 @@ export default async function SettingsPage() {
 
   if (!user) {
     redirect("/admin/login");
+  }
+
+  // 检查管理员权限
+  const adminDb = await createAdminClient();
+  const userResult = await adminDb
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .is("deleted_at", null)
+    .single();
+
+  if (userResult.error || !userResult.data) {
+    redirect("/admin/login");
+  }
+
+  const role = (userResult.data as { role: string }).role;
+  if (role !== "admin") {
+    redirect("/admin");
   }
 
   // 获取相册统计

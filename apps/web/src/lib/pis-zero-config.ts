@@ -1,12 +1,17 @@
 /**
  * 自托管「零 compose 环境变量」时的应用侧默认值。
- * Postgres 官方镜像风格：库与用户名为 postgres、无密码（服务端 trust，见 docker/postgres/Dockerfile）。
+ * Postgres 官方镜像风格：库与用户名为 postgres，密码默认 postgres
+ * （与 docker-compose.yml 的 POSTGRES_PASSWORD 默认值一致）。
  *
  * 安全说明：所有硬编码默认值仅用于本地开发和 Docker Compose 零配置场景。
  * 生产环境必须通过环境变量覆盖所有敏感值。
  */
-export const PIS_DEFAULT_DATABASE_URL =
-  "postgresql://postgres@postgres:5432/postgres";
+export const PIS_DEFAULT_DATABASE_URL = (() => {
+  const password = encodeURIComponent(
+    process.env.POSTGRES_PASSWORD || "postgres",
+  );
+  return `postgresql://postgres:${password}@postgres:5432/postgres`;
+})();
 
 /** 服务端代理 Worker 的内网地址（与 compose 服务名 worker 一致） */
 export const PIS_DEFAULT_WORKER_INTERNAL_URL = "http://worker:3001";
@@ -32,24 +37,7 @@ function generateFallbackWorkerApiKey(): string {
   return result;
 }
 
-/**
- * 生成仅用于零配置场景的临时管理员密码。
- * 每次进程启动时随机生成并打印到控制台。
- * 生产环境务必通过 PIS_ADMIN_PASSWORD 环境变量覆盖。
- */
-function generateFallbackAdminPassword(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$";
-  const bytes = new Uint8Array(16);
-  globalThis.crypto.getRandomValues(bytes);
-  let result = "";
-  for (let i = 0; i < 16; i++) {
-    result += chars[bytes[i] % chars.length];
-  }
-  return result;
-}
-
 let _cachedWorkerApiKey: string | null = null;
-let _cachedAdminPassword: string | null = null;
 
 export function getDefaultWorkerApiKey(): string {
   if (!_cachedWorkerApiKey) {
@@ -59,20 +47,6 @@ export function getDefaultWorkerApiKey(): string {
     );
   }
   return _cachedWorkerApiKey;
-}
-
-export function getDefaultAdminPassword(): string {
-  if (!_cachedAdminPassword) {
-    _cachedAdminPassword = generateFallbackAdminPassword();
-    console.warn(
-      "[PIS] Using generated admin password:",
-      _cachedAdminPassword,
-    );
-    console.warn(
-      "[PIS] Log in and change this password immediately. Set PIS_ADMIN_PASSWORD env var for production.",
-    );
-  }
-  return _cachedAdminPassword;
 }
 
 /**

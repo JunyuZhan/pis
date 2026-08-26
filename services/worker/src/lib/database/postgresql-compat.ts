@@ -30,6 +30,14 @@ export class PostgreSQLCompatClient {
    */
   async rpc(functionName: string, params?: Record<string, any>): Promise<{ data: any; error: Error | null }> {
     try {
+      // 白名单验证函数名，防止 SQL 注入
+      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(functionName)) {
+        return {
+          data: null,
+          error: new Error(`Invalid function name: ${functionName}`),
+        };
+      }
+
       // 构建参数化查询
       const paramNames = params ? Object.keys(params) : [];
       const paramValues = params ? Object.values(params) : [];

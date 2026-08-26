@@ -63,11 +63,12 @@ function applyZeroConfigPostgresUrl(): void {
   }
   if (
     !process.env.DATABASE_URL?.trim() &&
-    !process.env.DATABASE_PASSWORD?.trim() &&
-    !process.env.POSTGRES_PASSWORD?.trim()
+    !process.env.DATABASE_PASSWORD?.trim()
   ) {
-    process.env.DATABASE_URL =
-      'postgresql://postgres@postgres:5432/postgres'
+    const password = encodeURIComponent(
+      process.env.POSTGRES_PASSWORD || 'postgres',
+    )
+    process.env.DATABASE_URL = `postgresql://postgres:${password}@postgres:5432/postgres`
   }
 }
 

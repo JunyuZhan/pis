@@ -88,7 +88,10 @@ interface CustomTemplateData {
  */
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin(request)
+    const admin = await requireAdmin(request)
+    if (!admin) {
+      throw new ApiError('需要管理员权限', 403, 'FORBIDDEN')
+    }
     const db = createServerSupabaseClient()
 
     const { searchParams } = new URL(request.url)

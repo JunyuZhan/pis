@@ -83,7 +83,7 @@ describe('PostgreSQLAdapter', () => {
           user: 'test',
           password: 'test',
         });
-      }).toThrow('PostgreSQL adapter requires host, database, user, and password');
+      }).toThrow('PostgreSQL adapter requires host, database, and user');
     });
   });
 
